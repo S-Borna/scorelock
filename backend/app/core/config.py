@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     # ── App ────────────────────────────────────────────────
     environment: str = "development"
     log_level: str = "INFO"
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,https://scorelock.saidborna.com"
+    base_url: str = "https://scorelock.saidborna.com"
 
     # ── Database ───────────────────────────────────────────
     database_url: str = "postgresql+asyncpg://scorelock:scorelock_dev@db:5432/scorelock"

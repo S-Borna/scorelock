@@ -1,0 +1,30 @@
+[deployment]
+# ── ScoreLock Deployment Notes ───────────────────────────
+# Domain:       scorelock.saidborna.com
+# Backend:      Railway PRO ($20/mo)
+# CDN/Workers:  Cloudflare Workers ($5/mo)
+#
+# ── Architecture ─────────────────────────────────────────
+#
+#   Client → Cloudflare (DNS + CDN + Workers)
+#            ├── /api/*  → Railway (FastAPI backend)
+#            └── /*      → Cloudflare Pages / Workers (Next.js frontend)
+#
+# ── Railway Services ─────────────────────────────────────
+#   1. backend       — FastAPI app (uvicorn)
+#   2. celery-worker — Celery worker (data pipeline + ML)
+#   3. celery-beat   — Celery beat (scheduler)
+#   4. PostgreSQL    — Railway managed PostgreSQL + TimescaleDB plugin
+#   5. Redis         — Railway managed Redis
+#
+# ── Cloudflare Setup ─────────────────────────────────────
+#   - DNS: CNAME scorelock → Railway app URL
+#   - SSL: Full (strict) mode
+#   - Workers: rate limiting, geo-routing, caching layer
+#   - Pages: Next.js frontend (Phase 3)
+#
+# ── Estimated Monthly Cost ───────────────────────────────
+#   Railway PRO:          $20/mo (5 services)
+#   Cloudflare Workers:    $5/mo
+#   API-Football Ultra:   $29/mo
+#   Total MVP:            ~$54/mo
