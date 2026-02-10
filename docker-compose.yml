@@ -1,0 +1,157 @@
+version: "3.9"
+
+services:
+  # ── Backend API ──────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: scorelock-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    networks:
+      - scorelock
+
+  # ── Celery Worker (scheduled tasks & ML jobs) ────────────
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: scorelock-worker
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    restart: unless-stopped
+    networks:
+      - scorelock
+
+  # ── Celery Beat (scheduler) ──────────────────────────────
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: scorelock-beat
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - celery-worker
+    command: celery -A app.core.celery_app beat --loglevel=info
+    restart: unless-stopped
+    networks:
+      - scorelock
+
+  # ── PostgreSQL + TimescaleDB ─────────────────────────────
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: scorelock-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-scorelock}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scorelock_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-scorelock}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scorelock}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - scorelock
+
+  # ── Redis (cache + Celery broker) ────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: scorelock-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - scorelock
+
+  # ── Redis Commander (dev UI for Redis) ───────────────────
+  redis-ui:
+    image: rediscommander/redis-commander:latest
+    container_name: scorelock-redis-ui
+    ports:
+      - "8001:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      - redis
+    profiles:
+      - dev
+    networks:
+      - scorelock
+
+  # ── Prometheus (metrics collection) ──────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: scorelock-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    networks:
+      - scorelock
+
+  # ── Grafana (dashboards) ─────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: scorelock-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    networks:
+      - scorelock
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  scorelock:
+    driver: bridge

@@ -1,0 +1,56 @@
+# ── Python ─────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# ── Virtual environments ──────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── IDE ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ── Environment & secrets ─────────────────────────────────
+.env
+.env.local
+.env.production
+
+# ── Docker volumes (local) ────────────────────────────────
+postgres_data/
+redis_data/
+
+# ── ML models (trained, large files) ──────────────────────
+backend/app/ml/trained_models/*.joblib
+backend/app/ml/trained_models/*.pkl
+
+# ── Node / Frontend ───────────────────────────────────────
+node_modules/
+.next/
+out/
+.turbo/
+
+# ── Testing & coverage ────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Logs ───────────────────────────────────────────────────
+*.log
+logs/
+
+# ── OS ─────────────────────────────────────────────────────
+Thumbs.db
