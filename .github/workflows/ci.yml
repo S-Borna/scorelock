@@ -127,7 +127,7 @@ jobs:
 
       - name: Type check
         working-directory: frontend
-        run: npm run type-check || true
+        run: npm run type-check
 
       - name: Build
         working-directory: frontend
@@ -153,5 +153,5 @@ jobs:
 
       - name: Audit Python dependencies
         working-directory: backend
-        run: pip-audit -r requirements.txt --strict || true
+        run: pip-audit -r requirements.txt --strict
         continue-on-error: true

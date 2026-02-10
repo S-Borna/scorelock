@@ -302,9 +302,9 @@ def run_sentiment_analysis():
     """Run LLM sentiment analysis on teams with upcoming fixtures."""
     async def _analyze():
         from app.services.sentiment import get_sentiment_analyzer
+        from app.services.news_fetcher import fetch_team_news, format_articles_for_analysis
         from app.services.db_service import get_upcoming_fixtures_for_prediction
         from app.models.models import SentimentScore
-        from sqlalchemy.orm import selectinload
 
         analyzer = get_sentiment_analyzer()
         analyzed = 0
@@ -323,13 +323,22 @@ def run_sentiment_analysis():
                     team_ids_done.add(team_id)
 
                     team_name = team.name if team else f"Team {team_id}"
-                    placeholder_text = (
-                        f"Latest news and discussion about {team_name} "
-                        f"ahead of their upcoming match."
-                    )
+
+                    # Fetch real news articles about this team
+                    try:
+                        articles = await fetch_team_news(team_name)
+                    except Exception as exc:
+                        logger.warning("news_fetch_failed", team=team_name, error=str(exc))
+                        articles = []
+
+                    if not articles:
+                        logger.info("sentiment_no_news", team=team_name)
+                        continue
+
+                    news_text = format_articles_for_analysis(articles)
 
                     try:
-                        result = await analyzer.analyze_text(team_name, placeholder_text)
+                        result = await analyzer.analyze_text(team_name, news_text)
                     except RuntimeError:
                         logger.warning("sentiment_skipped", reason="anthropic_key_missing")
                         return {"status": "skipped", "reason": "anthropic_key_missing"}

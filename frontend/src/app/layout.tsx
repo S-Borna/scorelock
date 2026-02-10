@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -33,37 +34,37 @@ function Header() {
   return (
     <header className="border-b border-gray-800 bg-gray-950/80 backdrop-blur-sm sticky top-0 z-50">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <span className="text-2xl">⚽</span>
           <span className="text-xl font-bold text-scorelock-400">ScoreLock</span>
-        </a>
+        </Link>
         <div className="hidden sm:flex items-center gap-6 text-sm">
-          <a href="/matches" className="hover:text-scorelock-400 transition-colors">
+          <Link href="/matches" className="hover:text-scorelock-400 transition-colors">
             Matches
-          </a>
-          <a href="/predictions" className="hover:text-scorelock-400 transition-colors">
+          </Link>
+          <Link href="/predictions" className="hover:text-scorelock-400 transition-colors">
             Predictions
-          </a>
-          <a href="/value-bets" className="hover:text-scorelock-400 transition-colors">
+          </Link>
+          <Link href="/value-bets" className="hover:text-scorelock-400 transition-colors">
             Value Bets
-          </a>
-          <a href="/standings" className="hover:text-scorelock-400 transition-colors">
+          </Link>
+          <Link href="/standings" className="hover:text-scorelock-400 transition-colors">
             Standings
-          </a>
+          </Link>
         </div>
         <div className="flex items-center gap-3">
-          <a
+          <Link
             href="/login"
             className="text-sm hover:text-scorelock-400 transition-colors"
           >
             Log in
-          </a>
-          <a
+          </Link>
+          <Link
             href="/signup"
             className="text-sm bg-scorelock-600 hover:bg-scorelock-700 px-4 py-2 rounded-lg transition-colors"
           >
             Sign up
-          </a>
+          </Link>
         </div>
       </nav>
     </header>

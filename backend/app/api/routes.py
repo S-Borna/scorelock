@@ -326,6 +326,9 @@ async def get_match_sentiment(fixture_id: int, db: AsyncSession = Depends(get_db
 
 # ── Admin — manual task triggers ───────────────────────────
 
+ADMIN_EMAILS: set[str] = {"REDACTED-EMAIL", "admin@scorelock.saidborna.com"}
+
+
 @router.post("/admin/trigger/{task_name}")
 async def trigger_task(
     task_name: str,
@@ -335,6 +338,8 @@ async def trigger_task(
 
     Available tasks: standings, fixtures, predictions, sentiment, odds, train
     """
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
     from app.core.celery_app import celery_app
 
     task_map = {

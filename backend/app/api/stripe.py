@@ -1,6 +1,8 @@
 """Stripe subscription routes — checkout, portal, webhook."""
 
+import asyncio
 import stripe
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +14,7 @@ from app.models.models import User, SubscriptionTier
 
 settings = get_settings()
 stripe.api_key = settings.stripe_secret_key
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/stripe", tags=["stripe"])
 
@@ -33,13 +36,18 @@ async def create_checkout_session(
     if not price_id:
         raise HTTPException(status_code=400, detail="Invalid tier. Choose 'pro' or 'elite'.")
 
-    # Create or reuse Stripe customer
+    # Create or reuse Stripe customer (run sync Stripe call in thread)
     if not user.stripe_customer_id:
-        customer = stripe.Customer.create(email=user.email, metadata={"user_id": str(user.id)})
+        customer = await asyncio.to_thread(
+            stripe.Customer.create,
+            email=user.email,
+            metadata={"user_id": str(user.id)},
+        )
         user.stripe_customer_id = customer.id
-        await db.flush()
-    
-    session = stripe.checkout.Session.create(
+        await db.commit()
+
+    session = await asyncio.to_thread(
+        stripe.checkout.Session.create,
         customer=user.stripe_customer_id,
         payment_method_types=["card"],
         mode="subscription",
@@ -62,7 +70,8 @@ async def create_portal_session(
     if not user.stripe_customer_id:
         raise HTTPException(status_code=400, detail="No active subscription")
 
-    session = stripe.billing_portal.Session.create(
+    session = await asyncio.to_thread(
+        stripe.billing_portal.Session.create,
         customer=user.stripe_customer_id,
         return_url=f"{settings.base_url}/account",
     )
@@ -82,7 +91,8 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.stripe_webhook_secret
         )
-    except (ValueError, stripe.error.SignatureVerificationError):
+    except (ValueError, stripe.SignatureVerificationError):
+        logger.warning("stripe_invalid_signature")
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     event_type = event["type"]
@@ -113,7 +123,8 @@ async def _handle_checkout_completed(session: dict, db: AsyncSession):
     if user:
         user.tier = tier
         user.stripe_subscription_id = subscription_id
-        await db.flush()
+        await db.commit()
+        logger.info("stripe_checkout_completed", user_id=user.id, tier=tier_str)
 
 
 async def _handle_subscription_updated(subscription: dict, db: AsyncSession):
@@ -140,7 +151,8 @@ async def _handle_subscription_updated(subscription: dict, db: AsyncSession):
     user = result.scalar_one_or_none()
     if user:
         user.tier = tier
-        await db.flush()
+        await db.commit()
+        logger.info("stripe_subscription_updated", user_id=user.id, tier=tier.value)
 
 
 async def _handle_subscription_deleted(subscription: dict, db: AsyncSession):
@@ -154,4 +166,5 @@ async def _handle_subscription_deleted(subscription: dict, db: AsyncSession):
     if user:
         user.tier = SubscriptionTier.FREE
         user.stripe_subscription_id = None
-        await db.flush()
+        await db.commit()
+        logger.info("stripe_subscription_deleted", user_id=user.id)

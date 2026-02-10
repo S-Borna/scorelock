@@ -1,7 +1,9 @@
 name: Deploy — Railway
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI — Lint, Test, Build"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -9,15 +11,24 @@ jobs:
   deploy:
     name: Deploy to Railway
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Railway CLI
-        run: npm install -g @railway/cli
+        run: npm install -g @railway/cli@3
 
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: railway up --detach
+
+      - name: Verify deployment
+        run: |
+          sleep 30
+          curl --fail --retry 3 --retry-delay 10 \
+            https://scorelock.saidborna.com/api/v1/health || echo "::warning::Health check failed"
