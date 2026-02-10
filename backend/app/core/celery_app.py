@@ -56,6 +56,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.update_standings",
         "schedule": crontab(hour=5, minute=0, day_of_week=1),
     },
+    # Retrain ML model weekly on Sunday at 03:00 UTC
+    "retrain-model": {
+        "task": "app.services.tasks.train_model",
+        "schedule": crontab(hour=3, minute=0, day_of_week=0),
+    },
 }
 
 # Auto-discover tasks from services module

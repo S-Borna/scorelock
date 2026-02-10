@@ -179,9 +179,9 @@ async def upsert_fixture(session: AsyncSession, data: dict, league: League) -> F
     status_short = fixture_info.get("status", {}).get("short", "NS")
     status = API_STATUS_MAP.get(status_short, MatchStatus.SCHEDULED)
 
-    # Parse kickoff time
+    # Parse kickoff time (strip tzinfo — DB uses TIMESTAMP WITHOUT TIME ZONE)
     kickoff_str = fixture_info.get("date")
-    kickoff = datetime.fromisoformat(kickoff_str) if kickoff_str else datetime.utcnow()
+    kickoff = datetime.fromisoformat(kickoff_str).replace(tzinfo=None) if kickoff_str else datetime.utcnow()
 
     # Parse halftime score
     ht = score_info.get("halftime", {})
@@ -466,3 +466,167 @@ async def get_h2h_fixtures(session: AsyncSession, team1_id: int, team2_id: int, 
         .limit(last)
     )
     return list(result.scalars().all())
+
+
+# ── ML Training Data ──────────────────────────────────────
+
+async def get_finished_fixtures_for_training(session: AsyncSession) -> list[dict]:
+    """Get all finished fixtures with scores for model training."""
+    result = await session.execute(
+        select(Fixture)
+        .where(
+            Fixture.status == MatchStatus.FINISHED,
+            Fixture.home_goals.is_not(None),
+            Fixture.away_goals.is_not(None),
+        )
+        .order_by(Fixture.kickoff)
+    )
+    fixtures = list(result.scalars().all())
+
+    return [
+        {
+            "fixture_id": f.id,
+            "home_team_id": f.home_team_id,
+            "away_team_id": f.away_team_id,
+            "home_goals": f.home_goals,
+            "away_goals": f.away_goals,
+            "kickoff": f.kickoff,
+            "season": f.season,
+            "league_id": f.league_id,
+        }
+        for f in fixtures
+    ]
+
+
+async def get_upcoming_fixtures_for_prediction(
+    session: AsyncSession,
+    days_ahead: int = 2,
+) -> list[Fixture]:
+    """Get scheduled fixtures in the next N days that don't have predictions."""
+    now = datetime.utcnow()
+    cutoff = now + timedelta(days=days_ahead)
+
+    # Subquery: does fixture already have a prediction?
+    has_pred = (
+        select(Prediction.id)
+        .where(Prediction.fixture_id == Fixture.id)
+        .exists()
+    )
+
+    result = await session.execute(
+        select(Fixture)
+        .where(
+            Fixture.status == MatchStatus.SCHEDULED,
+            Fixture.kickoff >= now,
+            Fixture.kickoff <= cutoff,
+            ~has_pred,
+        )
+        .options(
+            selectinload(Fixture.league),
+            selectinload(Fixture.home_team),
+            selectinload(Fixture.away_team),
+            selectinload(Fixture.odds),
+        )
+        .order_by(Fixture.kickoff)
+    )
+    return list(result.scalars().all())
+
+
+async def upsert_prediction(
+    session: AsyncSession,
+    fixture_id: int,
+    home_win_prob: float,
+    draw_prob: float,
+    away_win_prob: float,
+    confidence: float,
+    model_version: str,
+    over_25_prob: float | None = None,
+    expected_goals: float | None = None,
+    is_value_home: bool = False,
+    is_value_draw: bool = False,
+    is_value_away: bool = False,
+    value_edge: float | None = None,
+    features_used: dict | None = None,
+) -> Prediction:
+    """Insert or update a prediction for a fixture."""
+    # Check if prediction exists (avoids needing unique constraint migration)
+    existing = await session.execute(
+        select(Prediction).where(Prediction.fixture_id == fixture_id)
+    )
+    pred = existing.scalar_one_or_none()
+
+    if pred:
+        pred.home_win_prob = home_win_prob
+        pred.draw_prob = draw_prob
+        pred.away_win_prob = away_win_prob
+        pred.confidence = confidence
+        pred.over_25_prob = over_25_prob
+        pred.expected_goals = expected_goals
+        pred.model_version = model_version
+        pred.is_value_home = is_value_home
+        pred.is_value_draw = is_value_draw
+        pred.is_value_away = is_value_away
+        pred.value_edge = value_edge
+        pred.features_used = features_used
+        pred.created_at = datetime.utcnow()
+    else:
+        pred = Prediction(
+            fixture_id=fixture_id,
+            home_win_prob=home_win_prob,
+            draw_prob=draw_prob,
+            away_win_prob=away_win_prob,
+            confidence=confidence,
+            over_25_prob=over_25_prob,
+            expected_goals=expected_goals,
+            model_version=model_version,
+            is_value_home=is_value_home,
+            is_value_draw=is_value_draw,
+            is_value_away=is_value_away,
+            value_edge=value_edge,
+            features_used=features_used,
+        )
+        session.add(pred)
+
+    return pred
+
+
+async def update_prediction_results(session: AsyncSession) -> int:
+    """Mark predictions as correct/incorrect after matches finish.
+
+    Returns count of predictions updated.
+    """
+    result = await session.execute(
+        select(Prediction)
+        .join(Fixture)
+        .where(
+            Fixture.status == MatchStatus.FINISHED,
+            Prediction.was_correct.is_(None),
+            Fixture.home_goals.is_not(None),
+        )
+        .options(selectinload(Prediction.fixture))
+    )
+    predictions = list(result.scalars().all())
+
+    count = 0
+    for pred in predictions:
+        fixture = pred.fixture
+        if fixture.home_goals is None or fixture.away_goals is None:
+            continue
+
+        # Actual result
+        if fixture.home_goals > fixture.away_goals:
+            actual = "H"
+        elif fixture.home_goals == fixture.away_goals:
+            actual = "D"
+        else:
+            actual = "A"
+
+        # Predicted result (highest probability)
+        probs = {"H": pred.home_win_prob, "D": pred.draw_prob, "A": pred.away_win_prob}
+        predicted = max(probs, key=probs.get)
+
+        pred.actual_result = actual
+        pred.was_correct = predicted == actual
+        count += 1
+
+    return count

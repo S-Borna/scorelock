@@ -34,6 +34,7 @@ redis_data/
 # ── ML models (trained, large files) ──────────────────────
 backend/app/ml/trained_models/*.joblib
 backend/app/ml/trained_models/*.pkl
+backend/app/ml/trained_models/metadata.json
 
 # ── Celery ─────────────────────────────────────────────────
 celerybeat-schedule

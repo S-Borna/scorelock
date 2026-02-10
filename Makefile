@@ -68,6 +68,15 @@ run-predictions: ## Manually trigger ML predictions
 seed: ## Seed leagues and teams from API-Football
 	docker compose exec backend python -m app.services.seed
 
+historical: ## Fetch historical fixtures + standings (uses ~48 API calls)
+	docker compose exec backend python -m app.services.historical
+
+train: ## Train/retrain the ML prediction model
+	docker compose exec backend python -m app.ml.trainer
+
+predict: ## Manually trigger ML predictions for upcoming matches
+	docker compose exec celery-worker celery -A app.core.celery_app call app.services.tasks.run_daily_predictions
+
 # ── Monitoring ─────────────────────────────────────────────
 
 urls: ## Show all service URLs

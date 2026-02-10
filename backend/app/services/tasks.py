@@ -181,15 +181,105 @@ def fetch_odds_updates():
 
 @celery_app.task(name="app.services.tasks.run_daily_predictions")
 def run_daily_predictions():
-    """Run ML predictions for tomorrow's matches.
+    """Run ML predictions for upcoming matches using trained model."""
+    async def _predict():
+        from app.ml.predictor import get_predictor, identify_value_bets
+        from app.ml.features import FeatureComputer
+        from app.services.db_service import (
+            get_finished_fixtures_for_training,
+            get_upcoming_fixtures_for_prediction,
+            upsert_prediction,
+            update_prediction_results,
+        )
 
-    Note: Requires a trained model. Until model training is implemented,
-    this task logs a warning and skips.
-    """
-    logger.info("running_daily_predictions")
-    # ML prediction pipeline will be implemented in Phase 2
-    # Requires: historical data → feature engineering → trained model
-    return {"status": "skipped", "reason": "model_not_trained"}
+        predictor = get_predictor()
+        if not predictor.is_loaded:
+            logger.warning("model_not_loaded", reason="No trained model found")
+            return {"status": "skipped", "reason": "model_not_loaded"}
+
+        async with async_session() as session:
+            # 1. Update results for past predictions
+            updated = await update_prediction_results(session)
+            if updated:
+                logger.info("prediction_results_updated", count=updated)
+
+            # 2. Load historical fixtures to populate feature computer
+            finished = await get_finished_fixtures_for_training(session)
+            computer = FeatureComputer()
+            computer.populate_from_fixtures(finished)
+
+            # 3. Get upcoming fixtures without predictions
+            upcoming = await get_upcoming_fixtures_for_prediction(session)
+            if not upcoming:
+                logger.info("no_upcoming_fixtures")
+                await session.commit()
+                return {"status": "ok", "predictions": 0, "results_updated": updated}
+
+            # 4. Generate predictions
+            predicted = 0
+            for fixture in upcoming:
+                try:
+                    prediction = predictor.predict_match(
+                        computer,
+                        fixture.home_team_id,
+                        fixture.away_team_id,
+                        fixture.kickoff,
+                        fixture.season,
+                    )
+
+                    # Check for value bets if odds available
+                    is_value_home = False
+                    is_value_draw = False
+                    is_value_away = False
+                    value_edge = None
+
+                    odds_1x2 = [o for o in fixture.odds if o.market == "1X2"]
+                    if odds_1x2:
+                        best = odds_1x2[0]
+                        if best.home_odds and best.draw_odds and best.away_odds:
+                            vb = identify_value_bets(
+                                prediction,
+                                {
+                                    "home": best.home_odds,
+                                    "draw": best.draw_odds,
+                                    "away": best.away_odds,
+                                },
+                            )
+                            is_value_home = vb.get("is_value_home", False)
+                            is_value_draw = vb.get("is_value_draw", False)
+                            is_value_away = vb.get("is_value_away", False)
+                            value_edge = vb.get("value_edge")
+
+                    await upsert_prediction(
+                        session,
+                        fixture_id=fixture.id,
+                        home_win_prob=prediction.home_win_prob,
+                        draw_prob=prediction.draw_prob,
+                        away_win_prob=prediction.away_win_prob,
+                        confidence=prediction.confidence,
+                        over_25_prob=prediction.over_25_prob,
+                        expected_goals=prediction.expected_goals,
+                        model_version=prediction.model_version,
+                        is_value_home=is_value_home,
+                        is_value_draw=is_value_draw,
+                        is_value_away=is_value_away,
+                        value_edge=value_edge,
+                    )
+                    predicted += 1
+
+                except Exception as exc:
+                    logger.error(
+                        "prediction_failed",
+                        fixture_id=fixture.id,
+                        error=str(exc),
+                    )
+
+            await session.commit()
+
+        logger.info("daily_predictions_complete", predicted=predicted)
+        return {"status": "ok", "predictions": predicted, "results_updated": updated}
+
+    return run_async(_predict())
 
 
 @celery_app.task(name="app.services.tasks.run_sentiment_analysis")
@@ -253,3 +343,33 @@ def seed_data():
 
     run_async(_seed())
     return {"status": "ok"}
+
+
+@celery_app.task(name="app.services.tasks.train_model")
+def train_model():
+    """Train/retrain the ML prediction model from historical data."""
+    async def _train():
+        from app.ml.trainer import run_training_pipeline
+        return await run_training_pipeline()
+
+    return run_async(_train())
+
+
+@celery_app.task(name="app.services.tasks.fetch_historical_data")
+def fetch_historical_data():
+    """Fetch historical fixtures and standings from API-Football."""
+    async def _fetch():
+        from app.services.historical import (
+            fetch_historical_fixtures,
+            fetch_historical_standings,
+        )
+        fixtures = await fetch_historical_fixtures()
+        standings = await fetch_historical_standings()
+        return {
+            "status": "ok",
+            "fixtures": fixtures["total_fixtures"],
+            "standings": standings["total_standings"],
+            "api_requests": fixtures["total_requests"] + standings["total_requests"],
+        }
+
+    return run_async(_fetch())
