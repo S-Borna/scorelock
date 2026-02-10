@@ -31,10 +31,10 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.fetch_daily_fixtures",
         "schedule": crontab(hour=6, minute=0),
     },
-    # Update live scores every 60 seconds during match hours (12:00–23:00 UTC)
+    # Update live scores every 5 minutes during match hours (12:00–23:00 UTC)
     "update-live-scores": {
         "task": "app.services.tasks.update_live_scores",
-        "schedule": 60.0,  # Every 60 seconds
+        "schedule": crontab(minute="*/5", hour="12-23"),
     },
     # Fetch and store odds updates every 30 minutes
     "fetch-odds": {

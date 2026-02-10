@@ -99,6 +99,21 @@ def update_live_scores():
                 if result:
                     updated += 1
 
+                    # Publish live update via WebSocket
+                    try:
+                        from app.api.websocket import publish_score_update
+                        goals = fixture_data.get("goals", {})
+                        status_info = fixture_data.get("fixture", {}).get("status", {})
+                        publish_score_update(
+                            fixture_id=result.id,
+                            home_goals=goals.get("home", 0) or 0,
+                            away_goals=goals.get("away", 0) or 0,
+                            status=result.status.value if hasattr(result.status, "value") else str(result.status),
+                            minute=status_info.get("elapsed"),
+                        )
+                    except Exception as exc:
+                        logger.warning("ws_publish_failed", error=str(exc))
+
             await session.commit()
 
         logger.info("live_scores_updated", count=updated)
@@ -284,13 +299,62 @@ def run_daily_predictions():
 
 @celery_app.task(name="app.services.tasks.run_sentiment_analysis")
 def run_sentiment_analysis():
-    """Run LLM sentiment analysis on recent football news.
+    """Run LLM sentiment analysis on teams with upcoming fixtures."""
+    async def _analyze():
+        from app.services.sentiment import get_sentiment_analyzer
+        from app.services.db_service import get_upcoming_fixtures_for_prediction
+        from app.models.models import SentimentScore
+        from sqlalchemy.orm import selectinload
 
-    Note: Requires Anthropic API key. Will be implemented in Phase 2.
-    """
-    logger.info("running_sentiment_analysis")
-    # Sentiment pipeline will be implemented in Phase 2
-    return {"status": "skipped", "reason": "not_implemented"}
+        analyzer = get_sentiment_analyzer()
+        analyzed = 0
+
+        async with async_session() as session:
+            upcoming = await get_upcoming_fixtures_for_prediction(session, days_ahead=3)
+
+            team_ids_done: set[int] = set()
+            for fixture in upcoming:
+                for team, team_id in [
+                    (fixture.home_team, fixture.home_team_id),
+                    (fixture.away_team, fixture.away_team_id),
+                ]:
+                    if team_id in team_ids_done:
+                        continue
+                    team_ids_done.add(team_id)
+
+                    team_name = team.name if team else f"Team {team_id}"
+                    placeholder_text = (
+                        f"Latest news and discussion about {team_name} "
+                        f"ahead of their upcoming match."
+                    )
+
+                    try:
+                        result = await analyzer.analyze_text(team_name, placeholder_text)
+                    except RuntimeError:
+                        logger.warning("sentiment_skipped", reason="anthropic_key_missing")
+                        return {"status": "skipped", "reason": "anthropic_key_missing"}
+                    except Exception as exc:
+                        logger.error("sentiment_failed", team=team_name, error=str(exc))
+                        continue
+
+                    score = SentimentScore(
+                        team_id=team_id,
+                        fixture_id=fixture.id,
+                        score=result["score"],
+                        buzz_score=result["buzz_score"],
+                        source="llm_analysis",
+                        summary=result.get("summary"),
+                        raw_data=result,
+                    )
+                    session.add(score)
+                    analyzed += 1
+
+            await session.commit()
+
+        logger.info("sentiment_analysis_complete", teams_analyzed=analyzed)
+        return {"status": "ok", "analyzed": analyzed}
+
+    return run_async(_analyze())
 
 
 @celery_app.task(name="app.services.tasks.update_standings")

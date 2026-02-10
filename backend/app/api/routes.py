@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.security import get_current_user
 from app.schemas.schemas import (
     FixtureResponse,
     FixtureDetail,
@@ -20,6 +21,7 @@ from app.schemas.schemas import (
     OddsResponse,
 )
 from app.services import db_service
+from app.models.models import User
 
 router = APIRouter()
 
@@ -320,3 +322,32 @@ async def get_match_sentiment(fixture_id: int, db: AsyncSession = Depends(get_db
         "home_detail": [SentimentResponse.model_validate(s) for s in home_sentiment],
         "away_detail": [SentimentResponse.model_validate(s) for s in away_sentiment],
     }
+
+
+# ── Admin — manual task triggers ───────────────────────────
+
+@router.post("/admin/trigger/{task_name}")
+async def trigger_task(
+    task_name: str,
+    user: User = Depends(get_current_user),
+):
+    """Manually trigger a Celery task (admin only).
+
+    Available tasks: standings, fixtures, predictions, sentiment, odds, train
+    """
+    from app.core.celery_app import celery_app
+
+    task_map = {
+        "standings": "app.services.tasks.update_standings",
+        "fixtures": "app.services.tasks.fetch_daily_fixtures",
+        "predictions": "app.services.tasks.run_daily_predictions",
+        "sentiment": "app.services.tasks.run_sentiment_analysis",
+        "odds": "app.services.tasks.fetch_odds_updates",
+        "train": "app.services.tasks.train_model",
+    }
+
+    if task_name not in task_map:
+        raise HTTPException(status_code=400, detail=f"Unknown task. Choose from: {', '.join(task_map.keys())}")
+
+    result = celery_app.send_task(task_map[task_name])
+    return {"status": "queued", "task_id": result.id, "task_name": task_name}
