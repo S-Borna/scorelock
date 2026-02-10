@@ -35,6 +35,10 @@ redis_data/
 backend/app/ml/trained_models/*.joblib
 backend/app/ml/trained_models/*.pkl
 
+# ── Celery ─────────────────────────────────────────────────
+celerybeat-schedule
+celerybeat-schedule.db
+
 # ── Node / Frontend ───────────────────────────────────────
 node_modules/
 .next/

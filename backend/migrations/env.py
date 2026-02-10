@@ -1,7 +1,12 @@
 """Alembic migration environment — async PostgreSQL support."""
 
 import asyncio
+import sys
 from logging.config import fileConfig
+from pathlib import Path
+
+# Ensure the backend root (/app) is on sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from alembic import context
 from sqlalchemy import pool
