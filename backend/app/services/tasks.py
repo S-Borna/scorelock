@@ -9,6 +9,7 @@ from datetime import date, timedelta
 
 import structlog
 from app.core.celery_app import celery_app
+from app.core.database import async_session
 
 logger = structlog.get_logger()
 
@@ -24,28 +25,47 @@ def run_async(coro):
 
 @celery_app.task(name="app.services.tasks.fetch_daily_fixtures")
 def fetch_daily_fixtures():
-    """Fetch today's and tomorrow's fixtures from API-Football."""
+    """Fetch today's and tomorrow's fixtures from API-Football and store in DB."""
     async def _fetch():
         from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
+        from app.services.db_service import upsert_fixtures_batch, get_league_by_api_id
 
         today = date.today()
         tomorrow = today + timedelta(days=1)
+        total = 0
 
-        for day in [today, tomorrow]:
-            for league_name in PHASE_1_LEAGUES:
-                league_id = LEAGUE_IDS[league_name]
-                fixtures = await api_football.get_fixtures_by_date(day, league_id)
-                logger.info(
-                    "fetched_fixtures",
-                    date=day.isoformat(),
-                    league=league_name,
-                    count=len(fixtures),
-                )
-                # TODO: Upsert fixtures into database
-                # await upsert_fixtures(fixtures)
+        async with async_session() as session:
+            for day in [today, tomorrow]:
+                for league_name in PHASE_1_LEAGUES:
+                    api_id = LEAGUE_IDS[league_name]
 
-    run_async(_fetch())
-    return {"status": "ok"}
+                    league = await get_league_by_api_id(session, api_id)
+                    if not league:
+                        logger.warning("league_not_in_db", league=league_name, api_id=api_id)
+                        continue
+
+                    try:
+                        fixtures = await api_football.get_fixtures_by_date(day, api_id)
+                    except Exception as exc:
+                        logger.error("fixture_fetch_failed", league=league_name, error=str(exc))
+                        continue
+
+                    if fixtures:
+                        count = await upsert_fixtures_batch(session, fixtures, league)
+                        total += count
+                        logger.info(
+                            "fixtures_upserted",
+                            date=day.isoformat(),
+                            league=league_name,
+                            count=count,
+                        )
+
+            await session.commit()
+
+        return total
+
+    count = run_async(_fetch())
+    return {"status": "ok", "fixtures_processed": count}
 
 
 @celery_app.task(name="app.services.tasks.update_live_scores")
@@ -53,64 +73,183 @@ def update_live_scores():
     """Update scores for currently live matches."""
     async def _update():
         from app.services.api_football import api_football
+        from app.services.db_service import upsert_fixture, get_league_by_api_id
 
-        live = await api_football.get_live_fixtures()
-        logger.info("live_fixtures_update", count=len(live))
-        # TODO: Update fixture scores in database
-        # TODO: Push WebSocket updates to connected clients
+        try:
+            live = await api_football.get_live_fixtures()
+        except Exception as exc:
+            logger.error("live_fetch_failed", error=str(exc))
+            return 0
 
-    run_async(_update())
-    return {"status": "ok"}
+        if not live:
+            return 0
+
+        updated = 0
+        async with async_session() as session:
+            for fixture_data in live:
+                league_api_id = fixture_data.get("league", {}).get("id")
+                if not league_api_id:
+                    continue
+
+                league = await get_league_by_api_id(session, league_api_id)
+                if not league:
+                    continue  # Not a league we track
+
+                result = await upsert_fixture(session, fixture_data, league)
+                if result:
+                    updated += 1
+
+            await session.commit()
+
+        logger.info("live_scores_updated", count=updated)
+        return updated
+
+    count = run_async(_update())
+    return {"status": "ok", "updated": count}
 
 
 @celery_app.task(name="app.services.tasks.fetch_odds_updates")
 def fetch_odds_updates():
     """Fetch latest odds for upcoming fixtures."""
-    logger.info("fetch_odds_updates_started")
-    # TODO: Get upcoming fixtures from DB, fetch odds for each
-    # TODO: Store in odds table, calculate odds movement
-    return {"status": "ok"}
+    async def _fetch():
+        from app.services.api_football import api_football
+        from app.services.db_service import upsert_odds
+        from app.models.models import Fixture, MatchStatus
+        from sqlalchemy import select
+        from datetime import datetime
+
+        async with async_session() as session:
+            # Get upcoming scheduled fixtures
+            result = await session.execute(
+                select(Fixture)
+                .where(
+                    Fixture.status == MatchStatus.SCHEDULED,
+                    Fixture.kickoff >= datetime.utcnow(),
+                    Fixture.kickoff <= datetime.utcnow() + timedelta(days=2),
+                )
+                .limit(10)  # Stay within API limits
+            )
+            fixtures = list(result.scalars().all())
+
+            updated = 0
+            for fixture in fixtures:
+                try:
+                    odds_data = await api_football.get_odds(fixture.api_football_id)
+                except Exception as exc:
+                    logger.error("odds_fetch_failed", fixture_id=fixture.id, error=str(exc))
+                    continue
+
+                for bookmaker_entry in odds_data:
+                    bookmaker_info = bookmaker_entry.get("bookmakers", [])
+                    for bm in bookmaker_info:
+                        bm_name = bm.get("name", "Unknown")
+                        for bet in bm.get("bets", []):
+                            market = bet.get("name", "")
+                            values = {v.get("value"): float(v.get("odd", 0)) for v in bet.get("values", [])}
+
+                            if market == "Match Winner":
+                                await upsert_odds(
+                                    session,
+                                    fixture_id=fixture.id,
+                                    bookmaker=bm_name,
+                                    market="1X2",
+                                    home_odds=values.get("Home"),
+                                    draw_odds=values.get("Draw"),
+                                    away_odds=values.get("Away"),
+                                )
+                                updated += 1
+
+                            elif "Over/Under" in market:
+                                await upsert_odds(
+                                    session,
+                                    fixture_id=fixture.id,
+                                    bookmaker=bm_name,
+                                    market=market,
+                                    over_odds=values.get("Over"),
+                                    under_odds=values.get("Under"),
+                                    line=2.5,
+                                )
+
+            await session.commit()
+
+        logger.info("odds_updated", fixtures=len(fixtures), odds_entries=updated)
+        return updated
+
+    count = run_async(_fetch())
+    return {"status": "ok", "odds_updated": count}
 
 
 @celery_app.task(name="app.services.tasks.run_daily_predictions")
 def run_daily_predictions():
-    """Run ML predictions for tomorrow's matches."""
+    """Run ML predictions for tomorrow's matches.
+
+    Note: Requires a trained model. Until model training is implemented,
+    this task logs a warning and skips.
+    """
     logger.info("running_daily_predictions")
-    # TODO: Load tomorrow's fixtures from DB
-    # TODO: Build feature vectors
-    # TODO: Run XGBoost model
-    # TODO: Compare against bookmaker odds for value detection
-    # TODO: Store predictions in DB
-    return {"status": "ok"}
+    # ML prediction pipeline will be implemented in Phase 2
+    # Requires: historical data → feature engineering → trained model
+    return {"status": "skipped", "reason": "model_not_trained"}
 
 
 @celery_app.task(name="app.services.tasks.run_sentiment_analysis")
 def run_sentiment_analysis():
-    """Run LLM sentiment analysis on recent football news."""
+    """Run LLM sentiment analysis on recent football news.
+
+    Note: Requires Anthropic API key. Will be implemented in Phase 2.
+    """
     logger.info("running_sentiment_analysis")
-    # TODO: Fetch news from NewsAPI for each team
-    # TODO: Run Claude/sentiment model on headlines + summaries
-    # TODO: Calculate sentiment score and buzz score
-    # TODO: Store in sentiment_scores table
-    return {"status": "ok"}
+    # Sentiment pipeline will be implemented in Phase 2
+    return {"status": "skipped", "reason": "not_implemented"}
 
 
 @celery_app.task(name="app.services.tasks.update_standings")
 def update_standings():
-    """Update league standings (weekly)."""
+    """Update league standings from API-Football."""
     async def _update():
         from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
+        from app.services.db_service import upsert_standing, get_league_by_api_id
 
-        current_season = date.today().year
-        for league_name in PHASE_1_LEAGUES:
-            league_id = LEAGUE_IDS[league_name]
-            standings = await api_football.get_standings(league_id, current_season)
-            logger.info(
-                "updated_standings",
-                league=league_name,
-                teams=len(standings),
-            )
-            # TODO: Upsert standings into database
+        current_year = date.today().year
+        total = 0
 
-    run_async(_update())
+        async with async_session() as session:
+            for league_name in PHASE_1_LEAGUES:
+                api_id = LEAGUE_IDS[league_name]
+                league = await get_league_by_api_id(session, api_id)
+                if not league:
+                    continue
+
+                # Allsvenskan follows calendar year
+                season = current_year if league_name == "allsvenskan" else current_year - 1
+
+                try:
+                    standings = await api_football.get_standings(api_id, season)
+                except Exception as exc:
+                    logger.error("standings_fetch_failed", league=league_name, error=str(exc))
+                    continue
+
+                for entry in standings:
+                    result = await upsert_standing(session, entry, league, season)
+                    if result:
+                        total += 1
+
+                logger.info("standings_upserted", league=league_name, teams=len(standings))
+
+            await session.commit()
+
+        return total
+
+    count = run_async(_update())
+    return {"status": "ok", "standings_updated": count}
+
+
+@celery_app.task(name="app.services.tasks.seed_data")
+def seed_data():
+    """One-time seed task — fetch leagues and teams from API-Football."""
+    async def _seed():
+        from app.services.seed import seed_all
+        await seed_all()
+
+    run_async(_seed())
     return {"status": "ok"}

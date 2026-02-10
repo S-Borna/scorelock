@@ -65,6 +65,9 @@ fetch-standings: ## Manually trigger standings update
 run-predictions: ## Manually trigger ML predictions
 	docker compose exec celery-worker celery -A app.core.celery_app call app.services.tasks.run_daily_predictions
 
+seed: ## Seed leagues and teams from API-Football
+	docker compose exec backend python -m app.services.seed
+
 # ── Monitoring ─────────────────────────────────────────────
 
 urls: ## Show all service URLs

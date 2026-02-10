@@ -9,6 +9,7 @@ import structlog
 from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.api.routes import router
+from app.api.auth import router as auth_router
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -60,3 +61,4 @@ Instrumentator().instrument(app).expose(app)
 # ── Routes ─────────────────────────────────────────────────
 
 app.include_router(router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
