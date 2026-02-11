@@ -14,10 +14,10 @@ echo "========================================="
 
 # ── 1. Alembic Migrations ─────────────────────────────────
 echo "[1/3] Running Alembic migrations..."
-if alembic -c /app/alembic.ini upgrade head 2>&1; then
+if timeout 15 alembic -c /app/alembic.ini upgrade head 2>&1; then
     echo "[1/3] Alembic migrations OK"
 else
-    echo "[1/3] WARNING: Alembic migrations failed (exit $?) — continuing anyway"
+    echo "[1/3] WARNING: Alembic migrations failed/timed-out (exit $?) — continuing anyway"
 fi
 
 # ── 2. Quick import smoke test ─────────────────────────────
