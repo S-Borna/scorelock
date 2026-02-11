@@ -37,9 +37,15 @@ async def lifespan(app: FastAPI):
     # ── Startup ────────────────────────────────────────
     logger.info("scorelock_starting", environment=settings.environment)
 
-    # Create tables (use Alembic migrations in production)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Best-effort table creation (Alembic is the source of truth in prod).
+    # Wrapped in try/except so a temporarily-unreachable DB never prevents
+    # uvicorn from binding its port — the /health endpoint must always respond.
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("scorelock_tables_ok")
+    except Exception as exc:
+        logger.error("startup_create_tables_failed", error=str(exc))
 
     logger.info("scorelock_ready")
     yield

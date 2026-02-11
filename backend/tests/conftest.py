@@ -1,25 +1,38 @@
 """Shared fixtures for ScoreLock API tests.
 
-Loop scope is set to "session" via pyproject.toml
-(asyncio_default_test_loop_scope) so the module-level
-SQLAlchemy engine keeps its asyncpg pool on one event loop.
-
-The auto-use ``_create_tables`` fixture runs once per session
-to create all tables (via metadata.create_all) so the CI
-PostgreSQL service has the schema before any endpoint tests run.
+Uses a **synchronous** session-scoped fixture that calls asyncio.run()
+to create / drop tables.  This avoids every known pytest-asyncio
+event-loop mismatch (the DDL engine is created, used, and disposed
+inside its own temporary loop so the main test loop is never polluted).
 """
 
-import pytest_asyncio
+import asyncio
 
-from app.core.database import Base, engine
-from app.models import models  # noqa: F401 — register all models
+import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from app.core.config import get_settings
+from app.core.database import Base
+from app.models import models  # noqa: F401 — register all ORM models on Base
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def _create_tables():
+@pytest.fixture(scope="session", autouse=True)
+def _create_tables():
     """Create all tables once before the test session, drop after."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    url = get_settings().database_url
+
+    async def _setup():
+        ddl_engine = create_async_engine(url)
+        async with ddl_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        await ddl_engine.dispose()
+
+    async def _teardown():
+        ddl_engine = create_async_engine(url)
+        async with ddl_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        await ddl_engine.dispose()
+
+    asyncio.run(_setup())
     yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    asyncio.run(_teardown())
