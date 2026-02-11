@@ -178,8 +178,8 @@ export function LiveMatchCard({
                             {valueBet.suggested_bet === "Home"
                                 ? fixture.home_team.name
                                 : valueBet.suggested_bet === "Away"
-                                  ? fixture.away_team.name
-                                  : "Oavgjort"}
+                                    ? fixture.away_team.name
+                                    : "Oavgjort"}
                         </span>
                         <span className="text-xs font-mono text-scorelock-300">
                             Kelly {(valueBet.kelly_fraction * 100).toFixed(1)}%
@@ -235,9 +235,8 @@ function LiveTeamRow({
                     <img
                         src={logoUrl}
                         alt={name}
-                        className={`w-7 h-7 object-contain flex-shrink-0 transition-transform duration-300 ${
-                            goalScored ? "scale-125" : ""
-                        }`}
+                        className={`w-7 h-7 object-contain flex-shrink-0 transition-transform duration-300 ${goalScored ? "scale-125" : ""
+                            }`}
                     />
                 ) : (
                     <div className="w-7 h-7 rounded-full bg-white/[0.04] flex items-center justify-center flex-shrink-0">
@@ -245,24 +244,22 @@ function LiveTeamRow({
                     </div>
                 )}
                 <span
-                    className={`truncate ${isWinner ? "font-semibold text-white" : "text-gray-300"} ${
-                        goalScored ? "text-green-400 font-semibold" : ""
-                    }`}
+                    className={`truncate ${isWinner ? "font-semibold text-white" : "text-gray-300"} ${goalScored ? "text-green-400 font-semibold" : ""
+                        }`}
                 >
                     {name}
                 </span>
             </div>
             {goals !== null && (
                 <span
-                    className={`text-lg font-mono tabular-nums ml-3 transition-all duration-300 ${
-                        goalScored
+                    className={`text-lg font-mono tabular-nums ml-3 transition-all duration-300 ${goalScored
                             ? "text-green-400 font-bold scale-150 animate-score-pop"
                             : isWinner
-                              ? "font-bold text-white"
-                              : isLive
-                                ? "text-red-400 font-semibold"
-                                : "text-gray-400"
-                    }`}
+                                ? "font-bold text-white"
+                                : isLive
+                                    ? "text-red-400 font-semibold"
+                                    : "text-gray-400"
+                        }`}
                 >
                     {goals}
                 </span>

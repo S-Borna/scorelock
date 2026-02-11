@@ -309,20 +309,24 @@
 
     /* Goal scored — card flash */
     @keyframes goal-flash {
+
         0%,
         100% {
             border-color: rgba(34, 197, 94, 0);
             box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
         }
+
         15% {
             border-color: rgba(34, 197, 94, 0.4);
             box-shadow: 0 0 30px -5px rgba(34, 197, 94, 0.3);
         }
+
         50% {
             border-color: rgba(34, 197, 94, 0.15);
             box-shadow: 0 0 15px -5px rgba(34, 197, 94, 0.15);
         }
     }
+
     .animate-goal-flash {
         animation: goal-flash 3s ease-out;
     }
@@ -333,15 +337,18 @@
             opacity: 0;
             transform: translateX(-100%);
         }
+
         20% {
             opacity: 1;
             transform: translateX(0);
         }
+
         100% {
             opacity: 0;
             transform: translateX(100%);
         }
     }
+
     .animate-goal-wave {
         animation: goal-wave 2s ease-out;
     }
@@ -351,33 +358,41 @@
         0% {
             transform: scale(1);
         }
+
         25% {
             transform: scale(1.6);
         }
+
         50% {
             transform: scale(0.9);
         }
+
         75% {
             transform: scale(1.15);
         }
+
         100% {
             transform: scale(1);
         }
     }
+
     .animate-score-pop {
         animation: score-pop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     }
 
     /* Live minute tick pulse */
     @keyframes minute-tick {
+
         0%,
         100% {
             opacity: 1;
         }
+
         50% {
             opacity: 0.6;
         }
     }
+
     .animate-minute-tick {
         animation: minute-tick 2s ease-in-out infinite;
     }

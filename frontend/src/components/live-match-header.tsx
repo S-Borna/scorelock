@@ -28,9 +28,8 @@ export function LiveMatchHeader({ fixture }: LiveMatchHeaderProps) {
 
     return (
         <div
-            className={`card mb-8 relative overflow-hidden transition-all duration-500 ${
-                goalJustScored ? "animate-goal-flash" : ""
-            }`}
+            className={`card mb-8 relative overflow-hidden transition-all duration-500 ${goalJustScored ? "animate-goal-flash" : ""
+                }`}
         >
             {/* Goal flash overlay */}
             {goalJustScored && (
@@ -66,11 +65,10 @@ export function LiveMatchHeader({ fixture }: LiveMatchHeaderProps) {
                 <div className="text-center">
                     {homeGoals !== null && awayGoals !== null ? (
                         <div
-                            className={`text-4xl font-bold font-mono tabular-nums transition-all duration-300 ${
-                                goalJustScored
+                            className={`text-4xl font-bold font-mono tabular-nums transition-all duration-300 ${goalJustScored
                                     ? "text-green-400 animate-score-pop"
                                     : ""
-                            }`}
+                                }`}
                         >
                             {homeGoals} – {awayGoals}
                         </div>
@@ -132,9 +130,8 @@ function TeamDisplay({
                 <img
                     src={logoUrl}
                     alt={name}
-                    className={`w-14 h-14 sm:w-16 sm:h-16 object-contain transition-transform duration-500 ${
-                        goalScored ? "scale-110" : ""
-                    }`}
+                    className={`w-14 h-14 sm:w-16 sm:h-16 object-contain transition-transform duration-500 ${goalScored ? "scale-110" : ""
+                        }`}
                 />
             ) : (
                 <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/[0.04] rounded-full flex items-center justify-center text-2xl">
@@ -142,9 +139,8 @@ function TeamDisplay({
                 </div>
             )}
             <span
-                className={`text-sm font-medium text-center transition-colors duration-300 ${
-                    goalScored ? "text-green-400 font-semibold" : ""
-                }`}
+                className={`text-sm font-medium text-center transition-colors duration-300 ${goalScored ? "text-green-400 font-semibold" : ""
+                    }`}
             >
                 {name}
             </span>

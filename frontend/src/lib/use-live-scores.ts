@@ -33,11 +33,10 @@ export interface LiveFixtureState {
 
 const WS_URL =
     typeof window !== "undefined"
-        ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${
-              process.env.NEXT_PUBLIC_API_URL
-                  ? new URL(process.env.NEXT_PUBLIC_API_URL).host
-                  : window.location.host
-          }/ws/live`
+        ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${process.env.NEXT_PUBLIC_API_URL
+            ? new URL(process.env.NEXT_PUBLIC_API_URL).host
+            : window.location.host
+        }/ws/live`
         : "";
 
 /**

@@ -600,22 +600,26 @@ async def admin_sync_now(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Fetch fixtures + standings synchronously (admin only). Returns results immediately.
-    Uses ~13 API-Football calls (8 fixtures + 5 standings).
+    """Fetch fixtures + standings synchronously via football-data.org (admin only).
+    Uses ~11 football-data.org calls (6 fixtures + 5 standings). Current season!
     """
     if user.email not in ADMIN_EMAILS:
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
+    from app.services.football_data import (
+        football_data, FD_COMPETITIONS, FootballDataClient,
+    )
+    from app.services.api_football import LEAGUE_IDS, PHASE_1_LEAGUES
     from app.services.db_service import (
         upsert_fixtures_batch, get_league_by_api_id, upsert_league, upsert_standing,
     )
-    from app.core.quota_manager import get_quota_manager
     from app.services.tasks import _detect_season
 
-    quota = get_quota_manager()
     current_year = date.today().year
-    results = {"fixtures": {}, "standings": {}, "errors": []}
+    results = {"fixtures": {}, "standings": {}, "errors": [], "source": "football-data.org"}
+
+    # Build reverse map
+    fd_name_to_code = {v["name"]: code for code, v in FD_COMPETITIONS.items()}
 
     # ── Fixtures ──
     for league_name in PHASE_1_LEAGUES:
@@ -629,43 +633,46 @@ async def admin_sync_now(
                 current_season=current_year,
             )
 
-        season = _detect_season(current_year, league_name)
-
-        if not await quota.can_call("api_football"):
-            results["errors"].append(f"Quota exhausted at {league_name}")
-            break
+        fd_code = fd_name_to_code.get(league_name)
+        if not fd_code:
+            results["fixtures"][league_name] = {"skipped": True, "reason": "Not in football-data.org"}
+            continue
 
         try:
-            await quota.record_call("api_football")
-            fixtures = await api_football.get_fixtures_by_league(api_id, season)
-            if fixtures:
-                count = await upsert_fixtures_batch(db, fixtures, league)
-                results["fixtures"][league_name] = {"season": season, "fetched": len(fixtures), "upserted": count}
+            matches = await football_data.get_matches(fd_code)
+            normalized = [
+                FootballDataClient.normalize_match_to_fixture(m, api_id)
+                for m in matches
+            ]
+            normalized = [n for n in normalized if n]
+            if normalized:
+                count = await upsert_fixtures_batch(db, normalized, league)
+                results["fixtures"][league_name] = {"fetched": len(matches), "upserted": count}
             else:
-                results["fixtures"][league_name] = {"season": season, "fetched": 0, "error": "empty response"}
+                results["fixtures"][league_name] = {"fetched": 0, "error": "empty after normalization"}
         except Exception as exc:
             results["errors"].append(f"{league_name}: {str(exc)}")
 
     # ── Standings (domestic leagues only) ──
-    STANDINGS_LEAGUES = ["premier_league", "la_liga", "serie_a", "bundesliga", "allsvenskan"]
+    STANDINGS_LEAGUES = ["premier_league", "la_liga", "serie_a", "bundesliga"]
     for league_name in STANDINGS_LEAGUES:
         api_id = LEAGUE_IDS[league_name]
         league = await get_league_by_api_id(db, api_id)
         if not league:
             continue
 
+        fd_code = fd_name_to_code.get(league_name)
+        if not fd_code:
+            continue
+
         season = _detect_season(current_year, league_name)
 
-        if not await quota.can_call("api_football"):
-            results["errors"].append(f"Quota exhausted at standings/{league_name}")
-            break
-
         try:
-            await quota.record_call("api_football")
-            standings = await api_football.get_standings(api_id, season)
+            standings = await football_data.get_standings(fd_code)
             count = 0
             for entry in standings:
-                result = await upsert_standing(db, entry, league, season)
+                normalized = FootballDataClient.normalize_standing(entry, fd_code)
+                result = await upsert_standing(db, normalized, league, season)
                 if result:
                     count += 1
             results["standings"][league_name] = {"season": season, "count": count}
