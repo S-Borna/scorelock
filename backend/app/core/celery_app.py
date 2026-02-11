@@ -99,6 +99,13 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.generate_content_news_rewrites",
         "schedule": crontab(minute=15, hour="*/4"),
     },
+
+    # ── Tipping League (M6) ─────────────────────────────────
+    # Score user predictions every 15 min during match hours
+    "score-user-predictions": {
+        "task": "app.services.tasks.score_user_predictions",
+        "schedule": crontab(minute="*/15", hour="14-23"),
+    },
 }
 
 # Auto-discover tasks from services module

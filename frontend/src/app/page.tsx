@@ -1,7 +1,7 @@
 import { ArticleCard } from "@/components/article-card";
 import { MatchCard } from "@/components/match-card";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, Fixture } from "@/lib/types";
+import type { Article, ArticleList, Fixture, WeeklyTopTipper } from "@/lib/types";
 import Link from "next/link";
 
 export const revalidate = 60;
@@ -9,14 +9,17 @@ export const revalidate = 60;
 export default async function HomePage() {
     let articles: Article[] = [];
     let fixtures: Fixture[] = [];
+    let weeklyTop: WeeklyTopTipper | null = null;
 
-    const [articlesRes, fixturesRes] = await Promise.allSettled([
+    const [articlesRes, fixturesRes, weeklyTopRes] = await Promise.allSettled([
         fetchApi<ArticleList>("/api/v1/articles?limit=9"),
         fetchApi<Fixture[]>("/api/v1/fixtures?status=scheduled"),
+        fetchApi<WeeklyTopTipper | null>("/api/v1/tips/weekly-top"),
     ]);
 
     if (articlesRes.status === "fulfilled") articles = articlesRes.value.articles;
     if (fixturesRes.status === "fulfilled") fixtures = fixturesRes.value;
+    if (weeklyTopRes.status === "fulfilled") weeklyTop = weeklyTopRes.value;
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -31,6 +34,26 @@ export default async function HomePage() {
                     maskininlärning och AI, på svenska.
                 </p>
             </section>
+
+            {/* Weekly top tipper */}
+            {weeklyTop && (
+                <section className="mt-6">
+                    <Link href="/leaderboard" className="block card border-yellow-900/50 bg-yellow-950/20 hover:border-yellow-800/60 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl">👑</span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-yellow-400 font-semibold text-sm">Veckans tippare</p>
+                                <p className="text-lg font-bold truncate">{weeklyTop.user_name || "Anonym"}</p>
+                            </div>
+                            <div className="text-right text-sm text-gray-400">
+                                <p className="text-scorelock-400 font-bold text-lg">{weeklyTop.points_this_week}p</p>
+                                <p>{weeklyTop.tips_this_week} tips · {weeklyTop.accuracy_this_week}%</p>
+                            </div>
+                            <span className="text-gray-600 text-sm">→</span>
+                        </div>
+                    </Link>
+                </section>
+            )}
 
             {/* Article Feed */}
             <section className="mt-4">

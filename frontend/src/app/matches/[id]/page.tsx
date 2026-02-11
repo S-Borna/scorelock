@@ -3,6 +3,7 @@ import { ArticleCard } from "@/components/article-card";
 import { AffiliateCTA } from "@/components/affiliate-cta";
 import type { AffiliateLink } from "@/components/affiliate-cta";
 import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
+import { MatchTipSection } from "@/components/match-tip-section";
 import { fetchApi } from "@/lib/api";
 import type { Article, ArticleList, FixtureDetail, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
@@ -177,6 +178,9 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
+                {/* Tipping */}
+                    <MatchTipSection fixture={fixture} />
+
                     {/* Sentiment */}
                     {(homeSentiment.length > 0 || awaySentiment.length > 0) && (
                         <div className="card">

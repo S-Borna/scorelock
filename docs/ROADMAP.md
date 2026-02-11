@@ -366,6 +366,13 @@ Löpande           →  News Rewrites vid nya RSS-artiklar
 **Exit Criteria**: En icke-teknisk person kan öppna sajten, läsa artiklar, se prediktioner
 och standings, och förstå vad ScoreLock är — på mobil och desktop.
 
+> ⚠️ **DESIGN-NOTERING (2026-02-11):** Nuvarande frontend är en funktionell MVP/test-scaffold.
+> Designen är generisk "tech bro / standard AI-produktion" — LÅNGT ifrån slutproduktens vision.
+> Alla rutter fungerar och är SEO-redo, men visuell identitet, typografi, animationer,
+> micro-interactions, illustrationer, färgpalett och overall polish kräver **100x förbättring**
+> innan public launch. Dedikerad design-sprint planeras i PL1 eller separat designfas.
+> Mock-data fallback tillagt för offline-utveckling utan Docker.
+
 ---
 
 ### M5 — AFFILIATE-INTEGRATION (3 dagar)
@@ -392,16 +399,16 @@ Spelansvarsdisclaimer visas.
 
 | # | Task | Definition of Done | Beroende | Status |
 |---|------|-------------------|----------|--------|
-| 6.1 | `user_predictions`-tabell | User kan tippa H/D/A + exakt resultat per match | M4 | ❌ |
-| 6.2 | Tipping UI | Klick på match → välj prognos → sparas via API | 6.1 | ❌ |
-| 6.3 | Poängsystem | 3p rätt resultat, 1p rätt utgång, streak-bonus | 6.1 | ❌ |
-| 6.4 | Leaderboard `/leaderboard` | Topplista: poäng, streak, accuracy % | 6.3 | ❌ |
-| 6.5 | "AI vs You" | Visa hur användaren står sig mot ML-modellen | 6.4 + M2 | ❌ |
-| 6.6 | Veckans tippare | Highlight på startsidan | 6.4 | ❌ |
-| 6.7 | Sociala delnings-cards | Delningsbara bilder: "Jag slog AI:n 7 av 10!" | 6.5 | ❌ |
+| 6.1 | ~~`user_predictions`-tabell~~ | ~~User kan tippa H/D/A + exakt resultat per match~~ | M4 | ✅ Klar (Session 4) |
+| 6.2 | ~~Tipping UI~~ | ~~Klick på match → välj prognos → sparas via API~~ | 6.1 | ✅ Klar (Session 4) |
+| 6.3 | ~~Poängsystem~~ | ~~3p rätt resultat, 1p rätt utgång, streak-bonus~~ | 6.1 | ✅ Klar (Session 4) |
+| 6.4 | ~~Leaderboard `/leaderboard`~~ | ~~Topplista: poäng, streak, accuracy %~~ | 6.3 | ✅ Klar (Session 4) |
+| 6.5 | ~~"AI vs You"~~ | ~~Visa hur användaren står sig mot ML-modellen~~ | 6.4 + M2 | ✅ Klar (Session 4) |
+| 6.6 | ~~Veckans tippare~~ | ~~Highlight på startsidan~~ | 6.4 | ✅ Klar (Session 4) |
+| 6.7 | ~~Sociala delnings-cards~~ | ~~Delningsbara bilder: "Jag slog AI:n 7 av 10!"~~ | 6.5 | ✅ Klar (Session 4) |
 
 **Exit Criteria**: Användare kan tippa, se leaderboard, jämföra sig med AI.
-Delningsfunktion fungerar.
+Delningsfunktion fungerar. ✅ Uppfyllt.
 
 ---
 
@@ -473,6 +480,7 @@ Vecka 1      Vecka 2      Vecka 3       Vecka 4      Vecka 5     Vecka 6     Vec
 
 | Task | DoD | Status |
 |------|-----|--------|
+| **🎨 Design overhaul (KRITISK)** | **Professionell visuell identitet — ej generisk AI/tech-look. Custom typografi, färgpalett, animationer, micro-interactions, illustrationer, dark mode polish. 100x bättre än nuvarande MVP-scaffold.** | ❌ |
 | E2E-tester (Playwright) | 10+ kritiska user flows testade | ❌ |
 | Integration tests för Celery tasks | Mockade API-svar | ❌ |
 | Performance: LCP <2s, API p95 <200ms | Lighthouse 90+ | ❌ |

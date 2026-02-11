@@ -133,11 +133,11 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - **M3** ✅ AI Content Engine: match previews, reports, round summaries på svenska
 - **M4** ✅ Frontend: article-first design, 14 routes, Swedish, SEO, loading states
 - **M5** ✅ Affiliate integration: Bet365, Unibet, Betsson, LeoVegas — CTA, click tracking, disclaimer
-- **M6** — Tipping League: AI vs You, leaderboards, social sharing
+- **M6** ✅ Tipping League: AI vs You, leaderboards, social sharing
 - **M7** — Deploy + Launch: Railway, Cloudflare, GDPR, monitoring
 - **M8** — Distribution: Twitter bot, push notifications, Reddit, Discord, Telegram
 
-**Progress: 49/67 tasks (~73%)**
+**Progress: 56/67 tasks (~84%)**
 
 ---
 
@@ -171,8 +171,9 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - Article API endpoints: `GET /articles`, `GET /articles/{slug}` med filter
 - Estimerad Anthropic-kostnad: ~$21/månad (~$250/år)
 
-**M4 — Frontend (14/14 ✅)**
+**M4 — Frontend (14/14 ✅)** ⚠️ *MVP-scaffold — designen är funktionell men generisk. Kräver 100x visuell förbättring innan launch (planeras i PL1).*
 - Uppgraderat Next.js 14 → 16.1.6 (säkerhetsfix), Turbopack, 0 vulnerabilities
+- Mock-data fallback: frontend fungerar utan Docker (offline dev mode)
 - Komplett svensk frontend med 14 rutter:
   - `/` — Startsida = artikel-feed (ArticleCard-grid, upcoming matches)
   - `/articles/[slug]` — Artikelsida med ReactMarkdown, SEO, relaterade artiklar
@@ -201,6 +202,17 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - `GamblingDisclaimer`-komponent: Stödlinjen (020-819 100), Spelpaus.se, 18+
 - Alla affiliate-länkar med `rel="noopener noreferrer nofollow sponsored"` (SEO+legal)
 - Admin-endpoint för klickstatistik per bookmaker (total, idag, vecka, månad)
+**M6 — Tipping League (7/7 ✅)**
+- `user_predictions`-tabell + Alembic-migration (`5b8d3a2f7e91`) med UniqueConstraint(user_id, fixture_id)
+- TipForm-komponent: H/D/A-knappar + valfritt exakt resultat, validerar att match ej börjat
+- MatchTipSection: auth-wrapper, integrerad i matchdetalj-sidebar
+- Poängsystem: 3p exakt resultat, 1p rätt utgång, 0p fel — Celery-task var 15:e minut (14:00–23:00)
+- Leaderboard-sida (`/leaderboard`): topplista med poäng, tips, träffsäkerhet, medaljer (🥇🥈🥉)
+- "AI vs You"-sida (`/leaderboard/ai-vs-me`): vinster/förluster/lika, detaljerad statistik, jämförelse
+- Veckans tippare: 👑-widget på startsidan + leaderboard (namn, poäng, accuracy)
+- ShareCard-komponent: 3 varianter (ai-win, leaderboard, streak), Web Share API + clipboard fallback
+- Mock data: 8 leaderboard-entries (svenska användarnamn) + weekly top tipper för offline dev
+- Build verifierad: 16 rutter, 0 errors
 ### Session 1–3 — 2026-02-09–10
 
 **M0 — Infrastruktur & Grundplatta**

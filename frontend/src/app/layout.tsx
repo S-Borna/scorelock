@@ -68,6 +68,9 @@ function Header() {
                     <Link href="/sentiment" className="hover:text-scorelock-400 transition-colors">
                         Sentiment
                     </Link>
+                    <Link href="/leaderboard" className="hover:text-scorelock-400 transition-colors">
+                        Tipsligan
+                    </Link>
                 </div>
                 <div className="flex items-center gap-3">
                     <Link
@@ -105,6 +108,7 @@ function MobileMenuButton() {
                 <MobileLink href="/value-bets" label="Value Bets" />
                 <MobileLink href="/standings" label="Tabeller" />
                 <MobileLink href="/sentiment" label="Sentiment" />
+                <MobileLink href="/leaderboard" label="Tipsligan" />
                 <hr className="border-gray-800 my-1" />
                 <MobileLink href="/login" label="Logga in" />
             </div>

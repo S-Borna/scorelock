@@ -25,6 +25,12 @@ from app.schemas.schemas import (
     AffiliateClickCreate,
     AffiliateClickResponse,
     AffiliateStatsResponse,
+    UserPredictionCreate,
+    UserPredictionResponse,
+    UserPredictionWithFixture,
+    LeaderboardEntry,
+    AIvsUserStats,
+    WeeklyTopTipper,
 )
 from app.services import db_service
 from app.models.models import User, ArticleType
@@ -559,3 +565,69 @@ async def get_affiliate_stats(
         raise HTTPException(status_code=403, detail="Admin access required")
     stats = await db_service.get_affiliate_stats(db)
     return stats
+
+
+# ── Tipping League ────────────────────────────────────────
+
+@router.post("/tips", response_model=UserPredictionResponse)
+async def create_tip(
+    tip: UserPredictionCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit a prediction (tip) for a match. Can update before kickoff."""
+    if tip.predicted_outcome not in ("H", "D", "A"):
+        raise HTTPException(status_code=400, detail="outcome must be H, D, or A")
+    try:
+        result = await db_service.create_user_prediction(
+            db,
+            user_id=user.id,
+            fixture_id=tip.fixture_id,
+            predicted_outcome=tip.predicted_outcome,
+            predicted_home_goals=tip.predicted_home_goals,
+            predicted_away_goals=tip.predicted_away_goals,
+        )
+        await db.commit()
+        return UserPredictionResponse.model_validate(result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/tips/mine", response_model=list[UserPredictionWithFixture])
+async def get_my_tips(
+    scored_only: bool = Query(False, description="Only show scored tips"),
+    limit: int = Query(50, ge=1, le=200),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current user's tips."""
+    preds = await db_service.get_user_predictions(db, user.id, scored_only=scored_only, limit=limit)
+    return [UserPredictionWithFixture.model_validate(p) for p in preds]
+
+
+@router.get("/leaderboard", response_model=list[LeaderboardEntry])
+async def get_leaderboard(
+    days: int | None = Query(None, description="Filter by last N days (null = all time)"),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the tipping league leaderboard."""
+    return await db_service.get_leaderboard(db, limit=limit, days=days)
+
+
+@router.get("/tips/ai-vs-me", response_model=AIvsUserStats)
+async def ai_vs_me(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Compare the user's tipping accuracy against the AI model."""
+    stats = await db_service.get_ai_vs_user(db, user.id)
+    return stats
+
+
+@router.get("/tips/weekly-top", response_model=WeeklyTopTipper | None)
+async def weekly_top_tipper(
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the top tipper for the current week."""
+    return await db_service.get_weekly_top_tipper(db)

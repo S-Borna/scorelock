@@ -365,3 +365,34 @@ class AffiliateClick(Base):
     __table_args__ = (
         Index("ix_affiliate_click_link_date", "link_id", "clicked_at"),
     )
+
+
+# ── Tipping League (User Predictions) ─────────────────────
+
+class UserPrediction(Base):
+    __tablename__ = "user_predictions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    fixture_id: Mapped[int] = mapped_column(ForeignKey("fixtures.id"), index=True)
+
+    predicted_outcome: Mapped[str] = mapped_column(String(5))  # "H", "D", "A"
+    predicted_home_goals: Mapped[int | None] = mapped_column(Integer)  # Exact score (optional)
+    predicted_away_goals: Mapped[int | None] = mapped_column(Integer)
+
+    # Scoring (filled after match finishes)
+    points_earned: Mapped[int | None] = mapped_column(Integer)  # 3=exact, 1=correct outcome, 0=wrong
+    was_correct_outcome: Mapped[bool | None] = mapped_column(Boolean)
+    was_exact_score: Mapped[bool | None] = mapped_column(Boolean)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    scored_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    # Relationships
+    user: Mapped["User"] = relationship()
+    fixture: Mapped["Fixture"] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "fixture_id", name="uq_user_fixture_prediction"),
+        Index("ix_user_pred_user_created", "user_id", "created_at"),
+    )

@@ -778,3 +778,42 @@ def generate_content_news_rewrites():
         return {"status": "ok", "rewrites_created": created}
 
     return run_async(_gen())
+
+
+@celery_app.task(name="app.services.tasks.score_user_predictions")
+def score_user_predictions_task():
+    """Score user predictions for all recently finished matches.
+
+    Runs every 15 min. Finds fixtures that finished but have unscored
+    user predictions and scores them (3p exact, 1p correct outcome, 0p wrong).
+    """
+    async def _score():
+        from app.services.db_service import score_user_predictions
+        from app.models.models import Fixture, MatchStatus, UserPrediction
+
+        total_scored = 0
+
+        async with async_session() as session:
+            # Find finished fixtures with unscored user predictions
+            from sqlalchemy import select, func
+            result = await session.execute(
+                select(Fixture.id)
+                .join(UserPrediction, UserPrediction.fixture_id == Fixture.id)
+                .where(
+                    Fixture.status == MatchStatus.FINISHED,
+                    UserPrediction.points_earned.is_(None),
+                )
+                .group_by(Fixture.id)
+            )
+            fixture_ids = [row[0] for row in result.all()]
+
+            for fixture_id in fixture_ids:
+                count = await score_user_predictions(session, fixture_id)
+                total_scored += count
+
+            await session.commit()
+
+        logger.info("user_predictions_scored", total=total_scored, fixtures=len(fixture_ids))
+        return {"status": "ok", "scored": total_scored}
+
+    return run_async(_score())

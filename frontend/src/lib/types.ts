@@ -136,3 +136,51 @@ export interface ArticleList {
     limit: number;
     offset: number;
 }
+
+
+// ── Tipping League ───────────────────────────────────────
+
+export interface UserPrediction {
+    id: number;
+    user_id: number;
+    fixture_id: number;
+    predicted_outcome: "H" | "D" | "A";
+    predicted_home_goals: number | null;
+    predicted_away_goals: number | null;
+    points_earned: number | null;
+    was_correct_outcome: boolean | null;
+    was_exact_score: boolean | null;
+    created_at: string;
+    fixture?: Fixture;
+}
+
+export interface LeaderboardEntry {
+    user_id: number;
+    user_name: string | null;
+    total_points: number;
+    total_tips: number;
+    correct_outcomes: number;
+    exact_scores: number;
+    accuracy: number;
+    current_streak: number;
+}
+
+export interface AIvsUserStats {
+    user_total_points: number;
+    user_total_tips: number;
+    user_accuracy: number;
+    ai_correct: number;
+    ai_total: number;
+    ai_accuracy: number;
+    user_wins: number;
+    ai_wins: number;
+    ties: number;
+}
+
+export interface WeeklyTopTipper {
+    user_id: number;
+    user_name: string | null;
+    points_this_week: number;
+    tips_this_week: number;
+    accuracy_this_week: number;
+}

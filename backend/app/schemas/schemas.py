@@ -224,5 +224,64 @@ class AffiliateStatsResponse(BaseModel):
     clicks_this_month: int
 
 
+# ── Tipping League ─────────────────────────────────────────
+
+class UserPredictionCreate(BaseModel):
+    fixture_id: int
+    predicted_outcome: str  # "H", "D", "A"
+    predicted_home_goals: int | None = None
+    predicted_away_goals: int | None = None
+
+
+class UserPredictionResponse(BaseModel):
+    id: int
+    user_id: int
+    fixture_id: int
+    predicted_outcome: str
+    predicted_home_goals: int | None
+    predicted_away_goals: int | None
+    points_earned: int | None
+    was_correct_outcome: bool | None
+    was_exact_score: bool | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UserPredictionWithFixture(UserPredictionResponse):
+    fixture: FixtureResponse
+
+
+class LeaderboardEntry(BaseModel):
+    user_id: int
+    user_name: str | None
+    total_points: int
+    total_tips: int
+    correct_outcomes: int
+    exact_scores: int
+    accuracy: float  # 0-100%
+    current_streak: int
+
+
+class AIvsUserStats(BaseModel):
+    user_total_points: int
+    user_total_tips: int
+    user_accuracy: float
+    ai_correct: int
+    ai_total: int
+    ai_accuracy: float
+    user_wins: int  # Tips where user beat AI
+    ai_wins: int
+    ties: int
+
+
+class WeeklyTopTipper(BaseModel):
+    user_id: int
+    user_name: str | None
+    points_this_week: int
+    tips_this_week: int
+    accuracy_this_week: float
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

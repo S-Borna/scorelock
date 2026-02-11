@@ -1,6 +1,9 @@
 /**
  * API client for ScoreLock backend.
+ * Falls back to mock data when the backend is unreachable (offline dev mode).
  */
+
+import { getMockData } from "./mock-data";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -20,20 +23,36 @@ export async function fetchApi<T>(
 ): Promise<T> {
     const url = `${API_BASE}${path}`;
 
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            "Content-Type": "application/json",
-            ...options?.headers,
-        },
-    });
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
 
-    if (!response.ok) {
-        const body = await response.text();
-        throw new ApiError(response.status, body);
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+            headers: {
+                "Content-Type": "application/json",
+                ...options?.headers,
+            },
+        });
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+            const body = await response.text();
+            throw new ApiError(response.status, body);
+        }
+
+        return response.json();
+    } catch (error) {
+        // If backend is unreachable, try mock data
+        const mock = getMockData(path);
+        if (mock !== null) {
+            console.log(`[ScoreLock] API offline — using mock data for ${path}`);
+            return mock as T;
+        }
+        throw error;
     }
-
-    return response.json();
 }
 
 export async function fetchApiAuth<T>(

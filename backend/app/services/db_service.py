@@ -17,6 +17,7 @@ from app.models.models import (
     SentimentScore, Standing, MatchStatus,
     Article, ArticleType,
     AffiliateLink, AffiliateClick,
+    UserPrediction,
 )
 
 logger = structlog.get_logger()
@@ -754,3 +755,283 @@ async def get_affiliate_stats(
         })
 
     return stats
+
+
+# ── Tipping League ─────────────────────────────────────────
+
+async def create_user_prediction(
+    session: AsyncSession,
+    user_id: int,
+    fixture_id: int,
+    predicted_outcome: str,
+    predicted_home_goals: int | None = None,
+    predicted_away_goals: int | None = None,
+) -> UserPrediction:
+    """Create or update a user's prediction for a fixture."""
+    # Check fixture exists and is still scheduled
+    fixture = await session.get(Fixture, fixture_id)
+    if not fixture:
+        raise ValueError("Fixture not found")
+    if fixture.status != MatchStatus.SCHEDULED:
+        raise ValueError("Match has already started or finished")
+    if fixture.kickoff <= datetime.utcnow():
+        raise ValueError("Match has already kicked off")
+
+    # Check existing prediction
+    result = await session.execute(
+        select(UserPrediction).where(
+            UserPrediction.user_id == user_id,
+            UserPrediction.fixture_id == fixture_id,
+        )
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        existing.predicted_outcome = predicted_outcome
+        existing.predicted_home_goals = predicted_home_goals
+        existing.predicted_away_goals = predicted_away_goals
+        await session.flush()
+        return existing
+
+    prediction = UserPrediction(
+        user_id=user_id,
+        fixture_id=fixture_id,
+        predicted_outcome=predicted_outcome,
+        predicted_home_goals=predicted_home_goals,
+        predicted_away_goals=predicted_away_goals,
+    )
+    session.add(prediction)
+    await session.flush()
+    return prediction
+
+
+async def get_user_predictions(
+    session: AsyncSession,
+    user_id: int,
+    scored_only: bool = False,
+    limit: int = 50,
+) -> list[UserPrediction]:
+    """Get a user's predictions, optionally only scored ones."""
+    q = (
+        select(UserPrediction)
+        .where(UserPrediction.user_id == user_id)
+        .options(selectinload(UserPrediction.fixture).selectinload(Fixture.home_team))
+        .options(selectinload(UserPrediction.fixture).selectinload(Fixture.away_team))
+        .options(selectinload(UserPrediction.fixture).selectinload(Fixture.league))
+        .order_by(UserPrediction.created_at.desc())
+        .limit(limit)
+    )
+    if scored_only:
+        q = q.where(UserPrediction.points_earned.isnot(None))
+    result = await session.execute(q)
+    return list(result.scalars().all())
+
+
+async def score_user_predictions(session: AsyncSession, fixture_id: int) -> int:
+    """Score all user predictions for a completed fixture. Returns count scored."""
+    fixture = await session.get(Fixture, fixture_id)
+    if not fixture or fixture.status != MatchStatus.FINISHED:
+        return 0
+    if fixture.home_goals is None or fixture.away_goals is None:
+        return 0
+
+    # Determine actual outcome
+    if fixture.home_goals > fixture.away_goals:
+        actual_outcome = "H"
+    elif fixture.home_goals < fixture.away_goals:
+        actual_outcome = "A"
+    else:
+        actual_outcome = "D"
+
+    # Get unscored predictions for this fixture
+    result = await session.execute(
+        select(UserPrediction).where(
+            UserPrediction.fixture_id == fixture_id,
+            UserPrediction.points_earned.is_(None),
+        )
+    )
+    predictions = list(result.scalars().all())
+
+    scored_count = 0
+    for pred in predictions:
+        correct_outcome = pred.predicted_outcome == actual_outcome
+        exact_score = (
+            pred.predicted_home_goals is not None
+            and pred.predicted_away_goals is not None
+            and pred.predicted_home_goals == fixture.home_goals
+            and pred.predicted_away_goals == fixture.away_goals
+        )
+
+        if exact_score:
+            points = 3
+        elif correct_outcome:
+            points = 1
+        else:
+            points = 0
+
+        pred.points_earned = points
+        pred.was_correct_outcome = correct_outcome
+        pred.was_exact_score = exact_score
+        pred.scored_at = datetime.utcnow()
+        scored_count += 1
+
+    await session.flush()
+    return scored_count
+
+
+async def get_leaderboard(
+    session: AsyncSession,
+    limit: int = 50,
+    days: int | None = None,
+) -> list[dict]:
+    """Get tipping league leaderboard. Optionally filter by last N days."""
+    from app.models.models import User as UserModel
+
+    q = (
+        select(
+            UserPrediction.user_id,
+            UserModel.name,
+            func.sum(UserPrediction.points_earned).label("total_points"),
+            func.count(UserPrediction.id).label("total_tips"),
+            func.sum(
+                func.cast(UserPrediction.was_correct_outcome, Integer)
+            ).label("correct_outcomes"),
+            func.sum(
+                func.cast(UserPrediction.was_exact_score, Integer)
+            ).label("exact_scores"),
+        )
+        .join(UserModel, UserPrediction.user_id == UserModel.id)
+        .where(UserPrediction.points_earned.isnot(None))
+    )
+
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        q = q.where(UserPrediction.scored_at >= cutoff)
+
+    q = (
+        q.group_by(UserPrediction.user_id, UserModel.name)
+        .order_by(func.sum(UserPrediction.points_earned).desc())
+        .limit(limit)
+    )
+
+    result = await session.execute(q)
+    rows = result.all()
+
+    leaderboard = []
+    for row in rows:
+        total_tips = row.total_tips or 0
+        correct = row.correct_outcomes or 0
+        accuracy = (correct / total_tips * 100) if total_tips > 0 else 0.0
+
+        leaderboard.append({
+            "user_id": row.user_id,
+            "user_name": row.name,
+            "total_points": row.total_points or 0,
+            "total_tips": total_tips,
+            "correct_outcomes": correct,
+            "exact_scores": row.exact_scores or 0,
+            "accuracy": round(accuracy, 1),
+            "current_streak": 0,  # Calculated separately if needed
+        })
+
+    return leaderboard
+
+
+async def get_ai_vs_user(session: AsyncSession, user_id: int) -> dict:
+    """Compare user's tipping performance vs the AI model."""
+    from app.models.models import User as UserModel
+
+    # Get user's scored predictions
+    user_preds = await get_user_predictions(session, user_id, scored_only=True, limit=500)
+
+    user_total = len(user_preds)
+    user_points = sum(p.points_earned or 0 for p in user_preds)
+    user_correct = sum(1 for p in user_preds if p.was_correct_outcome)
+
+    # Get AI predictions for the same fixtures
+    fixture_ids = [p.fixture_id for p in user_preds]
+    if fixture_ids:
+        ai_result = await session.execute(
+            select(Prediction)
+            .where(Prediction.fixture_id.in_(fixture_ids))
+            .where(Prediction.was_correct.isnot(None))
+        )
+        ai_preds = list(ai_result.scalars().all())
+        ai_correct = sum(1 for p in ai_preds if p.was_correct)
+        ai_total = len(ai_preds)
+    else:
+        ai_correct = 0
+        ai_total = 0
+
+    # Compare per fixture
+    user_wins = 0
+    ai_wins = 0
+    ties = 0
+    ai_fixture_map = {p.fixture_id: p.was_correct for p in ai_preds} if fixture_ids else {}
+
+    for pred in user_preds:
+        ai_was_correct = ai_fixture_map.get(pred.fixture_id)
+        if ai_was_correct is None:
+            continue
+        if pred.was_correct_outcome and not ai_was_correct:
+            user_wins += 1
+        elif not pred.was_correct_outcome and ai_was_correct:
+            ai_wins += 1
+        else:
+            ties += 1
+
+    return {
+        "user_total_points": user_points,
+        "user_total_tips": user_total,
+        "user_accuracy": round((user_correct / user_total * 100) if user_total > 0 else 0, 1),
+        "ai_correct": ai_correct,
+        "ai_total": ai_total,
+        "ai_accuracy": round((ai_correct / ai_total * 100) if ai_total > 0 else 0, 1),
+        "user_wins": user_wins,
+        "ai_wins": ai_wins,
+        "ties": ties,
+    }
+
+
+async def get_weekly_top_tipper(session: AsyncSession) -> dict | None:
+    """Get the top tipper for the current week."""
+    from app.models.models import User as UserModel
+
+    week_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start -= timedelta(days=week_start.weekday())
+
+    q = (
+        select(
+            UserPrediction.user_id,
+            UserModel.name,
+            func.sum(UserPrediction.points_earned).label("points"),
+            func.count(UserPrediction.id).label("tips"),
+            func.sum(
+                func.cast(UserPrediction.was_correct_outcome, Integer)
+            ).label("correct"),
+        )
+        .join(UserModel, UserPrediction.user_id == UserModel.id)
+        .where(
+            UserPrediction.points_earned.isnot(None),
+            UserPrediction.scored_at >= week_start,
+        )
+        .group_by(UserPrediction.user_id, UserModel.name)
+        .order_by(func.sum(UserPrediction.points_earned).desc())
+        .limit(1)
+    )
+
+    result = await session.execute(q)
+    row = result.first()
+
+    if not row:
+        return None
+
+    tips = row.tips or 0
+    correct = row.correct or 0
+    return {
+        "user_id": row.user_id,
+        "user_name": row.name,
+        "points_this_week": row.points or 0,
+        "tips_this_week": tips,
+        "accuracy_this_week": round((correct / tips * 100) if tips > 0 else 0, 1),
+    }
