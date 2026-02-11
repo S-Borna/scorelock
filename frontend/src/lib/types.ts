@@ -113,3 +113,26 @@ export interface AuthToken {
     access_token: string;
     token_type: string;
 }
+
+export interface Article {
+    id: number;
+    type: string;
+    slug: string;
+    title: string;
+    summary: string | null;
+    body: string;
+    language: string;
+    league_id: number | null;
+    fixture_id: number | null;
+    round: string | null;
+    tags: string[] | null;
+    auto_generated: boolean;
+    published_at: string | null;
+}
+
+export interface ArticleList {
+    articles: Article[];
+    total: number;
+    limit: number;
+    offset: number;
+}

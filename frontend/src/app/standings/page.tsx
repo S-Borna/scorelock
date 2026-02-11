@@ -1,5 +1,11 @@
 import { fetchApi } from "@/lib/api";
 import type { League, Standing } from "@/lib/types";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Tabeller",
+    description: "Ligatabeller för de 8 största europeiska ligorna med poäng, form och målskillnad.",
+};
 
 export const revalidate = 300;
 
@@ -14,11 +20,11 @@ export default async function StandingsPage() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-3xl font-bold mb-8">League Standings</h1>
+            <h1 className="text-3xl font-bold mb-8">🏆 Tabeller</h1>
 
             {leagues.length === 0 ? (
                 <div className="card text-center text-gray-400 py-12">
-                    No leagues available.
+                    Inga ligor tillgängliga.
                 </div>
             ) : (
                 <div className="space-y-8">
@@ -61,7 +67,7 @@ async function LeagueTable({ league }: { league: League }) {
                     <thead>
                         <tr className="text-gray-500 border-b border-gray-800 text-xs uppercase">
                             <th className="px-4 py-3 text-left w-8">#</th>
-                            <th className="px-4 py-3 text-left">Team</th>
+                            <th className="px-4 py-3 text-left">Lag</th>
                             <th className="px-4 py-3 text-center">P</th>
                             <th className="px-4 py-3 text-center">W</th>
                             <th className="px-4 py-3 text-center">D</th>
@@ -69,7 +75,7 @@ async function LeagueTable({ league }: { league: League }) {
                             <th className="px-4 py-3 text-center">GF</th>
                             <th className="px-4 py-3 text-center">GA</th>
                             <th className="px-4 py-3 text-center">GD</th>
-                            <th className="px-4 py-3 text-center font-semibold">Pts</th>
+                            <th className="px-4 py-3 text-center font-semibold">P</th>
                             <th className="px-4 py-3 text-center">Form</th>
                         </tr>
                     </thead>

@@ -16,7 +16,7 @@ export function formatProb(prob: number): string {
 }
 
 /**
- * Format a date string for display.
+ * Format a date string for display (Swedish locale).
  */
 export function formatKickoff(dateStr: string): string {
     const date = new Date(dateStr);
@@ -27,6 +27,24 @@ export function formatKickoff(dateStr: string): string {
         hour: "2-digit",
         minute: "2-digit",
     });
+}
+
+/**
+ * Format a date as relative time (e.g. "2 timmar sedan").
+ */
+export function timeAgo(dateStr: string): string {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diff = now - then;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "just nu";
+    if (minutes < 60) return `${minutes} min sedan`;
+    if (hours < 24) return `${hours} tim sedan`;
+    if (days < 7) return `${days} dagar sedan`;
+    return new Date(dateStr).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
 }
 
 /**
@@ -43,3 +61,14 @@ export function getStatusClass(status: string): string {
             return "badge-finished";
     }
 }
+
+/**
+ * Article type display names and icons (Swedish).
+ */
+export const ARTICLE_TYPE_META: Record<string, { label: string; icon: string; color: string }> = {
+    MATCH_PREVIEW: { label: "Förhandsanalys", icon: "🔮", color: "text-blue-400" },
+    MATCH_REPORT: { label: "Matchreferat", icon: "📝", color: "text-green-400" },
+    ROUND_SUMMARY: { label: "Omgångssammanfattning", icon: "📊", color: "text-purple-400" },
+    VALUE_BET_ALERT: { label: "Value Bet", icon: "💰", color: "text-yellow-400" },
+    NEWS_REWRITE: { label: "Nyhet", icon: "📰", color: "text-orange-400" },
+};

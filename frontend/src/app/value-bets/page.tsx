@@ -1,6 +1,13 @@
 import { fetchApi } from "@/lib/api";
 import type { ValueBet } from "@/lib/types";
 import { formatKickoff, formatProb } from "@/lib/utils";
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+    title: "Value Bets",
+    description: "AI-identifierade value bets med Kelly Criterion — spel där modellens sannolikhet överstiger oddsen.",
+};
 
 export const revalidate = 120;
 
@@ -17,13 +24,12 @@ export default async function ValueBetsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h1 className="text-3xl font-bold mb-2">💰 Value Bets</h1>
             <p className="text-gray-500 mb-8">
-                Matches where our ML model identifies value vs bookmaker odds.
+                Matcher där vår ML-modell identifierar värde gentemot bookmaker-oddsen.
             </p>
 
             {valueBets.length === 0 ? (
                 <div className="card text-center text-gray-400 py-12">
-                    No value bets identified right now. Check back when new odds are
-                    available.
+                    Inga value bets identifierade just nu. Kolla tillbaka när nya odds finns tillgängliga.
                 </div>
             ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -34,12 +40,12 @@ export default async function ValueBetsPage() {
                         >
                             <div className="flex justify-between items-start mb-3">
                                 <div>
-                                    <a
+                                    <Link
                                         href={`/matches/${vb.fixture.id}`}
                                         className="font-semibold hover:text-scorelock-400 transition-colors"
                                     >
                                         {vb.fixture.home_team.name} vs {vb.fixture.away_team.name}
-                                    </a>
+                                    </Link>
                                     <p className="text-xs text-gray-500">
                                         {vb.fixture.league.name} · {formatKickoff(vb.fixture.kickoff)}
                                     </p>
@@ -51,7 +57,7 @@ export default async function ValueBetsPage() {
 
                             <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
-                                    <span className="text-gray-500">Suggested</span>
+                                    <span className="text-gray-500">Rekommenderat</span>
                                     <p className="font-semibold text-green-400">{vb.suggested_bet}</p>
                                 </div>
                                 <div>
@@ -59,7 +65,7 @@ export default async function ValueBetsPage() {
                                     <p className="font-mono">{(vb.kelly_fraction * 100).toFixed(1)}%</p>
                                 </div>
                                 <div>
-                                    <span className="text-gray-500">Model Prob</span>
+                                    <span className="text-gray-500">Modell-sannolikhet</span>
                                     <p className="font-mono">
                                         {vb.suggested_bet === "Home"
                                             ? formatProb(vb.prediction.home_win_prob)
@@ -73,6 +79,13 @@ export default async function ValueBetsPage() {
                     ))}
                 </div>
             )}
+
+            <div className="mt-8 card bg-yellow-900/10 border-yellow-800/30">
+                <p className="text-sm text-yellow-200/80">
+                    ⚠️ Spela alltid ansvarsfullt. Value bets baseras på statistiska modeller och garanterar inte vinst.
+                    Sätt aldrig mer än du har råd att förlora.
+                </p>
+            </div>
         </div>
     );
 }

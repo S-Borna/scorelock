@@ -45,7 +45,7 @@ export default function LoginPage() {
     return (
         <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4">
             <div className="card max-w-md w-full p-8">
-                <h1 className="text-2xl font-bold text-center mb-6">Log in</h1>
+                <h1 className="text-2xl font-bold text-center mb-6">Logga in</h1>
 
                 {error && (
                     <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
@@ -56,7 +56,7 @@ export default function LoginPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-1">
-                            Email
+                            E-post
                         </label>
                         <input
                             id="email"
@@ -71,7 +71,7 @@ export default function LoginPage() {
 
                     <div>
                         <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-1">
-                            Password
+                            Lösenord
                         </label>
                         <input
                             id="password"
@@ -89,14 +89,14 @@ export default function LoginPage() {
                         disabled={loading}
                         className="w-full bg-scorelock-600 hover:bg-scorelock-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition"
                     >
-                        {loading ? "Logging in…" : "Log in"}
+                        {loading ? "Loggar in…" : "Logga in"}
                     </button>
                 </form>
 
                 <p className="text-center text-sm text-gray-500 mt-6">
-                    Don&apos;t have an account?{" "}
+                    Har du inget konto?{" "}
                     <Link href="/signup" className="text-scorelock-400 hover:underline">
-                        Sign up
+                        Skapa konto
                     </Link>
                 </p>
             </div>

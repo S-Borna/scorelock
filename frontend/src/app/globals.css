@@ -33,4 +33,66 @@
     .prob-bar {
         @apply h-2 rounded-full transition-all duration-500;
     }
+
+    /* Prose styling for Markdown article content */
+    .prose-scorelock h1 {
+        @apply text-3xl font-bold mb-4 mt-8 text-gray-100;
+    }
+
+    .prose-scorelock h2 {
+        @apply text-2xl font-semibold mb-3 mt-6 text-gray-100;
+    }
+
+    .prose-scorelock h3 {
+        @apply text-xl font-semibold mb-2 mt-5 text-gray-200;
+    }
+
+    .prose-scorelock p {
+        @apply mb-4 leading-relaxed text-gray-300;
+    }
+
+    .prose-scorelock ul {
+        @apply list-disc pl-6 mb-4 space-y-1 text-gray-300;
+    }
+
+    .prose-scorelock ol {
+        @apply list-decimal pl-6 mb-4 space-y-1 text-gray-300;
+    }
+
+    .prose-scorelock li {
+        @apply leading-relaxed;
+    }
+
+    .prose-scorelock strong {
+        @apply text-gray-100 font-semibold;
+    }
+
+    .prose-scorelock em {
+        @apply text-gray-200 italic;
+    }
+
+    .prose-scorelock blockquote {
+        @apply border-l-4 border-scorelock-600 pl-4 italic text-gray-400 my-4;
+    }
+
+    .prose-scorelock hr {
+        @apply border-gray-800 my-6;
+    }
+
+    .prose-scorelock a {
+        @apply text-scorelock-400 hover:underline;
+    }
+
+    /* Sentiment gauge */
+    .sentiment-positive {
+        @apply text-green-400;
+    }
+
+    .sentiment-neutral {
+        @apply text-gray-400;
+    }
+
+    .sentiment-negative {
+        @apply text-red-400;
+    }
 }

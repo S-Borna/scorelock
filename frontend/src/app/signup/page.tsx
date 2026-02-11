@@ -17,11 +17,11 @@ export default function SignupPage() {
         setError("");
 
         if (password !== confirmPassword) {
-            setError("Passwords do not match");
+            setError("Lösenorden matchar inte");
             return;
         }
         if (password.length < 8) {
-            setError("Password must be at least 8 characters");
+            setError("Lösenordet måste vara minst 8 tecken");
             return;
         }
 
@@ -69,7 +69,7 @@ export default function SignupPage() {
     return (
         <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4">
             <div className="card max-w-md w-full p-8">
-                <h1 className="text-2xl font-bold text-center mb-6">Create account</h1>
+                <h1 className="text-2xl font-bold text-center mb-6">Skapa konto</h1>
 
                 {error && (
                     <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
@@ -80,7 +80,7 @@ export default function SignupPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-1">
-                            Email
+                            E-post
                         </label>
                         <input
                             id="email"
@@ -95,7 +95,7 @@ export default function SignupPage() {
 
                     <div>
                         <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-1">
-                            Password
+                            Lösenord
                         </label>
                         <input
                             id="password"
@@ -104,13 +104,13 @@ export default function SignupPage() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
-                            placeholder="Min. 8 characters"
+                            placeholder="Minst 8 tecken"
                         />
                     </div>
 
                     <div>
                         <label htmlFor="confirm" className="block text-sm font-medium text-gray-400 mb-1">
-                            Confirm password
+                            Bekräfta lösenord
                         </label>
                         <input
                             id="confirm"
@@ -119,7 +119,7 @@ export default function SignupPage() {
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
-                            placeholder="Repeat password"
+                            placeholder="Upprepa lösenord"
                         />
                     </div>
 
@@ -128,14 +128,14 @@ export default function SignupPage() {
                         disabled={loading}
                         className="w-full bg-scorelock-600 hover:bg-scorelock-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition"
                     >
-                        {loading ? "Creating account…" : "Sign up"}
+                        {loading ? "Skapar konto…" : "Skapa konto"}
                     </button>
                 </form>
 
                 <p className="text-center text-sm text-gray-500 mt-6">
-                    Already have an account?{" "}
+                    Har du redan ett konto?{" "}
                     <Link href="/login" className="text-scorelock-400 hover:underline">
-                        Log in
+                        Logga in
                     </Link>
                 </p>
             </div>

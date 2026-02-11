@@ -1,6 +1,13 @@
 import { MatchCard } from "@/components/match-card";
 import { fetchApi } from "@/lib/api";
 import type { Fixture } from "@/lib/types";
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+    title: "Matcher",
+    description: "Dagens och kommande fotbollsmatcher med ML-prediktioner inline.",
+};
 
 export const revalidate = 60;
 
@@ -19,29 +26,36 @@ export default async function MatchesPage() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-3xl font-bold mb-8">Matches</h1>
+            <h1 className="text-3xl font-bold mb-2">Matcher</h1>
+            <p className="text-gray-500 mb-8">
+                Live, kommande och avslutade matcher med prediktioner.
+            </p>
 
             {live.length > 0 && (
-                <Section title="🔴 Live Now">
+                <Section title="🔴 Live">
                     {live.map((f) => (
                         <MatchCard key={f.id} fixture={f} />
                     ))}
                 </Section>
             )}
 
-            <Section title="Upcoming">
+            <Section title="Kommande">
                 {scheduled.length > 0 ? (
                     scheduled.map((f) => <MatchCard key={f.id} fixture={f} />)
                 ) : (
-                    <p className="text-gray-500 col-span-full">No upcoming matches.</p>
+                    <p className="text-gray-500 col-span-full text-center py-8">
+                        Inga kommande matcher just nu.
+                    </p>
                 )}
             </Section>
 
-            <Section title="Recent Results">
+            <Section title="Avslutade">
                 {finished.length > 0 ? (
                     finished.slice(0, 12).map((f) => <MatchCard key={f.id} fixture={f} />)
                 ) : (
-                    <p className="text-gray-500 col-span-full">No recent results.</p>
+                    <p className="text-gray-500 col-span-full text-center py-8">
+                        Inga avslutade matcher.
+                    </p>
                 )}
             </Section>
         </div>
