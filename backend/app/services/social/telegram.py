@@ -52,7 +52,10 @@ async def send_telegram_message(
                     return {"status": "ok", "message_id": msg_id}
                 else:
                     logger.error("telegram_failed", error=data)
-                    return {"status": "error", "error": data.get("description", "unknown")}
+                    return {
+                        "status": "error",
+                        "error": data.get("description", "unknown"),
+                    }
     except Exception as e:
         logger.error("telegram_error", error=str(e))
         return {"status": "error", "error": str(e)}
@@ -79,7 +82,9 @@ async def post_match_preview_telegram(
     ]
 
     if home_win_pct is not None:
-        lines.append(f"📊 H: {home_win_pct:.0f}% | D: {draw_pct:.0f}% | B: {away_win_pct:.0f}%")
+        lines.append(
+            f"📊 H: {home_win_pct:.0f}% | D: {draw_pct:.0f}% | B: {away_win_pct:.0f}%"
+        )
 
     if value_bet:
         lines.append(f"💰 <b>Value:</b> {value_bet}")

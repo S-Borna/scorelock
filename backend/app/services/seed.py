@@ -23,16 +23,26 @@ API_DELAY_SECONDS = 7.0
 # Phase mapping for leagues
 LEAGUE_PHASES: dict[str, int] = {
     **{name: 1 for name in PHASE_1_LEAGUES},
-    "euro_championship": 2, "euro_qualifiers": 2,
-    "world_cup": 2, "wc_qualifiers_europe": 2,
-    "wc_qualifiers_south_america": 2, "wc_qualifiers_africa": 2,
-    "wc_qualifiers_asia": 2, "copa_america": 2,
-    "africa_cup": 2, "nations_league": 2,
-    "ligue_1": 3, "primeira_liga": 3, "eredivisie": 3, "super_lig": 3,
+    "euro_championship": 2,
+    "euro_qualifiers": 2,
+    "world_cup": 2,
+    "wc_qualifiers_europe": 2,
+    "wc_qualifiers_south_america": 2,
+    "wc_qualifiers_africa": 2,
+    "wc_qualifiers_asia": 2,
+    "copa_america": 2,
+    "africa_cup": 2,
+    "nations_league": 2,
+    "ligue_1": 3,
+    "primeira_liga": 3,
+    "eredivisie": 3,
+    "super_lig": 3,
 }
 
 
-async def seed_leagues(client: APIFootballClient, leagues_to_seed: list[str] | None = None) -> dict[str, int]:
+async def seed_leagues(
+    client: APIFootballClient, leagues_to_seed: list[str] | None = None
+) -> dict[str, int]:
     """Seed leagues into the database. Returns {league_name: db_id}."""
     targets = leagues_to_seed or PHASE_1_LEAGUES
     league_map: dict[str, int] = {}
@@ -89,7 +99,9 @@ async def seed_leagues(client: APIFootballClient, leagues_to_seed: list[str] | N
     return league_map
 
 
-async def seed_teams(client: APIFootballClient, league_map: dict[str, int] | None = None) -> int:
+async def seed_teams(
+    client: APIFootballClient, league_map: dict[str, int] | None = None
+) -> int:
     """Seed teams for all Phase 1 leagues. Returns total teams seeded."""
     total = 0
     # Free plan only supports seasons 2022-2024,

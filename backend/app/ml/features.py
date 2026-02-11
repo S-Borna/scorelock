@@ -77,7 +77,8 @@ class TeamTracker:
             return {"points": 0.0, "gf": 0.0, "ga": 0.0}
 
         points = sum(
-            3 if m.goals_for > m.goals_against
+            3
+            if m.goals_for > m.goals_against
             else (1 if m.goals_for == m.goals_against else 0)
             for m in recent
         )
@@ -88,15 +89,15 @@ class TeamTracker:
     def get_season_stats(self, season: int, before: datetime) -> dict:
         """Cumulative season stats before a given date."""
         season_matches = [
-            m for m in self.matches
-            if m.season == season and m.date < before
+            m for m in self.matches if m.season == season and m.date < before
         ]
         if not season_matches:
             return {"ppg": 0.0, "gf_pg": 0.0, "ga_pg": 0.0}
 
         played = len(season_matches)
         points = sum(
-            3 if m.goals_for > m.goals_against
+            3
+            if m.goals_for > m.goals_against
             else (1 if m.goals_for == m.goals_against else 0)
             for m in season_matches
         )
@@ -111,13 +112,15 @@ class TeamTracker:
     def get_home_ppg(self, season: int, before: datetime) -> float:
         """Points per game at home this season."""
         home = [
-            m for m in self.matches
+            m
+            for m in self.matches
             if m.season == season and m.is_home and m.date < before
         ]
         if not home:
             return 0.0
         points = sum(
-            3 if m.goals_for > m.goals_against
+            3
+            if m.goals_for > m.goals_against
             else (1 if m.goals_for == m.goals_against else 0)
             for m in home
         )
@@ -126,13 +129,15 @@ class TeamTracker:
     def get_away_ppg(self, season: int, before: datetime) -> float:
         """Points per game away this season."""
         away = [
-            m for m in self.matches
+            m
+            for m in self.matches
             if m.season == season and not m.is_home and m.date < before
         ]
         if not away:
             return 0.0
         points = sum(
-            3 if m.goals_for > m.goals_against
+            3
+            if m.goals_for > m.goals_against
             else (1 if m.goals_for == m.goals_against else 0)
             for m in away
         )
@@ -159,15 +164,21 @@ class H2HTracker:
         self.matches: list[tuple[datetime, int, int, int, int]] = []
 
     def add_match(
-        self, date: datetime,
-        home_goals: int, away_goals: int,
-        home_id: int, away_id: int,
+        self,
+        date: datetime,
+        home_goals: int,
+        away_goals: int,
+        home_id: int,
+        away_id: int,
     ) -> None:
         self.matches.append((date, home_goals, away_goals, home_id, away_id))
 
     def get_stats(
-        self, home_team_id: int, away_team_id: int,
-        before: datetime, n: int = H2H_WINDOW,
+        self,
+        home_team_id: int,
+        away_team_id: int,
+        before: datetime,
+        n: int = H2H_WINDOW,
     ) -> dict:
         """H2H stats from the perspective of the current home team."""
         recent = [m for m in self.matches if m[0] < before][-n:]
@@ -241,9 +252,8 @@ class FeatureComputer:
             away_tracker = self.team_trackers[away_id]
 
             # Only compute features if both teams have enough history
-            if (
-                home_tracker.has_enough_data(kickoff)
-                and away_tracker.has_enough_data(kickoff)
+            if home_tracker.has_enough_data(kickoff) and away_tracker.has_enough_data(
+                kickoff
             ):
                 features = self._compute_features(home_id, away_id, kickoff, season)
                 rows.append(features)
@@ -310,28 +320,36 @@ class FeatureComputer:
         home_goals = fix["home_goals"]
         away_goals = fix["away_goals"]
 
-        self.team_trackers[home_id].add_match(MatchRecord(
-            date=kickoff,
-            opponent_id=away_id,
-            is_home=True,
-            goals_for=home_goals,
-            goals_against=away_goals,
-            season=season,
-            league_id=fix["league_id"],
-        ))
-        self.team_trackers[away_id].add_match(MatchRecord(
-            date=kickoff,
-            opponent_id=home_id,
-            is_home=False,
-            goals_for=away_goals,
-            goals_against=home_goals,
-            season=season,
-            league_id=fix["league_id"],
-        ))
+        self.team_trackers[home_id].add_match(
+            MatchRecord(
+                date=kickoff,
+                opponent_id=away_id,
+                is_home=True,
+                goals_for=home_goals,
+                goals_against=away_goals,
+                season=season,
+                league_id=fix["league_id"],
+            )
+        )
+        self.team_trackers[away_id].add_match(
+            MatchRecord(
+                date=kickoff,
+                opponent_id=home_id,
+                is_home=False,
+                goals_for=away_goals,
+                goals_against=home_goals,
+                season=season,
+                league_id=fix["league_id"],
+            )
+        )
 
         h2h_key = frozenset([home_id, away_id])
         self.h2h_trackers[h2h_key].add_match(
-            kickoff, home_goals, away_goals, home_id, away_id,
+            kickoff,
+            home_goals,
+            away_goals,
+            home_id,
+            away_id,
         )
 
     def _compute_features(

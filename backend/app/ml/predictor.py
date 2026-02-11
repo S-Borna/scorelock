@@ -97,7 +97,9 @@ class MatchPredictor:
         expected_goals = max(0.0, float(self.goals_model.predict(features)[0]))
 
         # Over 2.5 probability (Poisson approximation)
-        over_25_prob = float(1 - poisson.cdf(2, expected_goals)) if expected_goals > 0 else 0.5
+        over_25_prob = (
+            float(1 - poisson.cdf(2, expected_goals)) if expected_goals > 0 else 0.5
+        )
 
         return MatchPrediction(
             home_win_prob=round(home_prob, 4),
@@ -119,7 +121,10 @@ class MatchPredictor:
     ) -> MatchPrediction:
         """Higher-level: predict from team IDs using a populated FeatureComputer."""
         features = feature_computer.compute_match_features(
-            home_team_id, away_team_id, kickoff, season,
+            home_team_id,
+            away_team_id,
+            kickoff,
+            season,
         )
         return self.predict(features)
 

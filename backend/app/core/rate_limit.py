@@ -46,6 +46,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Lazy-initialize Redis connection."""
         if self.redis is None:
             import redis.asyncio as aioredis
+
             self.redis = aioredis.from_url(
                 settings.redis_url,
                 decode_responses=True,
@@ -74,7 +75,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return f"rl:ip:{client_ip}", "anonymous"
 
     async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint,
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
     ) -> Response:
         """Check rate limit before processing request."""
         # Skip exempt paths
@@ -127,7 +130,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             remaining = max(0, limit - current_count - 1)
             response.headers["X-RateLimit-Limit"] = str(limit)
             response.headers["X-RateLimit-Remaining"] = str(remaining)
-            response.headers["X-RateLimit-Reset"] = str(int(now + RATE_LIMIT_WINDOW_SECONDS))
+            response.headers["X-RateLimit-Reset"] = str(
+                int(now + RATE_LIMIT_WINDOW_SECONDS)
+            )
 
             return response
 

@@ -12,10 +12,18 @@ from sqlalchemy.orm import selectinload
 import structlog
 
 from app.models.models import (
-    League, Team, Fixture, Odds, Prediction,
-    SentimentScore, Standing, MatchStatus,
-    Article, ArticleType,
-    AffiliateLink, AffiliateClick,
+    League,
+    Team,
+    Fixture,
+    Odds,
+    Prediction,
+    SentimentScore,
+    Standing,
+    MatchStatus,
+    Article,
+    ArticleType,
+    AffiliateLink,
+    AffiliateClick,
     UserPrediction,
 )
 
@@ -48,6 +56,7 @@ API_STATUS_MAP: dict[str, MatchStatus] = {
 
 # ── League operations ─────────────────────────────────────
 
+
 async def upsert_league(
     session: AsyncSession,
     api_id: int,
@@ -59,24 +68,29 @@ async def upsert_league(
     phase: int = 1,
 ) -> League:
     """Insert or update a league by API-Football ID."""
-    stmt = pg_insert(League).values(
-        api_football_id=api_id,
-        name=name,
-        country=country,
-        logo_url=logo_url,
-        type=league_type,
-        current_season=current_season,
-        is_active=True,
-        phase=phase,
-    ).on_conflict_do_update(
-        index_elements=["api_football_id"],
-        set_={
-            "name": name,
-            "country": country,
-            "logo_url": logo_url,
-            "current_season": current_season,
-        },
-    ).returning(League)
+    stmt = (
+        pg_insert(League)
+        .values(
+            api_football_id=api_id,
+            name=name,
+            country=country,
+            logo_url=logo_url,
+            type=league_type,
+            current_season=current_season,
+            is_active=True,
+            phase=phase,
+        )
+        .on_conflict_do_update(
+            index_elements=["api_football_id"],
+            set_={
+                "name": name,
+                "country": country,
+                "logo_url": logo_url,
+                "current_season": current_season,
+            },
+        )
+        .returning(League)
+    )
     result = await session.execute(stmt)
     return result.scalar_one()
 
@@ -84,7 +98,9 @@ async def upsert_league(
 async def get_all_leagues(session: AsyncSession) -> list[League]:
     """Get all active leagues."""
     result = await session.execute(
-        select(League).where(League.is_active.is_(True)).order_by(League.phase, League.name)
+        select(League)
+        .where(League.is_active.is_(True))
+        .order_by(League.phase, League.name)
     )
     return list(result.scalars().all())
 
@@ -99,6 +115,7 @@ async def get_league_by_api_id(session: AsyncSession, api_id: int) -> League | N
 
 # ── Team operations ────────────────────────────────────────
 
+
 async def upsert_team(
     session: AsyncSession,
     api_id: int,
@@ -110,36 +127,41 @@ async def upsert_team(
     short_name: str | None = None,
 ) -> Team:
     """Insert or update a team by API-Football ID."""
-    stmt = pg_insert(Team).values(
-        api_football_id=api_id,
-        name=name,
-        short_name=short_name or name[:10] if name else None,
-        logo_url=logo_url,
-        country=country,
-        venue_name=venue_name,
-        venue_capacity=venue_capacity,
-    ).on_conflict_do_update(
-        index_elements=["api_football_id"],
-        set_={
-            "name": name,
-            "logo_url": logo_url,
-            "venue_name": venue_name,
-            "venue_capacity": venue_capacity,
-        },
-    ).returning(Team)
+    stmt = (
+        pg_insert(Team)
+        .values(
+            api_football_id=api_id,
+            name=name,
+            short_name=short_name or name[:10] if name else None,
+            logo_url=logo_url,
+            country=country,
+            venue_name=venue_name,
+            venue_capacity=venue_capacity,
+        )
+        .on_conflict_do_update(
+            index_elements=["api_football_id"],
+            set_={
+                "name": name,
+                "logo_url": logo_url,
+                "venue_name": venue_name,
+                "venue_capacity": venue_capacity,
+            },
+        )
+        .returning(Team)
+    )
     result = await session.execute(stmt)
     return result.scalar_one()
 
 
 async def get_team_by_api_id(session: AsyncSession, api_id: int) -> Team | None:
     """Get a team by its API-Football ID."""
-    result = await session.execute(
-        select(Team).where(Team.api_football_id == api_id)
-    )
+    result = await session.execute(select(Team).where(Team.api_football_id == api_id))
     return result.scalar_one_or_none()
 
 
-async def ensure_team(session: AsyncSession, api_id: int, name: str, logo_url: str | None = None) -> Team:
+async def ensure_team(
+    session: AsyncSession, api_id: int, name: str, logo_url: str | None = None
+) -> Team:
     """Get or create a team — lightweight version for fixture processing."""
     team = await get_team_by_api_id(session, api_id)
     if team:
@@ -149,7 +171,10 @@ async def ensure_team(session: AsyncSession, api_id: int, name: str, logo_url: s
 
 # ── Fixture operations ────────────────────────────────────
 
-async def upsert_fixture(session: AsyncSession, data: dict, league: League) -> Fixture | None:
+
+async def upsert_fixture(
+    session: AsyncSession, data: dict, league: League
+) -> Fixture | None:
     """Upsert a single fixture from API-Football response format."""
     fixture_info = data.get("fixture", {})
     teams_info = data.get("teams", {})
@@ -167,12 +192,14 @@ async def upsert_fixture(session: AsyncSession, data: dict, league: League) -> F
         return None
 
     home_team = await ensure_team(
-        session, home_api_id,
+        session,
+        home_api_id,
         teams_info["home"].get("name", "Unknown"),
         teams_info["home"].get("logo"),
     )
     away_team = await ensure_team(
-        session, away_api_id,
+        session,
+        away_api_id,
         teams_info["away"].get("name", "Unknown"),
         teams_info["away"].get("logo"),
     )
@@ -183,7 +210,11 @@ async def upsert_fixture(session: AsyncSession, data: dict, league: League) -> F
 
     # Parse kickoff time (strip tzinfo — DB uses TIMESTAMP WITHOUT TIME ZONE)
     kickoff_str = fixture_info.get("date")
-    kickoff = datetime.fromisoformat(kickoff_str).replace(tzinfo=None) if kickoff_str else datetime.utcnow()
+    kickoff = (
+        datetime.fromisoformat(kickoff_str).replace(tzinfo=None)
+        if kickoff_str
+        else datetime.utcnow()
+    )
 
     # Parse halftime score
     ht = score_info.get("halftime", {})
@@ -192,37 +223,44 @@ async def upsert_fixture(session: AsyncSession, data: dict, league: League) -> F
     season = int(league_info.get("season", datetime.utcnow().year))
     round_name = league_info.get("round")
 
-    stmt = pg_insert(Fixture).values(
-        api_football_id=api_id,
-        league_id=league.id,
-        season=season,
-        round=round_name,
-        home_team_id=home_team.id,
-        away_team_id=away_team.id,
-        kickoff=kickoff,
-        status=status,
-        home_goals=goals_info.get("home"),
-        away_goals=goals_info.get("away"),
-        home_goals_ht=ht.get("home"),
-        away_goals_ht=ht.get("away"),
-        updated_at=datetime.utcnow(),
-    ).on_conflict_do_update(
-        index_elements=["api_football_id"],
-        set_={
-            "status": status,
-            "home_goals": goals_info.get("home"),
-            "away_goals": goals_info.get("away"),
-            "home_goals_ht": ht.get("home"),
-            "away_goals_ht": ht.get("away"),
-            "round": round_name,
-            "updated_at": datetime.utcnow(),
-        },
-    ).returning(Fixture)
+    stmt = (
+        pg_insert(Fixture)
+        .values(
+            api_football_id=api_id,
+            league_id=league.id,
+            season=season,
+            round=round_name,
+            home_team_id=home_team.id,
+            away_team_id=away_team.id,
+            kickoff=kickoff,
+            status=status,
+            home_goals=goals_info.get("home"),
+            away_goals=goals_info.get("away"),
+            home_goals_ht=ht.get("home"),
+            away_goals_ht=ht.get("away"),
+            updated_at=datetime.utcnow(),
+        )
+        .on_conflict_do_update(
+            index_elements=["api_football_id"],
+            set_={
+                "status": status,
+                "home_goals": goals_info.get("home"),
+                "away_goals": goals_info.get("away"),
+                "home_goals_ht": ht.get("home"),
+                "away_goals_ht": ht.get("away"),
+                "round": round_name,
+                "updated_at": datetime.utcnow(),
+            },
+        )
+        .returning(Fixture)
+    )
     result = await session.execute(stmt)
     return result.scalar_one()
 
 
-async def upsert_fixtures_batch(session: AsyncSession, fixtures_data: list[dict], league: League) -> int:
+async def upsert_fixtures_batch(
+    session: AsyncSession, fixtures_data: list[dict], league: League
+) -> int:
     """Upsert a batch of fixtures. Returns count of processed fixtures."""
     count = 0
     for data in fixtures_data:
@@ -303,6 +341,7 @@ async def get_live_fixtures(session: AsyncSession) -> list[Fixture]:
 
 # ── Odds operations ───────────────────────────────────────
 
+
 async def upsert_odds(
     session: AsyncSession,
     fixture_id: int,
@@ -316,82 +355,99 @@ async def upsert_odds(
     line: float | None = None,
 ) -> Odds:
     """Insert or update odds for a fixture-bookmaker combination."""
-    stmt = pg_insert(Odds).values(
-        fixture_id=fixture_id,
-        bookmaker=bookmaker,
-        market=market,
-        home_odds=home_odds,
-        draw_odds=draw_odds,
-        away_odds=away_odds,
-        over_odds=over_odds,
-        under_odds=under_odds,
-        line=line,
-        fetched_at=datetime.utcnow(),
-    ).on_conflict_do_update(
-        constraint="ix_odds_fixture_bookmaker",
-        set_={
-            "home_odds": home_odds,
-            "draw_odds": draw_odds,
-            "away_odds": away_odds,
-            "over_odds": over_odds,
-            "under_odds": under_odds,
-            "fetched_at": datetime.utcnow(),
-        },
-    ).returning(Odds)
+    stmt = (
+        pg_insert(Odds)
+        .values(
+            fixture_id=fixture_id,
+            bookmaker=bookmaker,
+            market=market,
+            home_odds=home_odds,
+            draw_odds=draw_odds,
+            away_odds=away_odds,
+            over_odds=over_odds,
+            under_odds=under_odds,
+            line=line,
+            fetched_at=datetime.utcnow(),
+        )
+        .on_conflict_do_update(
+            constraint="ix_odds_fixture_bookmaker",
+            set_={
+                "home_odds": home_odds,
+                "draw_odds": draw_odds,
+                "away_odds": away_odds,
+                "over_odds": over_odds,
+                "under_odds": under_odds,
+                "fetched_at": datetime.utcnow(),
+            },
+        )
+        .returning(Odds)
+    )
     result = await session.execute(stmt)
     return result.scalar_one()
 
 
 # ── Standing operations ───────────────────────────────────
 
-async def upsert_standing(session: AsyncSession, data: dict, league: League, season: int) -> Standing | None:
+
+async def upsert_standing(
+    session: AsyncSession, data: dict, league: League, season: int
+) -> Standing | None:
     """Upsert a single standing entry from API-Football format."""
     team_data = data.get("team", {})
     team_api_id = team_data.get("id")
     if not team_api_id:
         return None
 
-    team = await ensure_team(session, team_api_id, team_data.get("name", "Unknown"), team_data.get("logo"))
+    team = await ensure_team(
+        session, team_api_id, team_data.get("name", "Unknown"), team_data.get("logo")
+    )
 
     all_info = data.get("all", {})
     goals = all_info.get("goals", {})
 
-    stmt = pg_insert(Standing).values(
-        league_id=league.id,
-        season=season,
-        team_id=team.id,
-        position=data.get("rank", 0),
-        points=data.get("points", 0),
-        played=all_info.get("played", 0),
-        won=all_info.get("win", 0),
-        drawn=all_info.get("draw", 0),
-        lost=all_info.get("lose", 0),
-        goals_for=goals.get("for", 0),
-        goals_against=goals.get("against", 0),
-        goal_diff=data.get("goalsDiff", 0),
-        form=data.get("form"),
-        updated_at=datetime.utcnow(),
-    ).on_conflict_do_update(
-        constraint="uq_standing",
-        set_={
-            "position": data.get("rank", 0),
-            "points": data.get("points", 0),
-            "played": all_info.get("played", 0),
-            "won": all_info.get("win", 0),
-            "drawn": all_info.get("draw", 0),
-            "lost": all_info.get("lose", 0),
-            "goals_for": goals.get("for", 0),
-            "goals_against": goals.get("against", 0),
-            "goal_diff": data.get("goalsDiff", 0),
-            "form": data.get("form"),
-            "updated_at": datetime.utcnow(),
-        },
-    ).returning(Standing)
+    stmt = (
+        pg_insert(Standing)
+        .values(
+            league_id=league.id,
+            season=season,
+            team_id=team.id,
+            position=data.get("rank", 0),
+            points=data.get("points", 0),
+            played=all_info.get("played", 0),
+            won=all_info.get("win", 0),
+            drawn=all_info.get("draw", 0),
+            lost=all_info.get("lose", 0),
+            goals_for=goals.get("for", 0),
+            goals_against=goals.get("against", 0),
+            goal_diff=data.get("goalsDiff", 0),
+            form=data.get("form"),
+            updated_at=datetime.utcnow(),
+        )
+        .on_conflict_do_update(
+            constraint="uq_standing",
+            set_={
+                "position": data.get("rank", 0),
+                "points": data.get("points", 0),
+                "played": all_info.get("played", 0),
+                "won": all_info.get("win", 0),
+                "drawn": all_info.get("draw", 0),
+                "lost": all_info.get("lose", 0),
+                "goals_for": goals.get("for", 0),
+                "goals_against": goals.get("against", 0),
+                "goal_diff": data.get("goalsDiff", 0),
+                "form": data.get("form"),
+                "updated_at": datetime.utcnow(),
+            },
+        )
+        .returning(Standing)
+    )
     result = await session.execute(stmt)
     return result.scalar_one()
 
 
-async def get_standings(session: AsyncSession, league_id: int, season: int | None = None) -> list[Standing]:
+async def get_standings(
+    session: AsyncSession, league_id: int, season: int | None = None
+) -> list[Standing]:
     """Get standings for a league, optionally by season."""
     query = (
         select(Standing)
@@ -412,7 +468,10 @@ async def get_standings(session: AsyncSession, league_id: int, season: int | Non
 
 # ── Prediction operations ─────────────────────────────────
 
-async def get_predictions_for_date(session: AsyncSession, target_date: date) -> list[Prediction]:
+
+async def get_predictions_for_date(
+    session: AsyncSession, target_date: date
+) -> list[Prediction]:
     """Get predictions for fixtures on a specific date."""
     start = datetime.combine(target_date, datetime.min.time())
     end = datetime.combine(target_date, datetime.max.time())
@@ -425,7 +484,9 @@ async def get_predictions_for_date(session: AsyncSession, target_date: date) -> 
     return list(result.scalars().all())
 
 
-async def get_prediction_by_fixture(session: AsyncSession, fixture_id: int) -> Prediction | None:
+async def get_prediction_by_fixture(
+    session: AsyncSession, fixture_id: int
+) -> Prediction | None:
     """Get prediction for a specific fixture."""
     result = await session.execute(
         select(Prediction).where(Prediction.fixture_id == fixture_id)
@@ -435,12 +496,19 @@ async def get_prediction_by_fixture(session: AsyncSession, fixture_id: int) -> P
 
 # ── Sentiment operations ──────────────────────────────────
 
-async def get_team_sentiment(session: AsyncSession, team_id: int, days: int = 7) -> list[SentimentScore]:
+
+async def get_team_sentiment(
+    session: AsyncSession, team_id: int, days: int = 7
+) -> list[SentimentScore]:
     """Get sentiment scores for a team over the last N days."""
     cutoff = datetime.utcnow() - timedelta(days=days)
     result = await session.execute(
         select(SentimentScore)
-        .where(and_(SentimentScore.team_id == team_id, SentimentScore.analyzed_at >= cutoff))
+        .where(
+            and_(
+                SentimentScore.team_id == team_id, SentimentScore.analyzed_at >= cutoff
+            )
+        )
         .order_by(SentimentScore.analyzed_at.desc())
     )
     return list(result.scalars().all())
@@ -448,14 +516,21 @@ async def get_team_sentiment(session: AsyncSession, team_id: int, days: int = 7)
 
 # ── H2H operations ────────────────────────────────────────
 
-async def get_h2h_fixtures(session: AsyncSession, team1_id: int, team2_id: int, last: int = 10) -> list[Fixture]:
+
+async def get_h2h_fixtures(
+    session: AsyncSession, team1_id: int, team2_id: int, last: int = 10
+) -> list[Fixture]:
     """Get head-to-head fixtures between two teams."""
     result = await session.execute(
         select(Fixture)
         .where(
             or_(
-                and_(Fixture.home_team_id == team1_id, Fixture.away_team_id == team2_id),
-                and_(Fixture.home_team_id == team2_id, Fixture.away_team_id == team1_id),
+                and_(
+                    Fixture.home_team_id == team1_id, Fixture.away_team_id == team2_id
+                ),
+                and_(
+                    Fixture.home_team_id == team2_id, Fixture.away_team_id == team1_id
+                ),
             ),
             Fixture.status == MatchStatus.FINISHED,
         )
@@ -471,6 +546,7 @@ async def get_h2h_fixtures(session: AsyncSession, team1_id: int, team2_id: int, 
 
 
 # ── ML Training Data ──────────────────────────────────────
+
 
 async def get_finished_fixtures_for_training(session: AsyncSession) -> list[dict]:
     """Get all finished fixtures with scores for model training."""
@@ -509,11 +585,7 @@ async def get_upcoming_fixtures_for_prediction(
     cutoff = now + timedelta(days=days_ahead)
 
     # Subquery: does fixture already have a prediction?
-    has_pred = (
-        select(Prediction.id)
-        .where(Prediction.fixture_id == Fixture.id)
-        .exists()
-    )
+    has_pred = select(Prediction.id).where(Prediction.fixture_id == Fixture.id).exists()
 
     result = await session.execute(
         select(Fixture)
@@ -636,6 +708,7 @@ async def update_prediction_results(session: AsyncSession) -> int:
 
 # ── Article operations ─────────────────────────────────────
 
+
 async def get_articles(
     session: AsyncSession,
     article_type: ArticleType | None = None,
@@ -645,7 +718,11 @@ async def get_articles(
     offset: int = 0,
 ) -> list[Article]:
     """Get published articles with optional filters, newest first."""
-    q = select(Article).where(Article.published_at.is_not(None)).order_by(Article.published_at.desc())
+    q = (
+        select(Article)
+        .where(Article.published_at.is_not(None))
+        .order_by(Article.published_at.desc())
+    )
     if article_type:
         q = q.where(Article.type == article_type)
     if league_id:
@@ -679,6 +756,7 @@ async def count_articles(
 
 
 # ── Affiliate operations ──────────────────────────────────
+
 
 async def get_affiliate_links(
     session: AsyncSession,
@@ -734,7 +812,9 @@ async def get_affiliate_stats(
     stats = []
 
     for link in links:
-        total_q = select(func.count(AffiliateClick.id)).where(AffiliateClick.link_id == link.id)
+        total_q = select(func.count(AffiliateClick.id)).where(
+            AffiliateClick.link_id == link.id
+        )
         today_q = total_q.where(AffiliateClick.clicked_at >= today_start)
         week_q = total_q.where(AffiliateClick.clicked_at >= week_start)
         month_q = total_q.where(AffiliateClick.clicked_at >= month_start)
@@ -744,19 +824,22 @@ async def get_affiliate_stats(
         week = (await session.execute(week_q)).scalar_one()
         month = (await session.execute(month_q)).scalar_one()
 
-        stats.append({
-            "bookmaker": link.bookmaker,
-            "bookmaker_display": link.bookmaker_display,
-            "total_clicks": total,
-            "clicks_today": today,
-            "clicks_this_week": week,
-            "clicks_this_month": month,
-        })
+        stats.append(
+            {
+                "bookmaker": link.bookmaker,
+                "bookmaker_display": link.bookmaker_display,
+                "total_clicks": total,
+                "clicks_today": today,
+                "clicks_this_week": week,
+                "clicks_this_month": month,
+            }
+        )
 
     return stats
 
 
 # ── Tipping League ─────────────────────────────────────────
+
 
 async def create_user_prediction(
     session: AsyncSession,
@@ -892,12 +975,12 @@ async def get_leaderboard(
             UserModel.name,
             func.sum(UserPrediction.points_earned).label("total_points"),
             func.count(UserPrediction.id).label("total_tips"),
-            func.sum(
-                func.cast(UserPrediction.was_correct_outcome, Integer)
-            ).label("correct_outcomes"),
-            func.sum(
-                func.cast(UserPrediction.was_exact_score, Integer)
-            ).label("exact_scores"),
+            func.sum(func.cast(UserPrediction.was_correct_outcome, Integer)).label(
+                "correct_outcomes"
+            ),
+            func.sum(func.cast(UserPrediction.was_exact_score, Integer)).label(
+                "exact_scores"
+            ),
         )
         .join(UserModel, UserPrediction.user_id == UserModel.id)
         .where(UserPrediction.points_earned.isnot(None))
@@ -922,16 +1005,18 @@ async def get_leaderboard(
         correct = row.correct_outcomes or 0
         accuracy = (correct / total_tips * 100) if total_tips > 0 else 0.0
 
-        leaderboard.append({
-            "user_id": row.user_id,
-            "user_name": row.name,
-            "total_points": row.total_points or 0,
-            "total_tips": total_tips,
-            "correct_outcomes": correct,
-            "exact_scores": row.exact_scores or 0,
-            "accuracy": round(accuracy, 1),
-            "current_streak": 0,  # Calculated separately if needed
-        })
+        leaderboard.append(
+            {
+                "user_id": row.user_id,
+                "user_name": row.name,
+                "total_points": row.total_points or 0,
+                "total_tips": total_tips,
+                "correct_outcomes": correct,
+                "exact_scores": row.exact_scores or 0,
+                "accuracy": round(accuracy, 1),
+                "current_streak": 0,  # Calculated separately if needed
+            }
+        )
 
     return leaderboard
 
@@ -939,7 +1024,9 @@ async def get_leaderboard(
 async def get_ai_vs_user(session: AsyncSession, user_id: int) -> dict:
     """Compare user's tipping performance vs the AI model."""
     # Get user's scored predictions
-    user_preds = await get_user_predictions(session, user_id, scored_only=True, limit=500)
+    user_preds = await get_user_predictions(
+        session, user_id, scored_only=True, limit=500
+    )
 
     user_total = len(user_preds)
     user_points = sum(p.points_earned or 0 for p in user_preds)
@@ -964,7 +1051,9 @@ async def get_ai_vs_user(session: AsyncSession, user_id: int) -> dict:
     user_wins = 0
     ai_wins = 0
     ties = 0
-    ai_fixture_map = {p.fixture_id: p.was_correct for p in ai_preds} if fixture_ids else {}
+    ai_fixture_map = (
+        {p.fixture_id: p.was_correct for p in ai_preds} if fixture_ids else {}
+    )
 
     for pred in user_preds:
         ai_was_correct = ai_fixture_map.get(pred.fixture_id)
@@ -980,7 +1069,9 @@ async def get_ai_vs_user(session: AsyncSession, user_id: int) -> dict:
     return {
         "user_total_points": user_points,
         "user_total_tips": user_total,
-        "user_accuracy": round((user_correct / user_total * 100) if user_total > 0 else 0, 1),
+        "user_accuracy": round(
+            (user_correct / user_total * 100) if user_total > 0 else 0, 1
+        ),
         "ai_correct": ai_correct,
         "ai_total": ai_total,
         "ai_accuracy": round((ai_correct / ai_total * 100) if ai_total > 0 else 0, 1),
@@ -1003,9 +1094,9 @@ async def get_weekly_top_tipper(session: AsyncSession) -> dict | None:
             UserModel.name,
             func.sum(UserPrediction.points_earned).label("points"),
             func.count(UserPrediction.id).label("tips"),
-            func.sum(
-                func.cast(UserPrediction.was_correct_outcome, Integer)
-            ).label("correct"),
+            func.sum(func.cast(UserPrediction.was_correct_outcome, Integer)).label(
+                "correct"
+            ),
         )
         .join(UserModel, UserPrediction.user_id == UserModel.id)
         .where(

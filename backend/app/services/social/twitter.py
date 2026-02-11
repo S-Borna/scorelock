@@ -84,7 +84,9 @@ async def post_match_preview_tweet(
     try:
         response = client.create_tweet(text=tweet_body)
         tweet_id = response.data["id"]
-        logger.info("tweet_posted", tweet_id=tweet_id, teams=f"{home_team} vs {away_team}")
+        logger.info(
+            "tweet_posted", tweet_id=tweet_id, teams=f"{home_team} vs {away_team}"
+        )
         return {"status": "ok", "tweet_id": tweet_id}
     except Exception as e:
         logger.error("tweet_failed", error=str(e), teams=f"{home_team} vs {away_team}")
@@ -109,7 +111,9 @@ async def post_value_bet_alert_tweet(
 
     for m in matches[:4]:  # Max 4 to fit in tweet
         edge_str = f"+{m['edge']:.1f}%" if m.get("edge") else ""
-        lines.append(f"💰 {m['home']} vs {m['away']}: {m['bet']} @{m['odds']:.2f} {edge_str}")
+        lines.append(
+            f"💰 {m['home']} vs {m['away']}: {m['bet']} @{m['odds']:.2f} {edge_str}"
+        )
 
     if len(matches) > 4:
         lines.append(f"...+{len(matches) - 4} fler")

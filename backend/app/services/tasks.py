@@ -71,13 +71,18 @@ def fetch_daily_fixtures():
         → free plan limited to seasons 2022-2024, NO current season access
     Budget: ~6 football-data.org calls (1/league), 0 API-Football calls
     """
+
     async def _fetch():
         from app.services.football_data import (
-            football_data, FD_COMPETITIONS, FootballDataClient,
+            football_data,
+            FD_COMPETITIONS,
+            FootballDataClient,
         )
         from app.services.api_football import LEAGUE_IDS, PHASE_1_LEAGUES
         from app.services.db_service import (
-            upsert_fixtures_batch, get_league_by_api_id, upsert_league,
+            upsert_fixtures_batch,
+            get_league_by_api_id,
+            upsert_league,
         )
 
         total = 0
@@ -98,9 +103,10 @@ def fetch_daily_fixtures():
                         name=league_name,
                         country=league_name,
                         logo_url=None,
-                        league_type="cup" if league_name in (
-                            "champions_league", "europa_league", "conference_league"
-                        ) else "league",
+                        league_type="cup"
+                        if league_name
+                        in ("champions_league", "europa_league", "conference_league")
+                        else "league",
                         current_season=current_year,
                     )
 
@@ -116,7 +122,9 @@ def fetch_daily_fixtures():
                         ]
                         normalized = [n for n in normalized if n]
                         if normalized:
-                            count = await upsert_fixtures_batch(session, normalized, league)
+                            count = await upsert_fixtures_batch(
+                                session, normalized, league
+                            )
                             total += count
                             logger.info(
                                 "fixtures_synced",
@@ -126,9 +134,18 @@ def fetch_daily_fixtures():
                                 total_returned=len(matches),
                             )
                         else:
-                            logger.warning("fixtures_empty", source="football_data", league=league_name)
+                            logger.warning(
+                                "fixtures_empty",
+                                source="football_data",
+                                league=league_name,
+                            )
                     except Exception as exc:
-                        logger.error("fixture_fetch_failed", source="football_data", league=league_name, error=str(exc))
+                        logger.error(
+                            "fixture_fetch_failed",
+                            source="football_data",
+                            league=league_name,
+                            error=str(exc),
+                        )
                 else:
                     # League not in football-data.org (allsvenskan, europa_league, conference_league)
                     # API-Football free plan can't access current season either, so skip for now
@@ -149,6 +166,7 @@ def fetch_daily_fixtures():
 @celery_app.task(name="app.services.tasks.update_live_scores")
 def update_live_scores():
     """Update scores for currently live matches (API-Football only — needs live data)."""
+
     async def _update():
         from app.services.api_football import api_football
         from app.services.db_service import upsert_fixture, get_league_by_api_id
@@ -187,13 +205,16 @@ def update_live_scores():
                     # Publish live update via WebSocket
                     try:
                         from app.api.websocket import publish_score_update
+
                         goals = fixture_data.get("goals", {})
                         status_info = fixture_data.get("fixture", {}).get("status", {})
                         publish_score_update(
                             fixture_id=result.id,
                             home_goals=goals.get("home", 0) or 0,
                             away_goals=goals.get("away", 0) or 0,
-                            status=result.status.value if hasattr(result.status, "value") else str(result.status),
+                            status=result.status.value
+                            if hasattr(result.status, "value")
+                            else str(result.status),
                             minute=status_info.get("elapsed"),
                         )
                     except Exception as exc:
@@ -216,6 +237,7 @@ def fetch_odds_updates():
     500 req/month budget → ~2 calls/league × 8 leagues × 2/day = ~32 req/day = 960/month
     So we only run this 1-2x/day, controlled by Celery Beat.
     """
+
     async def _fetch():
         from app.services.odds_api import odds_api, ODDS_SPORT_KEYS, OddsAPIClient
         from app.services.db_service import upsert_odds, get_league_by_api_id
@@ -242,7 +264,9 @@ def fetch_odds_updates():
                     # Single call gets h2h + totals for all upcoming matches
                     events = await odds_api.get_h2h_and_totals(sport_key)
                 except Exception as exc:
-                    logger.error("odds_fetch_failed", league=info["name"], error=str(exc))
+                    logger.error(
+                        "odds_fetch_failed", league=info["name"], error=str(exc)
+                    )
                     continue
 
                 if not events:
@@ -250,6 +274,7 @@ def fetch_odds_updates():
 
                 # Build fixture name map for matching
                 from datetime import datetime
+
                 result = await session.execute(
                     select(Fixture)
                     .where(
@@ -296,7 +321,10 @@ def fetch_odds_updates():
                         bm_name = bm.get("title", "Unknown")
                         for market in bm.get("markets", []):
                             market_key = market.get("key", "")
-                            outcomes = {o["name"]: o.get("price", 0) for o in market.get("outcomes", [])}
+                            outcomes = {
+                                o["name"]: o.get("price", 0)
+                                for o in market.get("outcomes", [])
+                            }
 
                             if market_key == "h2h":
                                 home_team = event.get("home_team", "")
@@ -340,6 +368,7 @@ def fetch_odds_updates():
 @celery_app.task(name="app.services.tasks.run_daily_predictions")
 def run_daily_predictions():
     """Run ML predictions for upcoming matches using trained model."""
+
     async def _predict():
         from app.ml.predictor import get_predictor, identify_value_bets
         from app.ml.features import FeatureComputer
@@ -394,9 +423,15 @@ def run_daily_predictions():
                     odds_1x2 = [o for o in fixture.odds if o.market == "1X2"]
                     if odds_1x2:
                         # Find best odds across all bookmakers
-                        best_home = max((o.home_odds for o in odds_1x2 if o.home_odds), default=0)
-                        best_draw = max((o.draw_odds for o in odds_1x2 if o.draw_odds), default=0)
-                        best_away = max((o.away_odds for o in odds_1x2 if o.away_odds), default=0)
+                        best_home = max(
+                            (o.home_odds for o in odds_1x2 if o.home_odds), default=0
+                        )
+                        best_draw = max(
+                            (o.draw_odds for o in odds_1x2 if o.draw_odds), default=0
+                        )
+                        best_away = max(
+                            (o.away_odds for o in odds_1x2 if o.away_odds), default=0
+                        )
 
                         if best_home and best_draw and best_away:
                             vb = identify_value_bets(
@@ -447,9 +482,13 @@ def run_daily_predictions():
 @celery_app.task(name="app.services.tasks.run_sentiment_analysis")
 def run_sentiment_analysis():
     """Run LLM sentiment analysis on teams with upcoming fixtures."""
+
     async def _analyze():
         from app.services.sentiment import get_sentiment_analyzer
-        from app.services.news_fetcher import fetch_team_news, format_articles_for_analysis
+        from app.services.news_fetcher import (
+            fetch_team_news,
+            format_articles_for_analysis,
+        )
         from app.services.db_service import get_upcoming_fixtures_for_prediction
         from app.models.models import SentimentScore
 
@@ -475,7 +514,9 @@ def run_sentiment_analysis():
                     try:
                         articles = await fetch_team_news(team_name)
                     except Exception as exc:
-                        logger.warning("news_fetch_failed", team=team_name, error=str(exc))
+                        logger.warning(
+                            "news_fetch_failed", team=team_name, error=str(exc)
+                        )
                         articles = []
 
                     if not articles:
@@ -487,7 +528,9 @@ def run_sentiment_analysis():
                     try:
                         result = await analyzer.analyze_text(team_name, news_text)
                     except RuntimeError:
-                        logger.warning("sentiment_skipped", reason="anthropic_key_missing")
+                        logger.warning(
+                            "sentiment_skipped", reason="anthropic_key_missing"
+                        )
                         return {"status": "skipped", "reason": "anthropic_key_missing"}
                     except Exception as exc:
                         logger.error("sentiment_failed", team=team_name, error=str(exc))
@@ -520,9 +563,12 @@ def update_standings():
     football-data.org: PRIMARY for PL, La Liga, Serie A, Bundesliga, Ligue 1
     API-Football free plan cannot access current season standings.
     """
+
     async def _update():
         from app.services.football_data import (
-            football_data, FD_COMPETITIONS, FootballDataClient,
+            football_data,
+            FD_COMPETITIONS,
+            FootballDataClient,
         )
         from app.services.api_football import LEAGUE_IDS, PHASE_1_LEAGUES
         from app.services.db_service import upsert_standing, get_league_by_api_id
@@ -541,31 +587,56 @@ def update_standings():
                     continue
 
                 # Skip cups without traditional standings
-                if league_name in ("champions_league", "europa_league", "conference_league"):
+                if league_name in (
+                    "champions_league",
+                    "europa_league",
+                    "conference_league",
+                ):
                     continue
 
                 fd_code = fd_name_to_code.get(league_name)
                 if not fd_code:
                     # League not in football-data.org (e.g. allsvenskan)
-                    logger.info("standings_skipped", league=league_name, reason="Not in football-data.org free tier")
+                    logger.info(
+                        "standings_skipped",
+                        league=league_name,
+                        reason="Not in football-data.org free tier",
+                    )
                     continue
 
                 try:
                     standings = await football_data.get_standings(fd_code)
                 except Exception as exc:
-                    logger.error("standings_fetch_failed", source="football_data", league=league_name, error=str(exc))
+                    logger.error(
+                        "standings_fetch_failed",
+                        source="football_data",
+                        league=league_name,
+                        error=str(exc),
+                    )
                     continue
 
                 if standings:
                     season = _detect_season(current_year, league_name)
                     for entry in standings:
-                        normalized = FootballDataClient.normalize_standing(entry, fd_code)
-                        result = await upsert_standing(session, normalized, league, season)
+                        normalized = FootballDataClient.normalize_standing(
+                            entry, fd_code
+                        )
+                        result = await upsert_standing(
+                            session, normalized, league, season
+                        )
                         if result:
                             total += 1
-                    logger.info("standings_synced", source="football_data", league=league_name, season=season, teams=len(standings))
+                    logger.info(
+                        "standings_synced",
+                        source="football_data",
+                        league=league_name,
+                        season=season,
+                        teams=len(standings),
+                    )
                 else:
-                    logger.warning("standings_empty", source="football_data", league=league_name)
+                    logger.warning(
+                        "standings_empty", source="football_data", league=league_name
+                    )
 
             await session.commit()
 
@@ -578,8 +649,10 @@ def update_standings():
 @celery_app.task(name="app.services.tasks.seed_data")
 def seed_data():
     """One-time seed task — fetch leagues and teams from API-Football."""
+
     async def _seed():
         from app.services.seed import seed_all
+
         await seed_all()
 
     run_async(_seed())
@@ -589,8 +662,10 @@ def seed_data():
 @celery_app.task(name="app.services.tasks.train_model")
 def train_model():
     """Train/retrain the ML prediction model from historical data."""
+
     async def _train():
         from app.ml.trainer import run_training_pipeline
+
         return await run_training_pipeline()
 
     return run_async(_train())
@@ -599,11 +674,13 @@ def train_model():
 @celery_app.task(name="app.services.tasks.fetch_historical_data")
 def fetch_historical_data():
     """Fetch historical fixtures and standings from API-Football."""
+
     async def _fetch():
         from app.services.historical import (
             fetch_historical_fixtures,
             fetch_historical_standings,
         )
+
         fixtures = await fetch_historical_fixtures()
         standings = await fetch_historical_standings()
         return {
@@ -620,6 +697,7 @@ def fetch_historical_data():
 # AI Content Engine Tasks  (M3)
 # ══════════════════════════════════════════════════════════
 
+
 @celery_app.task(name="app.services.tasks.generate_content_previews")
 def generate_content_previews():
     """Generate match previews for tomorrow's fixtures.
@@ -627,6 +705,7 @@ def generate_content_previews():
     Runs daily at 10:00 UTC — generates Swedish AI-articles for
     every scheduled fixture in the next 24 hours.
     """
+
     async def _gen():
         from app.services.content_generator import generate_match_preview
         from app.services.db_service import get_fixtures
@@ -652,6 +731,7 @@ def generate_content_reports():
     Runs every hour during match hours — picks up fixtures that
     finished within the last 3 hours and generates reports.
     """
+
     async def _gen():
         from app.services.content_generator import generate_match_report
         from app.models.models import MatchStatus, Fixture
@@ -687,6 +767,7 @@ def generate_content_round_summaries():
     Runs daily at 04:00 UTC — checks each league for rounds
     where all fixtures are finished but no summary exists yet.
     """
+
     async def _gen():
         from app.services.content_generator import generate_round_summary
         from app.services.db_service import get_all_leagues
@@ -730,6 +811,7 @@ def generate_content_value_bets():
     Runs daily at 09:00 UTC — analyses all upcoming fixtures (next 48h)
     and creates a value bet article if any value bets are found.
     """
+
     async def _gen():
         from app.services.content_generator import generate_value_bet_article
 
@@ -751,14 +833,21 @@ def generate_content_news_rewrites():
     Runs every 4 hours — fetches top stories from 10 RSS feeds,
     deduplicates, and rewrites as Swedish articles.
     """
+
     async def _gen():
         from app.services.content_generator import generate_news_rewrite
         from app.services.news_fetcher import fetch_team_news
 
         created = 0
         top_teams = [
-            "Arsenal", "Manchester City", "Liverpool", "Barcelona",
-            "Real Madrid", "Bayern Munich", "Inter", "PSG",
+            "Arsenal",
+            "Manchester City",
+            "Liverpool",
+            "Barcelona",
+            "Real Madrid",
+            "Bayern Munich",
+            "Inter",
+            "PSG",
         ]
 
         async with async_session() as session:
@@ -789,6 +878,7 @@ def score_user_predictions_task():
     Runs every 15 min. Finds fixtures that finished but have unscored
     user predictions and scores them (3p exact, 1p correct outcome, 0p wrong).
     """
+
     async def _score():
         from app.services.db_service import score_user_predictions
         from app.models.models import Fixture, MatchStatus, UserPrediction
@@ -798,6 +888,7 @@ def score_user_predictions_task():
         async with async_session() as session:
             # Find finished fixtures with unscored user predictions
             from sqlalchemy import select
+
             result = await session.execute(
                 select(Fixture.id)
                 .join(UserPrediction, UserPrediction.fixture_id == Fixture.id)
@@ -815,13 +906,16 @@ def score_user_predictions_task():
 
             await session.commit()
 
-        logger.info("user_predictions_scored", total=total_scored, fixtures=len(fixture_ids))
+        logger.info(
+            "user_predictions_scored", total=total_scored, fixtures=len(fixture_ids)
+        )
         return {"status": "ok", "scored": total_scored}
 
     return run_async(_score())
 
 
 # ── Social Media Distribution (M8) ─────────────────────────
+
 
 @celery_app.task(name="app.services.tasks.distribute_match_previews")
 def distribute_match_previews():
@@ -830,6 +924,7 @@ def distribute_match_previews():
     Runs daily at 10:30 UTC (after content-previews generates articles).
     Posts the top 5 previews to Twitter, Discord, Telegram, and push.
     """
+
     async def _distribute():
         from app.models.models import Article, ArticleType
         from app.services.social.twitter import post_match_preview_tweet
@@ -864,8 +959,11 @@ def distribute_match_previews():
 
                 try:
                     await post_match_preview_tweet(
-                        home_team=home, away_team=away, league=league,
-                        prediction=prediction, fixture_id=fixture_id,
+                        home_team=home,
+                        away_team=away,
+                        league=league,
+                        prediction=prediction,
+                        fixture_id=fixture_id,
                     )
                     posted["twitter"] += 1
                 except Exception as e:
@@ -873,8 +971,11 @@ def distribute_match_previews():
 
                 try:
                     await post_match_preview_discord(
-                        home_team=home, away_team=away, league=league,
-                        kickoff=str(kickoff), prediction=prediction,
+                        home_team=home,
+                        away_team=away,
+                        league=league,
+                        kickoff=str(kickoff),
+                        prediction=prediction,
                         fixture_id=fixture_id,
                     )
                     posted["discord"] += 1
@@ -883,8 +984,11 @@ def distribute_match_previews():
 
                 try:
                     await post_match_preview_telegram(
-                        home_team=home, away_team=away, league=league,
-                        kickoff=str(kickoff), prediction=prediction,
+                        home_team=home,
+                        away_team=away,
+                        league=league,
+                        kickoff=str(kickoff),
+                        prediction=prediction,
                         fixture_id=fixture_id,
                     )
                     posted["telegram"] += 1
@@ -893,8 +997,11 @@ def distribute_match_previews():
 
                 try:
                     await push_match_preview(
-                        home_team=home, away_team=away, league=league,
-                        prediction=prediction, fixture_id=fixture_id,
+                        home_team=home,
+                        away_team=away,
+                        league=league,
+                        prediction=prediction,
+                        fixture_id=fixture_id,
                     )
                     posted["push"] += 1
                 except Exception as e:
@@ -913,6 +1020,7 @@ def distribute_value_bet_alerts():
     Runs daily at 09:30 UTC (after content-value-bets).
     Posts high-edge value bets (edge > 5%) to all channels.
     """
+
     async def _distribute():
         from app.models.models import ValueBet, Fixture
         from app.services.social.twitter import post_value_bet_alert_tweet
@@ -941,8 +1049,12 @@ def distribute_value_bet_alerts():
 
                 try:
                     await post_value_bet_alert_tweet(
-                        home_team=home, away_team=away, league=league,
-                        bet_type=vb.bet_type, odds=vb.odds, edge=vb.edge,
+                        home_team=home,
+                        away_team=away,
+                        league=league,
+                        bet_type=vb.bet_type,
+                        odds=vb.odds,
+                        edge=vb.edge,
                         fixture_id=fixture.id,
                     )
                     posted["twitter"] += 1
@@ -951,8 +1063,12 @@ def distribute_value_bet_alerts():
 
                 try:
                     await post_value_bet_alert_discord(
-                        home_team=home, away_team=away, league=league,
-                        bet_type=vb.bet_type, odds=vb.odds, edge=vb.edge,
+                        home_team=home,
+                        away_team=away,
+                        league=league,
+                        bet_type=vb.bet_type,
+                        odds=vb.odds,
+                        edge=vb.edge,
                         fixture_id=fixture.id,
                     )
                     posted["discord"] += 1
@@ -961,8 +1077,12 @@ def distribute_value_bet_alerts():
 
                 try:
                     await post_value_bet_alert_telegram(
-                        home_team=home, away_team=away, league=league,
-                        bet_type=vb.bet_type, odds=vb.odds, edge=vb.edge,
+                        home_team=home,
+                        away_team=away,
+                        league=league,
+                        bet_type=vb.bet_type,
+                        odds=vb.odds,
+                        edge=vb.edge,
                         fixture_id=fixture.id,
                     )
                     posted["telegram"] += 1
@@ -971,8 +1091,10 @@ def distribute_value_bet_alerts():
 
                 try:
                     await push_value_bet_alert(
-                        home_team=home, away_team=away,
-                        bet_description=bet_desc, fixture_id=fixture.id,
+                        home_team=home,
+                        away_team=away,
+                        bet_description=bet_desc,
+                        fixture_id=fixture.id,
                     )
                     posted["push"] += 1
                 except Exception as e:
@@ -990,6 +1112,7 @@ def distribute_match_results():
 
     Runs hourly during match hours. Sends push for recently finished matches.
     """
+
     async def _distribute():
         from app.models.models import Fixture, Prediction, MatchStatus
         from app.services.social.push import push_match_result
@@ -1018,10 +1141,16 @@ def distribute_match_results():
                 pred = pred_result.scalar_one_or_none()
 
                 prediction_correct = False
-                if pred and fixture.home_score is not None and fixture.away_score is not None:
+                if (
+                    pred
+                    and fixture.home_score is not None
+                    and fixture.away_score is not None
+                ):
                     actual = (
-                        "home" if fixture.home_score > fixture.away_score
-                        else "away" if fixture.away_score > fixture.home_score
+                        "home"
+                        if fixture.home_score > fixture.away_score
+                        else "away"
+                        if fixture.away_score > fixture.home_score
                         else "draw"
                     )
                     prediction_correct = pred.predicted_outcome == actual

@@ -22,8 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.models.models import (
-    Article, ArticleType, Fixture, League, Team,
-    Odds, MatchStatus,
+    Article,
+    ArticleType,
+    Fixture,
+    League,
+    Team,
+    Odds,
+    MatchStatus,
 )
 from app.services import db_service
 
@@ -32,6 +37,7 @@ settings = get_settings()
 
 
 # ── Slug generation ────────────────────────────────────────
+
 
 def slugify(text: str) -> str:
     """Convert text to URL-safe slug."""
@@ -42,14 +48,19 @@ def slugify(text: str) -> str:
     return text[:250]
 
 
-def make_article_slug(article_type: ArticleType, context_str: str, date_str: str) -> str:
+def make_article_slug(
+    article_type: ArticleType, context_str: str, date_str: str
+) -> str:
     """Create a unique slug: type-context-date."""
     return slugify(f"{article_type.value}-{context_str}-{date_str}")
 
 
 # ── Claude API wrapper ─────────────────────────────────────
 
-async def _call_claude(system_prompt: str, user_prompt: str, max_tokens: int = 2000) -> str:
+
+async def _call_claude(
+    system_prompt: str, user_prompt: str, max_tokens: int = 2000
+) -> str:
     """Call Anthropic Claude API and return the text response.
 
     Returns empty string on failure (never crashes content pipeline).
@@ -81,6 +92,7 @@ async def _call_claude(system_prompt: str, user_prompt: str, max_tokens: int = 2
 
 # ── Data gathering helpers ─────────────────────────────────
 
+
 async def _get_fixture_context(session: AsyncSession, fixture: Fixture) -> dict:
     """Gather all context data for a fixture (form, H2H, standings, odds, sentiment)."""
     # Teams
@@ -90,8 +102,12 @@ async def _get_fixture_context(session: AsyncSession, fixture: Fixture) -> dict:
 
     # Standing positions
     standings = await db_service.get_standings(session, fixture.league_id)
-    home_standing = next((s for s in standings if s.team_id == fixture.home_team_id), None)
-    away_standing = next((s for s in standings if s.team_id == fixture.away_team_id), None)
+    home_standing = next(
+        (s for s in standings if s.team_id == fixture.home_team_id), None
+    )
+    away_standing = next(
+        (s for s in standings if s.team_id == fixture.away_team_id), None
+    )
 
     # H2H (last 5)
     h2h = await db_service.get_h2h_fixtures(
@@ -103,13 +119,19 @@ async def _get_fixture_context(session: AsyncSession, fixture: Fixture) -> dict:
 
     # Odds (latest per market)
     odds_q = await session.execute(
-        select(Odds).where(Odds.fixture_id == fixture.id).order_by(Odds.fetched_at.desc())
+        select(Odds)
+        .where(Odds.fixture_id == fixture.id)
+        .order_by(Odds.fetched_at.desc())
     )
     odds_list = list(odds_q.scalars().all())
 
     # Sentiment
-    home_sentiment = await db_service.get_team_sentiment(session, fixture.home_team_id, days=3)
-    away_sentiment = await db_service.get_team_sentiment(session, fixture.away_team_id, days=3)
+    home_sentiment = await db_service.get_team_sentiment(
+        session, fixture.home_team_id, days=3
+    )
+    away_sentiment = await db_service.get_team_sentiment(
+        session, fixture.away_team_id, days=3
+    )
 
     def _format_form(standing) -> str:
         if not standing or not standing.form:
@@ -146,10 +168,10 @@ async def _get_fixture_context(session: AsyncSession, fixture: Fixture) -> dict:
         if not pred:
             return "Ingen prediktion tillgänglig."
         return (
-            f"Hemma {pred.home_win_prob*100:.1f}% | "
-            f"Oavgjort {pred.draw_prob*100:.1f}% | "
-            f"Borta {pred.away_win_prob*100:.1f}% "
-            f"(konfidens {pred.confidence*100:.0f}%, xG {pred.expected_goals or 'N/A'})"
+            f"Hemma {pred.home_win_prob * 100:.1f}% | "
+            f"Oavgjort {pred.draw_prob * 100:.1f}% | "
+            f"Borta {pred.away_win_prob * 100:.1f}% "
+            f"(konfidens {pred.confidence * 100:.0f}%, xG {pred.expected_goals or 'N/A'})"
         )
 
     def _avg_sentiment(scores: list) -> str:
@@ -187,6 +209,7 @@ async def _get_fixture_context(session: AsyncSession, fixture: Fixture) -> dict:
 
 
 # ── Article existence check ────────────────────────────────
+
 
 async def _article_exists(session: AsyncSession, slug: str) -> bool:
     """Check if an article with this slug already exists."""
@@ -281,7 +304,9 @@ Avspark: {kickoff}
 {away_team}: {away_sentiment}"""
 
 
-async def generate_match_preview(session: AsyncSession, fixture: Fixture) -> Article | None:
+async def generate_match_preview(
+    session: AsyncSession, fixture: Fixture
+) -> Article | None:
     """Generate a match preview article for an upcoming fixture."""
     ctx = await _get_fixture_context(session, fixture)
     date_str = fixture.kickoff.strftime("%Y-%m-%d")
@@ -303,7 +328,10 @@ async def generate_match_preview(session: AsyncSession, fixture: Fixture) -> Art
         return None
 
     # Extract title from first markdown heading
-    title = _extract_title(body) or f"{ctx['home_team']} vs {ctx['away_team']} — Förhandsanalys"
+    title = (
+        _extract_title(body)
+        or f"{ctx['home_team']} vs {ctx['away_team']} — Förhandsanalys"
+    )
     summary = body[:200].replace("#", "").strip() + "..."
 
     return await _save_article(
@@ -356,7 +384,9 @@ Omgång: {round}
 {away_team}: {away_sentiment}"""
 
 
-async def generate_match_report(session: AsyncSession, fixture: Fixture) -> Article | None:
+async def generate_match_report(
+    session: AsyncSession, fixture: Fixture
+) -> Article | None:
     """Generate a match report for a finished fixture."""
     if fixture.status != MatchStatus.FINISHED:
         return None
@@ -382,7 +412,10 @@ async def generate_match_report(session: AsyncSession, fixture: Fixture) -> Arti
     if not body:
         return None
 
-    title = _extract_title(body) or f"{ctx['home_team']} {ctx['home_goals']}–{ctx['away_goals']} {ctx['away_team']}"
+    title = (
+        _extract_title(body)
+        or f"{ctx['home_team']} {ctx['home_goals']}–{ctx['away_goals']} {ctx['away_team']}"
+    )
     summary = body[:200].replace("#", "").strip() + "..."
 
     return await _save_article(
@@ -465,7 +498,12 @@ async def generate_round_summary(
     # Check all are finished
     unfinished = [f for f in fixtures if f.status != MatchStatus.FINISHED]
     if unfinished:
-        logger.info("round_not_complete", league=league.name, round=round_str, remaining=len(unfinished))
+        logger.info(
+            "round_not_complete",
+            league=league.name,
+            round=round_str,
+            remaining=len(unfinished),
+        )
         return None
 
     # Format results
@@ -496,11 +534,17 @@ async def generate_round_summary(
     for s in sorted(standings, key=lambda x: x.position)[:6]:
         team = await session.get(Team, s.team_id)
         t_name = team.name if team else "?"
-        standings_lines.append(f"  {s.position}. {t_name} — {s.points}p ({s.won}V-{s.drawn}O-{s.lost}F)")
+        standings_lines.append(
+            f"  {s.position}. {t_name} — {s.points}p ({s.won}V-{s.drawn}O-{s.lost}F)"
+        )
     standings_top = "\n".join(standings_lines) if standings_lines else "Ej tillgänglig."
 
-    accuracy = "Ingen data." if total_predictions == 0 else (
-        f"{correct_predictions}/{total_predictions} korrekta ({correct_predictions/total_predictions*100:.0f}%)"
+    accuracy = (
+        "Ingen data."
+        if total_predictions == 0
+        else (
+            f"{correct_predictions}/{total_predictions} korrekta ({correct_predictions / total_predictions * 100:.0f}%)"
+        )
     )
 
     body = await _call_claude(
@@ -568,6 +612,7 @@ async def generate_value_bet_article(session: AsyncSession) -> Article | None:
 
     # Get upcoming fixtures with value bets
     from datetime import timedelta
+
     fixtures_q = await session.execute(
         select(Fixture)
         .where(
@@ -593,8 +638,10 @@ async def generate_value_bet_article(session: AsyncSession) -> Article | None:
 
         # Get best odds
         odds_q = await session.execute(
-            select(Odds).where(Odds.fixture_id == f.id, Odds.market == "1X2")
-            .order_by(Odds.fetched_at.desc()).limit(1)
+            select(Odds)
+            .where(Odds.fixture_id == f.id, Odds.market == "1X2")
+            .order_by(Odds.fetched_at.desc())
+            .limit(1)
         )
         odds = odds_q.scalar_one_or_none()
 
@@ -602,16 +649,24 @@ async def generate_value_bet_article(session: AsyncSession) -> Article | None:
             "match": f"{home.name if home else '?'} vs {away.name if away else '?'}",
             "league": league.name if league else "?",
             "kickoff": f.kickoff.strftime("%H:%M"),
-            "prediction": f"H {pred.home_win_prob*100:.0f}% | D {pred.draw_prob*100:.0f}% | A {pred.away_win_prob*100:.0f}%",
+            "prediction": f"H {pred.home_win_prob * 100:.0f}% | D {pred.draw_prob * 100:.0f}% | A {pred.away_win_prob * 100:.0f}%",
             "edge": f"{pred.value_edge:.1f}%" if pred.value_edge else "?",
         }
 
         if pred.is_value_home:
-            vb_info["bet"] = f"Hemma ({odds.home_odds:.2f})" if odds and odds.home_odds else "Hemma"
+            vb_info["bet"] = (
+                f"Hemma ({odds.home_odds:.2f})" if odds and odds.home_odds else "Hemma"
+            )
         elif pred.is_value_draw:
-            vb_info["bet"] = f"Oavgjort ({odds.draw_odds:.2f})" if odds and odds.draw_odds else "Oavgjort"
+            vb_info["bet"] = (
+                f"Oavgjort ({odds.draw_odds:.2f})"
+                if odds and odds.draw_odds
+                else "Oavgjort"
+            )
         else:
-            vb_info["bet"] = f"Borta ({odds.away_odds:.2f})" if odds and odds.away_odds else "Borta"
+            vb_info["bet"] = (
+                f"Borta ({odds.away_odds:.2f})" if odds and odds.away_odds else "Borta"
+            )
 
         value_bets.append(vb_info)
 
@@ -725,6 +780,7 @@ async def generate_news_rewrite(
 
 
 # ── Helpers ────────────────────────────────────────────────
+
 
 def _extract_title(body: str) -> str | None:
     """Extract the first markdown heading from the body text."""

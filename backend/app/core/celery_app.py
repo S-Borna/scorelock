@@ -72,7 +72,6 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.train_model",
         "schedule": crontab(hour=3, minute=0, day_of_week=0),
     },
-
     # ── AI Content Engine (M3) ──────────────────────────────
     # Match previews — daily at 10:00 UTC (for tomorrow's fixtures)
     "content-previews": {
@@ -99,14 +98,12 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.generate_content_news_rewrites",
         "schedule": crontab(minute=15, hour="*/4"),
     },
-
     # ── Tipping League (M6) ─────────────────────────────────
     # Score user predictions every 15 min during match hours
     "score-user-predictions": {
         "task": "app.services.tasks.score_user_predictions",
         "schedule": crontab(minute="*/15", hour="14-23"),
     },
-
     # ── Social Distribution (M8) ─────────────────────────────
     # Distribute match previews — 10:30 UTC (after content generation at 10:00)
     "distribute-previews": {

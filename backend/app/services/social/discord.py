@@ -71,11 +71,13 @@ async def post_match_preview_discord(
     ]
 
     if home_win_pct is not None:
-        fields.append({
-            "name": "📊 Sannolikheter",
-            "value": f"H: {home_win_pct:.0f}% | D: {draw_pct:.0f}% | B: {away_win_pct:.0f}%",
-            "inline": True,
-        })
+        fields.append(
+            {
+                "name": "📊 Sannolikheter",
+                "value": f"H: {home_win_pct:.0f}% | D: {draw_pct:.0f}% | B: {away_win_pct:.0f}%",
+                "inline": True,
+            }
+        )
 
     if value_bet:
         fields.append({"name": "💰 Value Bet", "value": value_bet, "inline": False})
@@ -103,7 +105,9 @@ async def post_value_bet_alert_discord(
     lines = []
     for m in matches[:8]:
         edge_str = f" (edge: +{m['edge']:.1f}%)" if m.get("edge") else ""
-        lines.append(f"💰 **{m['home']} vs {m['away']}**: {m['bet']} @{m['odds']:.2f}{edge_str}")
+        lines.append(
+            f"💰 **{m['home']} vs {m['away']}**: {m['bet']} @{m['odds']:.2f}{edge_str}"
+        )
 
     embed = {
         "title": "🔥 Dagens Value Bets — ScoreLock AI",

@@ -163,9 +163,7 @@ class FootballDataClient:
         data = await self._get(f"/competitions/{code}/matches", params or None)
         return data.get("matches", [])
 
-    async def get_upcoming_matches(
-        self, code: str, days_ahead: int = 14
-    ) -> list[dict]:
+    async def get_upcoming_matches(self, code: str, days_ahead: int = 14) -> list[dict]:
         """Get scheduled matches for the next N days."""
         today = date.today()
         end = today + timedelta(days=days_ahead)
@@ -195,9 +193,7 @@ class FootballDataClient:
 
     async def get_scorers(self, code: str, limit: int = 10) -> list[dict]:
         """Get top scorers for a competition."""
-        data = await self._get(
-            f"/competitions/{code}/scorers", {"limit": limit}
-        )
+        data = await self._get(f"/competitions/{code}/scorers", {"limit": limit})
         return data.get("scorers", [])
 
     # ── Data Normalization ─────────────────────────────────
@@ -222,11 +218,11 @@ class FootballDataClient:
         # Map football-data.org status → API-Football status
         fd_status = match.get("status", "")
         status_map = {
-            "SCHEDULED": "NS",         # Not Started
+            "SCHEDULED": "NS",  # Not Started
             "TIMED": "NS",
-            "IN_PLAY": "1H",           # First Half (simplification)
-            "PAUSED": "HT",            # Half Time
-            "FINISHED": "FT",          # Full Time
+            "IN_PLAY": "1H",  # First Half (simplification)
+            "PAUSED": "HT",  # Half Time
+            "FINISHED": "FT",  # Full Time
             "POSTPONED": "PST",
             "CANCELLED": "CANC",
             "SUSPENDED": "SUSP",
@@ -318,6 +314,7 @@ class FootballDataClient:
 
 class QuotaExhaustedError(Exception):
     """Raised when API quota is exhausted."""
+
     pass
 
 

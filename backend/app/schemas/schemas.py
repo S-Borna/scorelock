@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr
 
 # ── Auth ───────────────────────────────────────────────────
 
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -29,6 +30,7 @@ class Token(BaseModel):
 
 # ── Leagues ────────────────────────────────────────────────
 
+
 class LeagueResponse(BaseModel):
     id: int
     name: str
@@ -42,6 +44,7 @@ class LeagueResponse(BaseModel):
 
 # ── Teams ──────────────────────────────────────────────────
 
+
 class TeamResponse(BaseModel):
     id: int
     name: str
@@ -53,6 +56,7 @@ class TeamResponse(BaseModel):
 
 
 # ── Fixtures ───────────────────────────────────────────────
+
 
 class FixtureResponse(BaseModel):
     id: int
@@ -70,6 +74,7 @@ class FixtureResponse(BaseModel):
 
 class FixtureDetail(FixtureResponse):
     """Extended fixture with stats, odds, and prediction."""
+
     home_goals_ht: int | None
     away_goals_ht: int | None
     stats: dict | None
@@ -78,6 +83,7 @@ class FixtureDetail(FixtureResponse):
 
 
 # ── Odds ───────────────────────────────────────────────────
+
 
 class OddsResponse(BaseModel):
     bookmaker: str
@@ -94,6 +100,7 @@ class OddsResponse(BaseModel):
 
 
 # ── Predictions ────────────────────────────────────────────
+
 
 class PredictionResponse(BaseModel):
     fixture_id: int
@@ -115,6 +122,7 @@ class PredictionResponse(BaseModel):
 
 class ValueBetResponse(BaseModel):
     """A match where our model disagrees with bookmaker odds."""
+
     fixture: FixtureResponse
     prediction: PredictionResponse
     best_odds: OddsResponse
@@ -124,6 +132,7 @@ class ValueBetResponse(BaseModel):
 
 
 # ── Sentiment ──────────────────────────────────────────────
+
 
 class SentimentResponse(BaseModel):
     team_id: int
@@ -137,6 +146,7 @@ class SentimentResponse(BaseModel):
 
 
 # ── Standings ──────────────────────────────────────────────
+
 
 class StandingResponse(BaseModel):
     position: int
@@ -157,6 +167,7 @@ class StandingResponse(BaseModel):
 
 
 # ── Articles ───────────────────────────────────────────────
+
 
 class ArticleResponse(BaseModel):
     id: int
@@ -184,6 +195,7 @@ class ArticleListResponse(BaseModel):
 
 
 # ── Affiliate ──────────────────────────────────────────────
+
 
 class AffiliateLinkResponse(BaseModel):
     id: int
@@ -225,6 +237,7 @@ class AffiliateStatsResponse(BaseModel):
 
 
 # ── Tipping League ─────────────────────────────────────────
+
 
 class UserPredictionCreate(BaseModel):
     fixture_id: int
@@ -284,6 +297,7 @@ class WeeklyTopTipper(BaseModel):
 
 
 # ── Prediction Cards (M8) ─────────────────────────────────
+
 
 class PredictionCardRequest(BaseModel):
     fixture_id: int

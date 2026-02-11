@@ -41,6 +41,7 @@ router = APIRouter()
 
 # ── Health ─────────────────────────────────────────────────
 
+
 @router.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):
     """Service health check — validates DB + Redis connectivity."""
@@ -72,6 +73,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
 # ── Leagues ────────────────────────────────────────────────
 
+
 @router.get("/leagues", response_model=list[LeagueResponse])
 async def get_leagues(db: AsyncSession = Depends(get_db)):
     """Get all active leagues covered by ScoreLock."""
@@ -81,15 +83,20 @@ async def get_leagues(db: AsyncSession = Depends(get_db)):
 
 # ── Fixtures ───────────────────────────────────────────────
 
+
 @router.get("/fixtures", response_model=list[FixtureResponse])
 async def get_fixtures(
-    match_date: date | None = Query(None, alias="date", description="Filter by date (YYYY-MM-DD)"),
+    match_date: date | None = Query(
+        None, alias="date", description="Filter by date (YYYY-MM-DD)"
+    ),
     league_id: int | None = Query(None, description="Filter by league"),
     status: str | None = Query(None, description="Filter by status"),
     db: AsyncSession = Depends(get_db),
 ):
     """Get fixtures with optional filters."""
-    fixtures = await db_service.get_fixtures(db, match_date=match_date, league_id=league_id, status=status)
+    fixtures = await db_service.get_fixtures(
+        db, match_date=match_date, league_id=league_id, status=status
+    )
     return fixtures
 
 
@@ -123,12 +130,15 @@ async def get_fixture_detail(fixture_id: int, db: AsyncSession = Depends(get_db)
         home_goals_ht=fixture.home_goals_ht,
         away_goals_ht=fixture.away_goals_ht,
         stats=fixture.stats,
-        prediction=PredictionResponse.model_validate(prediction) if prediction else None,
+        prediction=PredictionResponse.model_validate(prediction)
+        if prediction
+        else None,
         odds=[OddsResponse.model_validate(o) for o in fixture.odds],
     )
 
 
 # ── Predictions ────────────────────────────────────────────
+
 
 @router.get("/predictions/today", response_model=list[PredictionResponse])
 async def get_todays_predictions(db: AsyncSession = Depends(get_db)):
@@ -161,7 +171,9 @@ async def get_prediction_accuracy(
     query = (
         select(
             func.count(Prediction.id).label("total"),
-            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label("correct"),
+            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label(
+                "correct"
+            ),
             func.avg(Prediction.confidence).label("avg_confidence"),
         )
         .join(Fixture)
@@ -182,7 +194,9 @@ async def get_prediction_accuracy(
             Fixture.league_id,
             League.name.label("league_name"),
             func.count(Prediction.id).label("total"),
-            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label("correct"),
+            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label(
+                "correct"
+            ),
         )
         .join(Fixture, Prediction.fixture_id == Fixture.id)
         .join(League, Fixture.league_id == League.id)
@@ -206,7 +220,9 @@ async def get_prediction_accuracy(
     vb_query = (
         select(
             func.count(Prediction.id).label("total"),
-            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label("correct"),
+            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label(
+                "correct"
+            ),
             func.avg(Prediction.value_edge).label("avg_edge"),
         )
         .join(Fixture)
@@ -226,7 +242,9 @@ async def get_prediction_accuracy(
         select(
             Prediction.model_version,
             func.count(Prediction.id).label("count"),
-            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label("correct"),
+            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label(
+                "correct"
+            ),
         )
         .where(base_filter)
         .group_by(Prediction.model_version)
@@ -273,6 +291,7 @@ async def get_prediction(fixture_id: int, db: AsyncSession = Depends(get_db)):
 
 # ── Value Bets ─────────────────────────────────────────────
 
+
 @router.get("/value-bets", response_model=list[ValueBetResponse])
 async def get_value_bets(
     min_edge: float = Query(5.0, description="Minimum edge % to show"),
@@ -310,9 +329,12 @@ async def get_value_bets(
             continue
 
         best_odds = fixture.odds[0]  # Use first available bookmaker
-        suggested = "Home" if pred.is_value_home else ("Draw" if pred.is_value_draw else "Away")
+        suggested = (
+            "Home" if pred.is_value_home else ("Draw" if pred.is_value_draw else "Away")
+        )
 
         from app.ml.predictor import MatchPrediction
+
         model_pred = MatchPrediction(
             home_win_prob=pred.home_win_prob,
             draw_prob=pred.draw_prob,
@@ -325,38 +347,50 @@ async def get_value_bets(
         kelly = 0.0
         if best_odds.home_odds and best_odds.draw_odds and best_odds.away_odds:
             from app.ml.predictor import identify_value_bets
+
             vb = identify_value_bets(
                 model_pred,
-                {"home": best_odds.home_odds, "draw": best_odds.draw_odds, "away": best_odds.away_odds},
+                {
+                    "home": best_odds.home_odds,
+                    "draw": best_odds.draw_odds,
+                    "away": best_odds.away_odds,
+                },
             )
             kelly = vb.get("kelly_fraction", 0.0)
 
-        value_bets.append(ValueBetResponse(
-            fixture=FixtureResponse.model_validate(fixture),
-            prediction=PredictionResponse.model_validate(pred),
-            best_odds=OddsResponse.model_validate(best_odds),
-            edge_percent=pred.value_edge or 0.0,
-            suggested_bet=suggested,
-            kelly_fraction=kelly,
-        ))
+        value_bets.append(
+            ValueBetResponse(
+                fixture=FixtureResponse.model_validate(fixture),
+                prediction=PredictionResponse.model_validate(pred),
+                best_odds=OddsResponse.model_validate(best_odds),
+                edge_percent=pred.value_edge or 0.0,
+                suggested_bet=suggested,
+                kelly_fraction=kelly,
+            )
+        )
 
     return value_bets
 
 
 # ── Head to Head ───────────────────────────────────────────
 
+
 @router.get("/h2h/{team1_id}/{team2_id}")
-async def get_head_to_head(team1_id: int, team2_id: int, last: int = 10, db: AsyncSession = Depends(get_db)):
+async def get_head_to_head(
+    team1_id: int, team2_id: int, last: int = 10, db: AsyncSession = Depends(get_db)
+):
     """Get head-to-head history and analysis between two teams."""
     fixtures = await db_service.get_h2h_fixtures(db, team1_id, team2_id, last)
 
     team1_wins = sum(
-        1 for f in fixtures
+        1
+        for f in fixtures
         if (f.home_team_id == team1_id and (f.home_goals or 0) > (f.away_goals or 0))
         or (f.away_team_id == team1_id and (f.away_goals or 0) > (f.home_goals or 0))
     )
     team2_wins = sum(
-        1 for f in fixtures
+        1
+        for f in fixtures
         if (f.home_team_id == team2_id and (f.home_goals or 0) > (f.away_goals or 0))
         or (f.away_team_id == team2_id and (f.away_goals or 0) > (f.home_goals or 0))
     )
@@ -380,8 +414,11 @@ async def get_head_to_head(team1_id: int, team2_id: int, last: int = 10, db: Asy
 
 # ── Standings ──────────────────────────────────────────────
 
+
 @router.get("/standings/{league_id}", response_model=list[StandingResponse])
-async def get_standings(league_id: int, season: int | None = None, db: AsyncSession = Depends(get_db)):
+async def get_standings(
+    league_id: int, season: int | None = None, db: AsyncSession = Depends(get_db)
+):
     """Get league standings with xG data."""
     standings = await db_service.get_standings(db, league_id, season)
     if not standings:
@@ -392,33 +429,39 @@ async def get_standings(league_id: int, season: int | None = None, db: AsyncSess
     for s in standings:
         from sqlalchemy import select
         from app.models.models import Team
+
         team_result = await db.execute(select(Team).where(Team.id == s.team_id))
         team = team_result.scalar_one_or_none()
         if not team:
             continue
-        result.append(StandingResponse(
-            position=s.position,
-            team=TeamResponse.model_validate(team),
-            points=s.points,
-            played=s.played,
-            won=s.won,
-            drawn=s.drawn,
-            lost=s.lost,
-            goals_for=s.goals_for,
-            goals_against=s.goals_against,
-            goal_diff=s.goal_diff,
-            form=s.form,
-            xg_for=s.xg_for,
-            xg_against=s.xg_against,
-        ))
+        result.append(
+            StandingResponse(
+                position=s.position,
+                team=TeamResponse.model_validate(team),
+                points=s.points,
+                played=s.played,
+                won=s.won,
+                drawn=s.drawn,
+                lost=s.lost,
+                goals_for=s.goals_for,
+                goals_against=s.goals_against,
+                goal_diff=s.goal_diff,
+                form=s.form,
+                xg_for=s.xg_for,
+                xg_against=s.xg_against,
+            )
+        )
 
     return result
 
 
 # ── Sentiment ──────────────────────────────────────────────
 
+
 @router.get("/sentiment/{team_id}", response_model=list[SentimentResponse])
-async def get_team_sentiment(team_id: int, days: int = Query(7, ge=1, le=30), db: AsyncSession = Depends(get_db)):
+async def get_team_sentiment(
+    team_id: int, days: int = Query(7, ge=1, le=30), db: AsyncSession = Depends(get_db)
+):
     """Get sentiment analysis for a team over the last N days."""
     scores = await db_service.get_team_sentiment(db, team_id, days)
     return scores
@@ -431,8 +474,12 @@ async def get_match_sentiment(fixture_id: int, db: AsyncSession = Depends(get_db
     if not fixture:
         raise HTTPException(status_code=404, detail="Fixture not found")
 
-    home_sentiment = await db_service.get_team_sentiment(db, fixture.home_team_id, days=7)
-    away_sentiment = await db_service.get_team_sentiment(db, fixture.away_team_id, days=7)
+    home_sentiment = await db_service.get_team_sentiment(
+        db, fixture.home_team_id, days=7
+    )
+    away_sentiment = await db_service.get_team_sentiment(
+        db, fixture.away_team_id, days=7
+    )
 
     def avg_score(scores: list) -> float | None:
         if not scores:
@@ -481,7 +528,10 @@ async def trigger_task(
     }
 
     if task_name not in task_map:
-        raise HTTPException(status_code=400, detail=f"Unknown task. Choose from: {', '.join(task_map.keys())}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown task. Choose from: {', '.join(task_map.keys())}",
+        )
 
     result = celery_app.send_task(task_map[task_name])
     return {"status": "queued", "task_id": result.id, "task_name": task_name}
@@ -494,6 +544,7 @@ async def get_quota_status(user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.core.quota_manager import get_quota_manager
+
     quota = get_quota_manager()
     usage = await quota.get_all_usage()
     return {"quotas": usage}
@@ -516,7 +567,9 @@ async def debug_api_test(
 
     s = get_settings()
     key = s.api_football_key
-    key_status = f"{key[:4]}...{key[-4:]}" if len(key) > 8 else ("SET" if key else "EMPTY")
+    key_status = (
+        f"{key[:4]}...{key[-4:]}" if len(key) > 8 else ("SET" if key else "EMPTY")
+    )
 
     try:
         async with httpx.AsyncClient(
@@ -524,7 +577,9 @@ async def debug_api_test(
             headers=api_football.headers,
             timeout=30.0,
         ) as client:
-            resp = await client.get("/fixtures", params={"league": league_id, "season": season})
+            resp = await client.get(
+                "/fixtures", params={"league": league_id, "season": season}
+            )
             data = resp.json()
             return {
                 "api_key_status": key_status,
@@ -537,8 +592,12 @@ async def debug_api_test(
                 "paging": data.get("paging"),
                 "first_3": data.get("response", [])[:3],
                 "headers": {
-                    "x-ratelimit-requests-remaining": resp.headers.get("x-ratelimit-requests-remaining"),
-                    "x-ratelimit-requests-limit": resp.headers.get("x-ratelimit-requests-limit"),
+                    "x-ratelimit-requests-remaining": resp.headers.get(
+                        "x-ratelimit-requests-remaining"
+                    ),
+                    "x-ratelimit-requests-limit": resp.headers.get(
+                        "x-ratelimit-requests-limit"
+                    ),
                 },
             }
     except Exception as exc:
@@ -558,28 +617,119 @@ async def fix_league_metadata(
 
     LEAGUE_META = {
         # Match by slug OR display name (idempotent)
-        "premier_league": {"display": "Premier League", "logo_url": "https://crests.football-data.org/PL.png", "country": "England", "league_type": "league"},
-        "Premier League": {"display": "Premier League", "logo_url": "https://crests.football-data.org/PL.png", "country": "England", "league_type": "league"},
-        "la_liga": {"display": "La Liga", "logo_url": "https://crests.football-data.org/laliga.png", "country": "Spain", "league_type": "league"},
-        "La Liga": {"display": "La Liga", "logo_url": "https://crests.football-data.org/laliga.png", "country": "Spain", "league_type": "league"},
-        "serie_a": {"display": "Serie A", "logo_url": "https://crests.football-data.org/c111.png", "country": "Italy", "league_type": "league"},
-        "Serie A": {"display": "Serie A", "logo_url": "https://crests.football-data.org/c111.png", "country": "Italy", "league_type": "league"},
-        "bundesliga": {"display": "Bundesliga", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Germany", "league_type": "league"},
-        "Bundesliga": {"display": "Bundesliga", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Germany", "league_type": "league"},
-        "ligue_1": {"display": "Ligue 1", "logo_url": "https://crests.football-data.org/FL1.png", "country": "France", "league_type": "league"},
-        "Ligue 1": {"display": "Ligue 1", "logo_url": "https://crests.football-data.org/FL1.png", "country": "France", "league_type": "league"},
-        "champions_league": {"display": "Champions League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
-        "Champions League": {"display": "Champions League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
-        "europa_league": {"display": "Europa League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
-        "Europa League": {"display": "Europa League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
-        "conference_league": {"display": "Conference League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
-        "Conference League": {"display": "Conference League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
-        "allsvenskan": {"display": "Allsvenskan", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Sweden", "league_type": "league"},
-        "Allsvenskan": {"display": "Allsvenskan", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Sweden", "league_type": "league"},
+        "premier_league": {
+            "display": "Premier League",
+            "logo_url": "https://crests.football-data.org/PL.png",
+            "country": "England",
+            "league_type": "league",
+        },
+        "Premier League": {
+            "display": "Premier League",
+            "logo_url": "https://crests.football-data.org/PL.png",
+            "country": "England",
+            "league_type": "league",
+        },
+        "la_liga": {
+            "display": "La Liga",
+            "logo_url": "https://crests.football-data.org/laliga.png",
+            "country": "Spain",
+            "league_type": "league",
+        },
+        "La Liga": {
+            "display": "La Liga",
+            "logo_url": "https://crests.football-data.org/laliga.png",
+            "country": "Spain",
+            "league_type": "league",
+        },
+        "serie_a": {
+            "display": "Serie A",
+            "logo_url": "https://crests.football-data.org/c111.png",
+            "country": "Italy",
+            "league_type": "league",
+        },
+        "Serie A": {
+            "display": "Serie A",
+            "logo_url": "https://crests.football-data.org/c111.png",
+            "country": "Italy",
+            "league_type": "league",
+        },
+        "bundesliga": {
+            "display": "Bundesliga",
+            "logo_url": "https://crests.football-data.org/BL1.png",
+            "country": "Germany",
+            "league_type": "league",
+        },
+        "Bundesliga": {
+            "display": "Bundesliga",
+            "logo_url": "https://crests.football-data.org/BL1.png",
+            "country": "Germany",
+            "league_type": "league",
+        },
+        "ligue_1": {
+            "display": "Ligue 1",
+            "logo_url": "https://crests.football-data.org/FL1.png",
+            "country": "France",
+            "league_type": "league",
+        },
+        "Ligue 1": {
+            "display": "Ligue 1",
+            "logo_url": "https://crests.football-data.org/FL1.png",
+            "country": "France",
+            "league_type": "league",
+        },
+        "champions_league": {
+            "display": "Champions League",
+            "logo_url": "https://crests.football-data.org/CL.png",
+            "country": "Europe",
+            "league_type": "cup",
+        },
+        "Champions League": {
+            "display": "Champions League",
+            "logo_url": "https://crests.football-data.org/CL.png",
+            "country": "Europe",
+            "league_type": "cup",
+        },
+        "europa_league": {
+            "display": "Europa League",
+            "logo_url": "https://crests.football-data.org/CL.png",
+            "country": "Europe",
+            "league_type": "cup",
+        },
+        "Europa League": {
+            "display": "Europa League",
+            "logo_url": "https://crests.football-data.org/CL.png",
+            "country": "Europe",
+            "league_type": "cup",
+        },
+        "conference_league": {
+            "display": "Conference League",
+            "logo_url": "https://crests.football-data.org/CL.png",
+            "country": "Europe",
+            "league_type": "cup",
+        },
+        "Conference League": {
+            "display": "Conference League",
+            "logo_url": "https://crests.football-data.org/CL.png",
+            "country": "Europe",
+            "league_type": "cup",
+        },
+        "allsvenskan": {
+            "display": "Allsvenskan",
+            "logo_url": "https://crests.football-data.org/BL1.png",
+            "country": "Sweden",
+            "league_type": "league",
+        },
+        "Allsvenskan": {
+            "display": "Allsvenskan",
+            "logo_url": "https://crests.football-data.org/BL1.png",
+            "country": "Sweden",
+            "league_type": "league",
+        },
     }
 
     updated = []
     from sqlalchemy import select
+
     result = await db.execute(select(LeagueModel))
     leagues = list(result.scalars().all())
 
@@ -658,16 +808,26 @@ async def admin_sync_now(
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.services.football_data import (
-        football_data, FD_COMPETITIONS, FootballDataClient,
+        football_data,
+        FD_COMPETITIONS,
+        FootballDataClient,
     )
     from app.services.api_football import LEAGUE_IDS, PHASE_1_LEAGUES
     from app.services.db_service import (
-        upsert_fixtures_batch, get_league_by_api_id, upsert_league, upsert_standing,
+        upsert_fixtures_batch,
+        get_league_by_api_id,
+        upsert_league,
+        upsert_standing,
     )
     from app.services.tasks import _detect_season
 
     current_year = date.today().year
-    results = {"fixtures": {}, "standings": {}, "errors": [], "source": "football-data.org"}
+    results = {
+        "fixtures": {},
+        "standings": {},
+        "errors": [],
+        "source": "football-data.org",
+    }
 
     # Build reverse map
     fd_name_to_code = {v["name"]: code for code, v in FD_COMPETITIONS.items()}
@@ -678,15 +838,24 @@ async def admin_sync_now(
         league = await get_league_by_api_id(db, api_id)
         if not league:
             league = await upsert_league(
-                db, api_id=api_id, name=league_name, country=league_name,
+                db,
+                api_id=api_id,
+                name=league_name,
+                country=league_name,
                 logo_url=None,
-                league_type="cup" if league_name in ("champions_league", "europa_league", "conference_league") else "league",
+                league_type="cup"
+                if league_name
+                in ("champions_league", "europa_league", "conference_league")
+                else "league",
                 current_season=current_year,
             )
 
         fd_code = fd_name_to_code.get(league_name)
         if not fd_code:
-            results["fixtures"][league_name] = {"skipped": True, "reason": "Not in football-data.org"}
+            results["fixtures"][league_name] = {
+                "skipped": True,
+                "reason": "Not in football-data.org",
+            }
             continue
 
         try:
@@ -698,9 +867,15 @@ async def admin_sync_now(
             normalized = [n for n in normalized if n]
             if normalized:
                 count = await upsert_fixtures_batch(db, normalized, league)
-                results["fixtures"][league_name] = {"fetched": len(matches), "upserted": count}
+                results["fixtures"][league_name] = {
+                    "fetched": len(matches),
+                    "upserted": count,
+                }
             else:
-                results["fixtures"][league_name] = {"fetched": 0, "error": "empty after normalization"}
+                results["fixtures"][league_name] = {
+                    "fetched": 0,
+                    "error": "empty after normalization",
+                }
         except Exception as exc:
             results["errors"].append(f"{league_name}: {str(exc)}")
 
@@ -736,9 +911,13 @@ async def admin_sync_now(
 
 # ── Articles (AI Content Engine) ──────────────────────────
 
+
 @router.get("/articles", response_model=ArticleListResponse)
 async def list_articles(
-    article_type: str | None = Query(None, description="Filter by type: MATCH_PREVIEW, MATCH_REPORT, ROUND_SUMMARY, VALUE_BET_ALERT, NEWS_REWRITE"),
+    article_type: str | None = Query(
+        None,
+        description="Filter by type: MATCH_PREVIEW, MATCH_REPORT, ROUND_SUMMARY, VALUE_BET_ALERT, NEWS_REWRITE",
+    ),
     league_id: int | None = Query(None, description="Filter by league ID"),
     language: str | None = Query(None, description="Filter by language (e.g. sv)"),
     limit: int = Query(20, ge=1, le=100),
@@ -751,9 +930,14 @@ async def list_articles(
         try:
             a_type = ArticleType(article_type)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid type. Choose from: {[t.value for t in ArticleType]}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid type. Choose from: {[t.value for t in ArticleType]}",
+            )
 
-    articles = await db_service.get_articles(db, a_type, league_id, language, limit, offset)
+    articles = await db_service.get_articles(
+        db, a_type, league_id, language, limit, offset
+    )
     total = await db_service.count_articles(db, a_type, league_id)
     return ArticleListResponse(
         articles=[ArticleResponse.model_validate(a) for a in articles],
@@ -777,6 +961,7 @@ async def get_article(
 
 # ── Affiliate System ──────────────────────────────────────
 
+
 @router.get("/affiliate/links", response_model=list[AffiliateLinkResponse])
 async def get_affiliate_links(
     country: str = Query("SE", description="Country code (e.g. SE, UK)"),
@@ -797,6 +982,7 @@ async def record_click(
 ):
     """Record an affiliate link click (called by frontend before redirect)."""
     import hashlib
+
     ip = request.client.host if request.client else "unknown"
     ip_hash = hashlib.sha256(ip.encode()).hexdigest()[:16]
     ua = request.headers.get("user-agent", "")[:500]
@@ -827,6 +1013,7 @@ async def get_affiliate_stats(
 
 
 # ── Tipping League ────────────────────────────────────────
+
 
 @router.post("/tips", response_model=UserPredictionResponse)
 async def create_tip(
@@ -860,13 +1047,17 @@ async def get_my_tips(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the current user's tips."""
-    preds = await db_service.get_user_predictions(db, user.id, scored_only=scored_only, limit=limit)
+    preds = await db_service.get_user_predictions(
+        db, user.id, scored_only=scored_only, limit=limit
+    )
     return [UserPredictionWithFixture.model_validate(p) for p in preds]
 
 
 @router.get("/leaderboard", response_model=list[LeaderboardEntry])
 async def get_leaderboard(
-    days: int | None = Query(None, description="Filter by last N days (null = all time)"),
+    days: int | None = Query(
+        None, description="Filter by last N days (null = all time)"
+    ),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
@@ -893,6 +1084,7 @@ async def weekly_top_tipper(
 
 
 # ── Prediction Cards (M8) ─────────────────────────────────
+
 
 @router.get("/prediction-card/{fixture_id}")
 async def get_prediction_card(
@@ -941,7 +1133,9 @@ async def get_prediction_card(
     if vb:
         value_bet_text = f"{vb.bet_type} @{vb.odds:.2f} (edge: +{vb.edge:.1f}%)"
 
-    kickoff_str = fixture.kickoff.strftime("%Y-%m-%d %H:%M UTC") if fixture.kickoff else "TBD"
+    kickoff_str = (
+        fixture.kickoff.strftime("%Y-%m-%d %H:%M UTC") if fixture.kickoff else "TBD"
+    )
 
     image_bytes = generate_prediction_card(
         home_team=fixture.home_team,

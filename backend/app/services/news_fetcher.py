@@ -21,9 +21,15 @@ RSS_FEEDS: list[dict[str, str]] = [
     {"name": "Sky Sports Football", "url": "https://www.skysports.com/rss/12040"},
     {"name": "Goal.com", "url": "https://www.goal.com/feeds/en/news"},
     # Swedish sources
-    {"name": "SVT Sport Fotboll", "url": "https://www.svt.se/nyheter/sport/fotboll/rss.xml"},
+    {
+        "name": "SVT Sport Fotboll",
+        "url": "https://www.svt.se/nyheter/sport/fotboll/rss.xml",
+    },
     {"name": "Fotbollskanalen", "url": "https://www.fotbollskanalen.se/rss/"},
-    {"name": "Aftonbladet Sport", "url": "https://rss.aftonbladet.se/rss2/small/pages/sections/sportbladet/"},
+    {
+        "name": "Aftonbladet Sport",
+        "url": "https://rss.aftonbladet.se/rss2/small/pages/sections/sportbladet/",
+    },
     # European sources
     {"name": "UEFA", "url": "https://www.uefa.com/rssfeed/uefachampionsleague/rss.xml"},
     {"name": "Transfermarkt News", "url": "https://www.transfermarkt.com/rss/news"},
@@ -49,20 +55,32 @@ async def _fetch_feed(client: httpx.AsyncClient, feed: dict[str, str]) -> list[d
             desc_el = item.find("description")
             pub_date_el = item.find("pubDate")
 
-            title = title_el.text.strip() if title_el is not None and title_el.text else ""
-            description = desc_el.text.strip() if desc_el is not None and desc_el.text else ""
-            pub_date = pub_date_el.text.strip() if pub_date_el is not None and pub_date_el.text else ""
+            title = (
+                title_el.text.strip() if title_el is not None and title_el.text else ""
+            )
+            description = (
+                desc_el.text.strip() if desc_el is not None and desc_el.text else ""
+            )
+            pub_date = (
+                pub_date_el.text.strip()
+                if pub_date_el is not None and pub_date_el.text
+                else ""
+            )
 
             if title:
-                articles.append({
-                    "title": title,
-                    "description": _strip_html(description),
-                    "source": feed["name"],
-                    "pub_date": pub_date,
-                })
+                articles.append(
+                    {
+                        "title": title,
+                        "description": _strip_html(description),
+                        "source": feed["name"],
+                        "pub_date": pub_date,
+                    }
+                )
 
     except httpx.HTTPStatusError as exc:
-        logger.warning("rss_http_error", feed=feed["name"], status=exc.response.status_code)
+        logger.warning(
+            "rss_http_error", feed=feed["name"], status=exc.response.status_code
+        )
     except ET.ParseError:
         logger.warning("rss_parse_error", feed=feed["name"])
     except Exception as exc:
@@ -132,7 +150,8 @@ async def fetch_team_news(team_name: str) -> list[dict]:
 
     # Filter for articles mentioning this team
     matching = [
-        article for article in all_articles
+        article
+        for article in all_articles
         if _matches_team(
             f"{article['title']} {article['description']}",
             team_name,

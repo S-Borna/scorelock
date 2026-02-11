@@ -23,15 +23,17 @@ class TestTeamTracker:
     def _make_tracker_with_matches(self, count: int = 10) -> TeamTracker:
         tracker = TeamTracker()
         for i in range(count):
-            tracker.add_match(MatchRecord(
-                date=datetime(2025, 1, 1 + i),
-                opponent_id=100 + i,
-                is_home=(i % 2 == 0),
-                goals_for=2 if i % 3 == 0 else 1,
-                goals_against=0 if i % 4 == 0 else 1,
-                season=2025,
-                league_id=39,
-            ))
+            tracker.add_match(
+                MatchRecord(
+                    date=datetime(2025, 1, 1 + i),
+                    opponent_id=100 + i,
+                    is_home=(i % 2 == 0),
+                    goals_for=2 if i % 3 == 0 else 1,
+                    goals_against=0 if i % 4 == 0 else 1,
+                    season=2025,
+                    league_id=39,
+                )
+            )
         return tracker
 
     def test_form_returns_dict_with_keys(self) -> None:
@@ -117,16 +119,18 @@ class TestFeatureComputer:
     def _make_fixtures(self, count: int = 20) -> list[dict]:
         fixtures = []
         for i in range(count):
-            fixtures.append({
-                "fixture_id": i + 1,
-                "home_team_id": 1 if i % 2 == 0 else 2,
-                "away_team_id": 2 if i % 2 == 0 else 1,
-                "home_goals": (i % 3),
-                "away_goals": (i % 2),
-                "kickoff": datetime(2025, 1, 1 + i),
-                "season": 2025,
-                "league_id": 39,
-            })
+            fixtures.append(
+                {
+                    "fixture_id": i + 1,
+                    "home_team_id": 1 if i % 2 == 0 else 2,
+                    "away_team_id": 2 if i % 2 == 0 else 1,
+                    "home_goals": (i % 3),
+                    "away_goals": (i % 2),
+                    "kickoff": datetime(2025, 1, 1 + i),
+                    "season": 2025,
+                    "league_id": 39,
+                }
+            )
         return fixtures
 
     def test_training_dataset_shape(self) -> None:

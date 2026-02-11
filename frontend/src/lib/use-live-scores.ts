@@ -74,6 +74,7 @@ export function useLiveScores(initialFixtures?: Fixture[]) {
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
     const clockTimer = useRef<ReturnType<typeof setInterval>>();
+    const connectRef = useRef<(() => void) | null>(null);
 
     const connect = useCallback(() => {
         if (!WS_URL || typeof window === "undefined") return;
@@ -137,16 +138,20 @@ export function useLiveScores(initialFixtures?: Fixture[]) {
 
             ws.onclose = () => {
                 console.log("[ScoreLock] WebSocket closed, reconnecting in 5s");
-                reconnectTimer.current = setTimeout(connect, 5000);
+                reconnectTimer.current = setTimeout(() => connectRef.current?.(), 5000);
             };
 
             ws.onerror = () => {
                 ws.close();
             };
         } catch {
-            reconnectTimer.current = setTimeout(connect, 5000);
+            reconnectTimer.current = setTimeout(() => connectRef.current?.(), 5000);
         }
     }, []);
+
+    useEffect(() => {
+        connectRef.current = connect;
+    }, [connect]);
 
     // Client-side match clock — increment minute every 60s for live matches
     useEffect(() => {

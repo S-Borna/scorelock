@@ -106,21 +106,30 @@ async def live_scores(ws: WebSocket):
 
 # ── Helper for Celery tasks to publish updates ─────────────
 
-def publish_score_update(fixture_id: int, home_goals: int, away_goals: int,
-                         status: str, minute: int | None = None):
+
+def publish_score_update(
+    fixture_id: int,
+    home_goals: int,
+    away_goals: int,
+    status: str,
+    minute: int | None = None,
+):
     """Publish a score update to Redis pub/sub (called from sync Celery tasks).
 
     This uses synchronous Redis since Celery tasks run in sync context.
     """
     import redis
+
     r = redis.from_url(settings.redis_url, decode_responses=True)
-    payload = json.dumps({
-        "type": "score_update",
-        "fixture_id": fixture_id,
-        "home_goals": home_goals,
-        "away_goals": away_goals,
-        "status": status,
-        "minute": minute,
-    })
+    payload = json.dumps(
+        {
+            "type": "score_update",
+            "fixture_id": fixture_id,
+            "home_goals": home_goals,
+            "away_goals": away_goals,
+            "status": status,
+            "minute": minute,
+        }
+    )
     r.publish("scorelock:live", payload)
     r.close()

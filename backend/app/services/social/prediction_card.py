@@ -22,19 +22,21 @@ WIDTH = 1200
 HEIGHT = 630
 
 # Colors
-BG_COLOR = (15, 23, 42)       # slate-900
+BG_COLOR = (15, 23, 42)  # slate-900
 ACCENT_COLOR = (16, 185, 129)  # emerald-500
 TEXT_WHITE = (255, 255, 255)
-TEXT_GRAY = (148, 163, 184)    # slate-400
-VALUE_GOLD = (245, 158, 11)   # amber-500
+TEXT_GRAY = (148, 163, 184)  # slate-400
+VALUE_GOLD = (245, 158, 11)  # amber-500
 
 
 def _get_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     """Try to load a system font, fallback to default."""
     font_names = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        if bold
         else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+        if bold
         else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
     ]
     for font_path in font_names:
@@ -91,11 +93,15 @@ def generate_prediction_card(
         bar_height = 40
 
         # Background bar
-        draw.rectangle([(60, y_bar), (60 + bar_width, y_bar + bar_height)], fill=(30, 41, 59))
+        draw.rectangle(
+            [(60, y_bar), (60 + bar_width, y_bar + bar_height)], fill=(30, 41, 59)
+        )
 
         # Home segment
         home_w = int(bar_width * home_win_pct / 100)
-        draw.rectangle([(60, y_bar), (60 + home_w, y_bar + bar_height)], fill=ACCENT_COLOR)
+        draw.rectangle(
+            [(60, y_bar), (60 + home_w, y_bar + bar_height)], fill=ACCENT_COLOR
+        )
 
         # Draw segment
         if draw_pct:
@@ -106,9 +112,19 @@ def generate_prediction_card(
             )
 
         # Labels
-        draw.text((60, y_bar + bar_height + 8), f"H: {home_win_pct:.0f}%", fill=ACCENT_COLOR, font=font_small)
+        draw.text(
+            (60, y_bar + bar_height + 8),
+            f"H: {home_win_pct:.0f}%",
+            fill=ACCENT_COLOR,
+            font=font_small,
+        )
         if draw_pct:
-            draw.text((bar_width // 2, y_bar + bar_height + 8), f"D: {draw_pct:.0f}%", fill=TEXT_GRAY, font=font_small)
+            draw.text(
+                (bar_width // 2, y_bar + bar_height + 8),
+                f"D: {draw_pct:.0f}%",
+                fill=TEXT_GRAY,
+                font=font_small,
+            )
         if away_win_pct:
             bbox = draw.textbbox((0, 0), f"B: {away_win_pct:.0f}%", font=font_small)
             text_w = bbox[2] - bbox[0]
@@ -128,7 +144,9 @@ def generate_prediction_card(
     # ── Bottom brand bar ──
     draw.rectangle([(0, HEIGHT - 60), (WIDTH, HEIGHT)], fill=(30, 41, 59))
     draw.text((60, HEIGHT - 48), "ScoreLock", fill=ACCENT_COLOR, font=font_brand)
-    draw.text((250, HEIGHT - 42), "scorelock.saidborna.com", fill=TEXT_GRAY, font=font_small)
+    draw.text(
+        (250, HEIGHT - 42), "scorelock.saidborna.com", fill=TEXT_GRAY, font=font_small
+    )
 
     # ── Export ──
     buf = io.BytesIO()

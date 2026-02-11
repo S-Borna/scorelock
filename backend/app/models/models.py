@@ -2,8 +2,16 @@
 
 from datetime import datetime
 from sqlalchemy import (
-    String, Integer, Float, Boolean, DateTime, Text,
-    ForeignKey, UniqueConstraint, Index, Enum as SAEnum,
+    String,
+    Integer,
+    Float,
+    Boolean,
+    DateTime,
+    Text,
+    ForeignKey,
+    UniqueConstraint,
+    Index,
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
@@ -13,6 +21,7 @@ from app.core.database import Base
 
 
 # ── Enums ──────────────────────────────────────────────────
+
 
 class MatchStatus(str, enum.Enum):
     SCHEDULED = "scheduled"
@@ -39,6 +48,7 @@ class ArticleType(str, enum.Enum):
 
 # ── Users & Auth ───────────────────────────────────────────
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -55,10 +65,13 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    predictions_viewed: Mapped[list["PredictionView"]] = relationship(back_populates="user")
+    predictions_viewed: Mapped[list["PredictionView"]] = relationship(
+        back_populates="user"
+    )
 
 
 # ── Leagues & Teams ────────────────────────────────────────
+
 
 class League(Base):
     __tablename__ = "leagues"
@@ -100,6 +113,7 @@ class Team(Base):
 
 
 # ── Fixtures (Matches) ────────────────────────────────────
+
 
 class Fixture(Base):
     __tablename__ = "fixtures"
@@ -143,12 +157,11 @@ class Fixture(Base):
     odds: Mapped[list["Odds"]] = relationship(back_populates="fixture")
     predictions: Mapped[list["Prediction"]] = relationship(back_populates="fixture")
 
-    __table_args__ = (
-        Index("ix_fixture_kickoff_league", "kickoff", "league_id"),
-    )
+    __table_args__ = (Index("ix_fixture_kickoff_league", "kickoff", "league_id"),)
 
 
 # ── Odds ───────────────────────────────────────────────────
+
 
 class Odds(Base):
     __tablename__ = "odds"
@@ -172,12 +185,11 @@ class Odds(Base):
     # Relationships
     fixture: Mapped["Fixture"] = relationship(back_populates="odds")
 
-    __table_args__ = (
-        Index("ix_odds_fixture_bookmaker", "fixture_id", "bookmaker"),
-    )
+    __table_args__ = (Index("ix_odds_fixture_bookmaker", "fixture_id", "bookmaker"),)
 
 
 # ── ML Predictions ─────────────────────────────────────────
+
 
 class Prediction(Base):
     __tablename__ = "predictions"
@@ -217,12 +229,15 @@ class Prediction(Base):
 
 # ── Sentiment ──────────────────────────────────────────────
 
+
 class SentimentScore(Base):
     __tablename__ = "sentiment_scores"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
-    fixture_id: Mapped[int | None] = mapped_column(ForeignKey("fixtures.id"), index=True)
+    fixture_id: Mapped[int | None] = mapped_column(
+        ForeignKey("fixtures.id"), index=True
+    )
 
     score: Mapped[float] = mapped_column(Float)  # -1.0 (negative) to 1.0 (positive)
     buzz_score: Mapped[float] = mapped_column(Float)  # 0.0–1.0 (how much discussed)
@@ -234,6 +249,7 @@ class SentimentScore(Base):
 
 
 # ── Standings ──────────────────────────────────────────────
+
 
 class Standing(Base):
     __tablename__ = "standings"
@@ -272,6 +288,7 @@ class Standing(Base):
 
 # ── Usage Tracking (for freemium gating) ───────────────────
 
+
 class PredictionView(Base):
     __tablename__ = "prediction_views"
 
@@ -282,12 +299,11 @@ class PredictionView(Base):
 
     user: Mapped["User"] = relationship(back_populates="predictions_viewed")
 
-    __table_args__ = (
-        Index("ix_prediction_view_user_week", "user_id", "viewed_at"),
-    )
+    __table_args__ = (Index("ix_prediction_view_user_week", "user_id", "viewed_at"),)
 
 
 # ── Articles (AI-generated content) ───────────────────────
+
 
 class Article(Base):
     __tablename__ = "articles"
@@ -302,15 +318,21 @@ class Article(Base):
 
     # Linked entities (optional — not every article type has all)
     league_id: Mapped[int | None] = mapped_column(ForeignKey("leagues.id"), index=True)
-    fixture_id: Mapped[int | None] = mapped_column(ForeignKey("fixtures.id"), index=True)
+    fixture_id: Mapped[int | None] = mapped_column(
+        ForeignKey("fixtures.id"), index=True
+    )
     round: Mapped[str | None] = mapped_column(String(50))
 
     # Metadata
     tags: Mapped[list | None] = mapped_column(JSONB)
-    meta_data: Mapped[dict | None] = mapped_column(JSONB)  # model_version, prompt tokens, etc.
+    meta_data: Mapped[dict | None] = mapped_column(
+        JSONB
+    )  # model_version, prompt tokens, etc.
     auto_generated: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    published_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -327,15 +349,22 @@ class Article(Base):
 
 # ── Affiliate Links ───────────────────────────────────────
 
+
 class AffiliateLink(Base):
     __tablename__ = "affiliate_links"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    bookmaker: Mapped[str] = mapped_column(String(100), index=True)  # e.g. "bet365", "unibet"
-    bookmaker_display: Mapped[str] = mapped_column(String(100))  # e.g. "Bet365", "Unibet"
+    bookmaker: Mapped[str] = mapped_column(
+        String(100), index=True
+    )  # e.g. "bet365", "unibet"
+    bookmaker_display: Mapped[str] = mapped_column(
+        String(100)
+    )  # e.g. "Bet365", "Unibet"
     logo_url: Mapped[str | None] = mapped_column(String(500))
     base_url: Mapped[str] = mapped_column(String(1000))  # Affiliate URL with tracking
-    tracking_id: Mapped[str | None] = mapped_column(String(255))  # Our affiliate tracking ID
+    tracking_id: Mapped[str | None] = mapped_column(
+        String(255)
+    )  # Our affiliate tracking ID
     market: Mapped[str] = mapped_column(String(50), default="1X2")  # market type
     country: Mapped[str] = mapped_column(String(5), default="SE")  # SE, UK, etc.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
@@ -352,22 +381,29 @@ class AffiliateClick(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     link_id: Mapped[int] = mapped_column(ForeignKey("affiliate_links.id"), index=True)
-    fixture_id: Mapped[int | None] = mapped_column(ForeignKey("fixtures.id"), index=True)
+    fixture_id: Mapped[int | None] = mapped_column(
+        ForeignKey("fixtures.id"), index=True
+    )
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
-    page_source: Mapped[str | None] = mapped_column(String(100))  # "value-bets", "article", "match"
-    ip_hash: Mapped[str | None] = mapped_column(String(64))  # Hashed IP for analytics (GDPR)
+    page_source: Mapped[str | None] = mapped_column(
+        String(100)
+    )  # "value-bets", "article", "match"
+    ip_hash: Mapped[str | None] = mapped_column(
+        String(64)
+    )  # Hashed IP for analytics (GDPR)
     user_agent: Mapped[str | None] = mapped_column(String(500))
-    clicked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    clicked_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
 
     # Relationships
     link: Mapped["AffiliateLink"] = relationship(back_populates="clicks")
 
-    __table_args__ = (
-        Index("ix_affiliate_click_link_date", "link_id", "clicked_at"),
-    )
+    __table_args__ = (Index("ix_affiliate_click_link_date", "link_id", "clicked_at"),)
 
 
 # ── Tipping League (User Predictions) ─────────────────────
+
 
 class UserPrediction(Base):
     __tablename__ = "user_predictions"
@@ -377,11 +413,15 @@ class UserPrediction(Base):
     fixture_id: Mapped[int] = mapped_column(ForeignKey("fixtures.id"), index=True)
 
     predicted_outcome: Mapped[str] = mapped_column(String(5))  # "H", "D", "A"
-    predicted_home_goals: Mapped[int | None] = mapped_column(Integer)  # Exact score (optional)
+    predicted_home_goals: Mapped[int | None] = mapped_column(
+        Integer
+    )  # Exact score (optional)
     predicted_away_goals: Mapped[int | None] = mapped_column(Integer)
 
     # Scoring (filled after match finishes)
-    points_earned: Mapped[int | None] = mapped_column(Integer)  # 3=exact, 1=correct outcome, 0=wrong
+    points_earned: Mapped[int | None] = mapped_column(
+        Integer
+    )  # 3=exact, 1=correct outcome, 0=wrong
     was_correct_outcome: Mapped[bool | None] = mapped_column(Boolean)
     was_exact_score: Mapped[bool | None] = mapped_column(Boolean)
 

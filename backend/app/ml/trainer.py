@@ -102,7 +102,8 @@ def train_models(
         y_train, y_val = y_result.iloc[train_idx], y_result.iloc[val_idx]
 
         base_clf.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             eval_set=[(X_val, y_val)],
             verbose=False,
         )
@@ -160,10 +161,12 @@ def train_models(
         "result_model": result_model,
         "goals_model": goals_model,
         "metrics": metrics,
-        "feature_importances": dict(zip(
-            FEATURE_NAMES,
-            [round(float(v), 4) for v in base_clf.feature_importances_],
-        )),
+        "feature_importances": dict(
+            zip(
+                FEATURE_NAMES,
+                [round(float(v), 4) for v in base_clf.feature_importances_],
+            )
+        ),
     }
 
 
@@ -241,8 +244,8 @@ async def run_training_pipeline() -> dict:
     new_samples = new_metrics.get("training_samples", 0)
 
     should_save = (
-        not old_metrics                     # No old model → always save
-        or new_brier <= old_brier           # Better or equal calibration
+        not old_metrics  # No old model → always save
+        or new_brier <= old_brier  # Better or equal calibration
         or new_samples > old_samples * 1.1  # 10%+ more training data
     )
 
@@ -265,6 +268,7 @@ async def run_training_pipeline() -> dict:
         # Reload the predictor singleton
         try:
             from app.ml.predictor import reload_predictor
+
             reload_predictor()
             logger.info("predictor_reloaded", version=version)
         except Exception as exc:
@@ -297,6 +301,7 @@ async def run_training_pipeline() -> dict:
 
 if __name__ == "__main__":
     import sys
+
     result = asyncio.run(run_training_pipeline())
     print(json.dumps(result, indent=2))
     sys.exit(0 if result.get("status") == "ok" else 1)

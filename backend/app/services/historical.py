@@ -168,6 +168,7 @@ async def fetch_historical_standings(
 
 # ── CLI entry point ────────────────────────────────────────
 
+
 async def main() -> None:
     """Fetch all historical data (fixtures + standings)."""
     import sys

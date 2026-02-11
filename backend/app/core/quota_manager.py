@@ -25,22 +25,22 @@ logger = structlog.get_logger()
 
 QUOTA_LIMITS: dict[str, dict] = {
     "api_football": {
-        "limit": 100,          # 100 requests/day (free plan)
+        "limit": 100,  # 100 requests/day (free plan)
         "period": "daily",
         "hard_stop_pct": 0.90,  # Stop at 90 calls
     },
     "football_data": {
-        "limit": 10,           # 10 requests/minute (free plan)
+        "limit": 10,  # 10 requests/minute (free plan)
         "period": "minute",
         "hard_stop_pct": 0.90,
     },
     "football_data_daily": {
-        "limit": 14400,        # ~10/min * 1440min = theoretical daily max
+        "limit": 14400,  # ~10/min * 1440min = theoretical daily max
         "period": "daily",
         "hard_stop_pct": 0.95,
     },
     "the_odds_api": {
-        "limit": 500,          # 500 requests/month (free plan)
+        "limit": 500,  # 500 requests/month (free plan)
         "period": "monthly",
         "hard_stop_pct": 0.90,
     },
@@ -64,9 +64,9 @@ def _redis_key(source: str, period: str) -> str:
 def _ttl_seconds(period: str) -> int:
     """TTL for the Redis key."""
     if period == "minute":
-        return 120       # 2 minutes (buffer)
+        return 120  # 2 minutes (buffer)
     elif period == "daily":
-        return 90_000    # 25 hours (buffer)
+        return 90_000  # 25 hours (buffer)
     elif period == "monthly":
         return 2_700_000  # ~31 days
     return 90_000

@@ -49,8 +49,14 @@ LEAGUE_IDS = {
 }
 
 PHASE_1_LEAGUES = [
-    "premier_league", "la_liga", "serie_a", "bundesliga",
-    "allsvenskan", "champions_league", "europa_league", "conference_league",
+    "premier_league",
+    "la_liga",
+    "serie_a",
+    "bundesliga",
+    "allsvenskan",
+    "champions_league",
+    "europa_league",
+    "conference_league",
 ]
 
 
@@ -169,9 +175,7 @@ class APIFootballClient:
 
     async def get_standings(self, league_id: int, season: int) -> list[dict]:
         """Get league standings."""
-        data = await self._get(
-            "/standings", {"league": league_id, "season": season}
-        )
+        data = await self._get("/standings", {"league": league_id, "season": season})
         results = data.get("response", [])
         if results:
             return results[0].get("league", {}).get("standings", [[]])[0]

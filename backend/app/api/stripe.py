@@ -21,6 +21,7 @@ router = APIRouter(prefix="/stripe", tags=["stripe"])
 
 # ── Create Checkout Session ────────────────────────────────
 
+
 @router.post("/checkout")
 async def create_checkout_session(
     tier: str,
@@ -34,7 +35,9 @@ async def create_checkout_session(
     }
     price_id = price_map.get(tier)
     if not price_id:
-        raise HTTPException(status_code=400, detail="Invalid tier. Choose 'pro' or 'elite'.")
+        raise HTTPException(
+            status_code=400, detail="Invalid tier. Choose 'pro' or 'elite'."
+        )
 
     # Create or reuse Stripe customer (run sync Stripe call in thread)
     if not user.stripe_customer_id:
@@ -62,6 +65,7 @@ async def create_checkout_session(
 
 # ── Customer Portal ────────────────────────────────────────
 
+
 @router.post("/portal")
 async def create_portal_session(
     user: User = Depends(get_current_user),
@@ -80,6 +84,7 @@ async def create_portal_session(
 
 
 # ── Webhook ────────────────────────────────────────────────
+
 
 @router.post("/webhook", include_in_schema=False)
 async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):

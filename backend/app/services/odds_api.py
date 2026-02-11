@@ -62,9 +62,9 @@ API_FOOTBALL_TO_SPORT_KEY: dict[int, str] = {
 }
 
 # Market keys
-MARKET_H2H = "h2h"           # 1X2 (head-to-head)
-MARKET_TOTALS = "totals"     # Over/Under
-MARKET_SPREADS = "spreads"   # Asian Handicap
+MARKET_H2H = "h2h"  # 1X2 (head-to-head)
+MARKET_TOTALS = "totals"  # Over/Under
+MARKET_SPREADS = "spreads"  # Asian Handicap
 
 # Regions to fetch (EU bookmakers most relevant)
 DEFAULT_REGIONS = "eu,uk"
@@ -280,6 +280,7 @@ class OddsAPIClient:
 
 class QuotaExhaustedError(Exception):
     """Raised when API quota is exhausted."""
+
     pass
 
 
