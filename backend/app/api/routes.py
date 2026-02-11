@@ -545,6 +545,47 @@ async def debug_api_test(
         return {"error": str(exc)}
 
 
+@router.post("/admin/fix-league-metadata")
+async def fix_league_metadata(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """One-shot: update league display names, logos, and countries."""
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from app.models.models import League as LeagueModel
+
+    LEAGUE_META = {
+        "premier_league": {"display": "Premier League", "logo_url": "https://crests.football-data.org/PL.png", "country": "England", "league_type": "league"},
+        "la_liga": {"display": "La Liga", "logo_url": "https://crests.football-data.org/laliga.png", "country": "Spain", "league_type": "league"},
+        "serie_a": {"display": "Serie A", "logo_url": "https://crests.football-data.org/c111.png", "country": "Italy", "league_type": "league"},
+        "bundesliga": {"display": "Bundesliga", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Germany", "league_type": "league"},
+        "ligue_1": {"display": "Ligue 1", "logo_url": "https://crests.football-data.org/FL1.png", "country": "France", "league_type": "league"},
+        "champions_league": {"display": "Champions League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
+        "europa_league": {"display": "Europa League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
+        "conference_league": {"display": "Conference League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
+        "allsvenskan": {"display": "Allsvenskan", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Sweden", "league_type": "league"},
+    }
+
+    updated = []
+    from sqlalchemy import select
+    result = await db.execute(select(LeagueModel))
+    leagues = list(result.scalars().all())
+
+    for league in leagues:
+        meta = LEAGUE_META.get(league.name)
+        if meta:
+            league.logo_url = meta["logo_url"]
+            league.country = meta["country"]
+            league.league_type = meta["league_type"]
+            league.name = meta["display"]
+            updated.append(meta["display"])
+
+    await db.commit()
+    return {"updated": updated}
+
+
 @router.get("/admin/debug/db-stats")
 async def debug_db_stats(
     user: User = Depends(get_current_user),
