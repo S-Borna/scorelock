@@ -1,43 +1,41 @@
 [deployment]
 # ── ScoreLock Deployment Notes ───────────────────────────
 # Domain:       scorelock.saidborna.com
-# Backend:      Railway PRO ($20/mo)
-# Frontend:     Vercel (Free/Pro)
+# Platform:     Railway PRO (allt — backend + frontend)
 # CDN/DNS:      Cloudflare (Free)
 #
 # ── Architecture ─────────────────────────────────────────
 #
 #   Client → Cloudflare (DNS + CDN + SSL)
-#            ├── scorelock.saidborna.com   → Vercel (Next.js SSR)
-#            │   └── /api/*               → rewrites to Railway backend
-#            └── api.scorelock.saidborna.com → Railway (FastAPI) [optional]
+#            └── scorelock.saidborna.com → Railway
+#                ├── scorelock-frontend  (Next.js standalone)
+#                ├── scorelock-api       (FastAPI)
+#                ├── scorelock-worker    (Celery worker)
+#                ├── scorelock-beat      (Celery beat)
+#                ├── PostgreSQL          (managed)
+#                └── Redis               (managed)
 #
-# ── Railway Services (3 services) ─────────────────────────
-#   1. scorelock-api    — FastAPI (uvicorn), auto-runs migrations
-#   2. scorelock-worker — Celery worker (data pipeline + ML + content)
-#   3. scorelock-beat   — Celery beat (13 scheduled tasks)
-#   4. PostgreSQL       — Railway managed (auto daily backups)
-#   5. Redis            — Railway managed
+# ── Railway Services (4 services + 2 managed) ────────────
+#   1. scorelock-api      — FastAPI (uvicorn), auto-runs migrations
+#   2. scorelock-worker   — Celery worker (data pipeline + ML + content)
+#   3. scorelock-beat     — Celery beat (13 scheduled tasks)
+#   4. scorelock-frontend — Next.js standalone (node server.js)
+#   5. PostgreSQL         — Railway managed (auto daily backups)
+#   6. Redis              — Railway managed
 #
 # Config files:
-#   - railway.json       → API service
-#   - railway-worker.json → worker service
-#   - railway-beat.json  → beat service
-#
-# ── Vercel (frontend) ────────────────────────────────────
-#   - Connected to GitHub repo, auto-deploys on push to main
-#   - vercel.json in frontend/ configures:
-#     - API rewrites → Railway backend
-#     - Security headers (X-Frame-Options, CSP, etc.)
-#     - Region: arn1 (Stockholm)
+#   - railway.json          → API service
+#   - railway-worker.json   → worker service
+#   - railway-beat.json     → beat service
+#   - railway-frontend.json → frontend service
 #
 # ── Cloudflare Setup ─────────────────────────────────────
-#   - DNS: CNAME scorelock → cname.vercel-dns.com
+#   - DNS: CNAME scorelock.saidborna.com → Railway frontend custom domain
 #   - SSL: Full (Strict) mode
 #   - Proxy: enabled (orange cloud)
 #
-# ── Environment Variables (Railway) ──────────────────────
-#   Required in Railway dashboard for ALL 3 services:
+# ── Environment Variables (Railway — Backend services) ───
+#   Required in Railway dashboard for API + worker + beat:
 #   - ENVIRONMENT=production
 #   - DATABASE_URL=postgresql+asyncpg://...  (from Railway PostgreSQL)
 #   - REDIS_URL=redis://...                  (from Railway Redis)
@@ -54,18 +52,17 @@
 #   - CORS_ORIGINS=https://scorelock.saidborna.com
 #   - BASE_URL=https://scorelock.saidborna.com
 #
-# ── Environment Variables (Vercel) ───────────────────────
+# ── Environment Variables (Railway — Frontend service) ───
+#   Required in Railway dashboard for scorelock-frontend:
 #   - NEXT_PUBLIC_API_URL=https://scorelock.saidborna.com
 #   - NEXT_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
+#   - PORT=3000  (Railway sets this automatically)
 #
 # ── GitHub Secrets ───────────────────────────────────────
 #   - RAILWAY_TOKEN       → Railway deploy token
 #   - SENTRY_AUTH_TOKEN   → Sentry CI token (optional)
 #   - SENTRY_ORG          → Sentry org slug
 #   - SENTRY_PROJECT      → Sentry project slug
-#   - VERCEL_TOKEN        → Vercel deploy token (optional, auto-deploy preferred)
-#   - VERCEL_ORG_ID       → Vercel org ID
-#   - VERCEL_PROJECT_ID   → Vercel project ID
 #
 # ── Monitoring ───────────────────────────────────────────
 #   - Sentry:  error tracking + performance (backend + frontend)
@@ -78,8 +75,7 @@
 #   - Local:  ./infra/backup-db.sh (or: make backup)
 #
 # ── Estimated Monthly Cost ───────────────────────────────
-#   Railway PRO:          $20/mo (3 services + PG + Redis)
-#   Vercel:               $0/mo (Free plan sufficient for launch)
+#   Railway PRO:          $20/mo (4 services + PG + Redis)
 #   Cloudflare:           $0/mo (Free plan)
 #   API-Football Ultra:   $29/mo
 #   Anthropic (Claude):   ~$21/mo

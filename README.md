@@ -61,7 +61,7 @@ The most accessible analytics tool for football enthusiasts and semi-professiona
 | **AI Content** | Anthropic Claude (5 article types, Swedish) |
 | **Frontend** | Next.js 16 + TypeScript + Tailwind CSS |
 | **Realtime** | WebSockets via FastAPI |
-| **Infrastructure** | Docker, GitHub Actions, Railway → AWS/GCP |
+| **Infrastructure** | Docker, GitHub Actions, Railway + Cloudflare |
 | **Monitoring** | Prometheus + Grafana |
 | **Payments** | Stripe |
 
@@ -134,7 +134,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - **M4** ✅ Frontend: article-first design, 14 routes, Swedish, SEO, loading states
 - **M5** ✅ Affiliate integration: Bet365, Unibet, Betsson, LeoVegas — CTA, click tracking, disclaimer
 - **M6** ✅ Tipping League: AI vs You, leaderboards, social sharing
-- **M7** ✅ Deploy + Launch: Railway, Vercel, Sentry, GDPR, smoke tests, backups
+- **M7** ✅ Deploy + Launch: Railway (allt), Cloudflare, Sentry, GDPR, smoke tests, backups
 - **M8** — Distribution: Twitter bot, push notifications, Reddit, Discord, Telegram
 
 **Progress: 67/67 tasks (100% dev)**
@@ -148,9 +148,8 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 
 **M7 — Deploy + Launch (11/11 ✅)**
 
-- Railway deploy configs: `railway.json` (API med auto `alembic upgrade head`), `railway-worker.json` (Celery worker), `railway-beat.json` (Celery beat)
-- Vercel deploy config: `vercel.json` med `arn1` (Stockholm), security headers, API rewrites
-- CI/CD pipeline: GitHub Actions split deploy (Railway backend + Vercel frontend), smoke test, Sentry release
+- Railway deploy configs: `railway.json` (API med auto `alembic upgrade head`), `railway-worker.json` (Celery worker), `railway-beat.json` (Celery beat), `railway-frontend.json` (Next.js standalone)
+- CI/CD pipeline: GitHub Actions → Railway deploy (4 services), smoke test, Sentry release
 - Enhanced `/health` endpoint: DB connectivity check (`SELECT 1`), Redis ping, degraded status support
 - Sentry error monitoring: backend via `sentry-sdk[fastapi]` (traces, PII-off), frontend via `@sentry/react` (client-only)
   - Anmärkning: `@sentry/nextjs` v8 är inkompatibel med Next.js 16 Turbopack (60s build timeout) — bytt till `@sentry/react`

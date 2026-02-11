@@ -420,7 +420,7 @@ Delningsfunktion fungerar. ✅ Uppfyllt.
 |---|------|-------------------|----------|--------|
 | 7.1 | Railway deploy: backend + worker + beat | FastAPI + Celery live, health check OK | M1–M6 | ✅ |
 | 7.2 | Railway: PostgreSQL + Redis | Managed services provisioned, migrerade | 7.1 | ✅ |
-| 7.3 | Frontend deploy (Vercel eller Cloudflare Pages) | Next.js SSR live, API proxy konfigurerad | 7.1 | ✅ |
+| 7.3 | Frontend deploy (Railway) | Next.js standalone live, API proxy via Cloudflare | 7.1 | ✅ |
 | 7.4 | Custom domain `scorelock.saidborna.com` | DNS via Cloudflare, HTTPS enforced, SSL Full (Strict) | 7.1 | ✅ |
 | 7.5 | Stripe webhook i produktion | Live URL i Stripe dashboard, events verifierade | 7.4 | ✅ |
 | 7.6 | Environment variables i prod | Alla secrets i Railway dashboard, `.env` ej deployed | 7.1 | ✅ |
