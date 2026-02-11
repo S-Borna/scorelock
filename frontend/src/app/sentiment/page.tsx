@@ -85,8 +85,8 @@ export default async function SentimentPage() {
             <div className="mt-10 card bg-gray-900/50">
                 <h3 className="text-sm font-semibold text-gray-400 mb-2">Så fungerar det</h3>
                 <p className="text-sm text-gray-500">
-                    Sentimentanalys drivs av AI som dagligen analyserar nyhetsartiklar och sociala medier 
-                    relaterade till varje lag. Poängen spänner från −1.0 (mycket negativt) till +1.0 (mycket positivt). 
+                    Sentimentanalys drivs av AI som dagligen analyserar nyhetsartiklar och sociala medier
+                    relaterade till varje lag. Poängen spänner från −1.0 (mycket negativt) till +1.0 (mycket positivt).
                     Buzz-poängen mäter volymen av omnämnanden.
                 </p>
             </div>

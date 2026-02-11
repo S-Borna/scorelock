@@ -17,16 +17,16 @@
 |-----------|--------|----------|------------|
 | **M1 — Data Pipeline** | ✅ Komplett | 10/10 tasks | — |
 | **M2 — ML Predictions** | ✅ Komplett | 10/10 tasks | — |
-| **M3 — AI Content Engine** | ❌ Ej påbörjad | 0/9 tasks | Första prio nu! |
-| **M4 — Frontend** | 🔄 Scaffold klar | 1/14 tasks | npm install + koppla till riktig data |
-| **M5 — Affiliate** | ❌ Ej påbörjad | 0/6 tasks | Väntar på M4 |
-| **M6 — Tipping League** | ❌ Ej påbörjad | 0/7 tasks | Väntar på M4 |
+| **M3 — AI Content Engine** | ✅ Komplett | 9/9 tasks | — |
+| **M4 — Frontend** | ✅ Komplett | 14/14 tasks | — |
+| **M5 — Affiliate** | ❌ Ej påbörjad | 0/6 tasks | Första prio nu! |
+| **M6 — Tipping League** | ❌ Ej påbörjad | 0/7 tasks | Väntar på M5 |
 | **M7 — Deploy + Launch** | ❌ Ej påbörjad | 0/11 tasks | Väntar på M1–M6 |
 | **M8 — Distribution** | ❌ Ej påbörjad | 0/8 tasks | Väntar på M7 |
 | **PL1 — Polish** | ❌ Post-launch | — | — |
 | **PL2 — Expansion** | ❌ Post-launch | — | — |
 | **PL3 — Multi-Sport** | ❌ Post-launch | — | — |
-| | | **20/67 tasks** | **~30% total progress** |
+| | | **43/67 tasks** | **~64% total progress** |
 
 ---
 
@@ -153,17 +153,11 @@ för extra funktioner.
 
 | Gap | Blockerar |
 |-----|-----------|
-| Standings (0 rader) | Standings-sidan, artikeldata |
-| Upcoming fixtures (0 rader) | Predictions, previews, value bets |
-| Predictions (0 rader) | Allt prediction-relaterat |
-| Odds (0 rader) | Value bet detection, affiliate-länkar |
-| **AI Content Engine** | Hela USP:en — artiklar, matchreferat, previews |
-| **Svenska RSS-källor** | SVT Sport, Fotbollskanalen, Aftonbladet |
-| **Articles-tabell** | DB-schema för artikellagring |
-| **Frontend med riktig data** | Användare ser ingenting |
 | **Affiliate-integration** | Noll intäkter |
+| **Tipping League** | Retention + viralt / social loop |
 | Production deployment | Ingen publik site |
 | Distribution | Inga användare |
+| GDPR-compliance | Cookie consent, privacy policy |
 
 ---
 
@@ -324,15 +318,15 @@ och som fallback. Aldrig bränn hela kvoten på scheduled tasks igen.
 
 | # | Task | Definition of Done | Beroende | Status |
 |---|------|-------------------|----------|--------|
-| 3.1 | `articles`-tabell + Alembic-migration | Kolumner: type, league_id, fixture_id, slug, title, body, summary, tags, language, published_at, auto_generated | — | ❌ |
-| 3.2 | Article Generator service (`content_generator.py`) | Claude API-integration med prompt-templates per artikeltyp | — | ❌ |
-| 3.3 | **Match Preview Generator** | AI skriver förhandsanalys: form, H2H, skador, tabell, prognos med motivering (400-600 ord, svenska) | M2 + 3.2 | ❌ |
-| 3.4 | **Match Report Generator** | AI skriver matchreferat: mål, nyckelmoment, tabellpåverkan (300-500 ord, svenska) | M1 + 3.2 | ❌ |
-| 3.5 | **Round Summary Generator** | Omgångens berättelse: hjälte, besvikelse, tabellanalys, förhandsblick (800-1200 ord, svenska) | M1 + 3.2 | ❌ |
-| 3.6 | **Value Bet Article Generator** | AI analyserar dagens value bets: odds, fair prob, edge, motivering + disclaimer (300-400 ord) | M2 + 3.2 | ❌ |
-| 3.7 | **News Rewriter** | Engelska RSS-artiklar omskrivs till original svensk text (ej översättning — omskrivning) | 3.2 | ❌ |
-| 3.8 | Celery tasks för content-generation | Auto: previews (dag före), reports (2h efter), roundups (efter omgång), value bets (dagligen), news rewrites (löpande) | 3.3–3.7 | ❌ |
-| 3.9 | Article API endpoints | `GET /articles`, `GET /articles/{slug}`, filter: `?type=&league_id=&round=&language=` | 3.1 | ❌ |
+| 3.1 | ~~`articles`-tabell + Alembic-migration~~ | ~~Kolumner: type, league_id, fixture_id, slug, title, body, summary, tags, language, published_at, auto_generated~~ | — | ✅ Klar (Session 4) |
+| 3.2 | ~~Article Generator service (`content_generator.py`)~~ | ~~Claude API-integration med prompt-templates per artikeltyp, 738 rader~~ | — | ✅ Klar (Session 4) |
+| 3.3 | ~~**Match Preview Generator**~~ | ~~AI skriver förhandsanalys: form, H2H, skador, tabell, prognos med motivering (400-600 ord, svenska)~~ | M2 + 3.2 | ✅ Klar (Session 4) |
+| 3.4 | ~~**Match Report Generator**~~ | ~~AI skriver matchreferat: mål, nyckelmoment, tabellpåverkan (300-500 ord, svenska)~~ | M1 + 3.2 | ✅ Klar (Session 4) |
+| 3.5 | ~~**Round Summary Generator**~~ | ~~Omgångens berättelse: hjälte, besvikelse, tabellanalys, förhandsblick (800-1200 ord, svenska)~~ | M1 + 3.2 | ✅ Klar (Session 4) |
+| 3.6 | ~~**Value Bet Article Generator**~~ | ~~AI analyserar dagens value bets: odds, fair prob, edge, motivering + disclaimer (300-400 ord)~~ | M2 + 3.2 | ✅ Klar (Session 4) |
+| 3.7 | ~~**News Rewriter**~~ | ~~Engelska RSS-artiklar omskrivs till original svensk text (ej översättning — omskrivning)~~ | 3.2 | ✅ Klar (Session 4) |
+| 3.8 | ~~Celery tasks för content-generation~~ | ~~5 tasks + Beat-schema: previews (dag före), reports (2h efter), roundups (söndag), value bets (dagligen), news rewrites (var 4h)~~ | 3.3–3.7 | ✅ Klar (Session 4) |
+| 3.9 | ~~Article API endpoints~~ | ~~`GET /articles`, `GET /articles/{slug}`, filter: `?type=&league_id=&round=&language=`~~ | 3.1 | ✅ Klar (Session 4) |
 
 **Automatiskt schema:**
 
@@ -354,20 +348,20 @@ Löpande           →  News Rewrites vid nya RSS-artiklar
 
 | # | Task | Definition of Done | Beroende | Status |
 |---|------|-------------------|----------|--------|
-| 4.1 | `npm install` + dev server fungerar | `localhost:3000` utan errors | — | ❌ |
-| 4.2 | **Startsida = artikel-feed** | Senaste artiklarna med typ-ikon, liga, datum — INTE en siffror-dashboard | M3 | ❌ |
-| 4.3 | **Artikelsida** `/articles/[slug]` | Full text, relaterade matcher, affiliate-CTA vid value bets | M3 | ❌ |
-| 4.4 | **Matchlista** `/matches` | Dagens + kommande med mini-prediktion inline | M2 | ❌ |
-| 4.5 | **Matchdetalj** `/matches/[id]` | H2H, form, prediktion, odds, preview-artikel, sentiment | M2 + M3 | ❌ |
-| 4.6 | **Value Bets** `/value-bets` | Edge %, Kelly, "Bästa odds hos X" med affiliate-länk | M2 | ❌ |
-| 4.7 | **Standings** `/standings` | Ligatabell per liga, klickbara lag | M1 | ❌ |
-| 4.8 | **Omgångssida** `/rounds/[league]/[round]` | Alla matcher + AI round summary | M3 | ❌ |
-| 4.9 | **Sentiment-dashboard** | Per-team sentiment, trendkurva, match context | M2.5 | ❌ |
-| 4.10 | Responsiv design (mobile-first) | Testat 375px (iPhone SE) + 768px + 1440px | 4.2–4.9 | ❌ |
-| 4.11 | SEO | Unika `<title>`, `<meta description>`, OG-tags, `sitemap.xml`, `robots.txt` per sida | 4.3 | ❌ |
-| 4.12 | Auth-flöde | Login, signup, logout, auth state i header, protected routes | — | 🔄 Scaffold klar (Session 3) |
-| 4.13 | Loading + error states | Skeleton loaders, error boundaries, empty states, retry | 4.2–4.9 | ❌ |
-| 4.14 | Branding | Favicon, OG-bild, logo, meta-tags, professionellt intryck | — | ❌ |
+| 4.1 | ~~`npm install` + dev server fungerar~~ | ~~Next.js 16.1.6, Turbopack, `localhost:3000` — 0 vulnerabilities~~ | — | ✅ Klar (Session 4) |
+| 4.2 | ~~**Startsida = artikel-feed**~~ | ~~ArticleCard-grid (featured first), upcoming matches, feature cards — allt på svenska~~ | M3 | ✅ Klar (Session 4) |
+| 4.3 | ~~**Artikelsida** `/articles/[slug]`~~ | ~~ReactMarkdown body, SEO metadata, relaterade artiklar, fixture-länk, value bet CTA~~ | M3 | ✅ Klar (Session 4) |
+| 4.4 | ~~**Matchlista** `/matches`~~ | ~~Kommande + avslutade med svenska etiketter~~ | M2 | ✅ Klar (Session 4) |
+| 4.5 | ~~**Matchdetalj** `/matches/[id]`~~ | ~~Prediktion, odds, relaterade artiklar, sentiment-sidebar, svenska~~ | M2 + M3 | ✅ Klar (Session 4) |
+| 4.6 | ~~**Value Bets** `/value-bets`~~ | ~~Edge %, Kelly, modell-sannolikhet, ansvarsfull-spelning-varning~~ | M2 | ✅ Klar (Session 4) |
+| 4.7 | ~~**Standings** `/standings`~~ | ~~Ligatabell per liga, form-indikator, svenska kolumnnamn~~ | M1 | ✅ Klar (Session 4) |
+| 4.8 | ~~**Omgångssida** `/rounds/[league]/[round]`~~ | ~~Alla matcher + AI round summary-artikel, breadcrumbs~~ | M3 | ✅ Klar (Session 4) |
+| 4.9 | ~~**Sentiment-dashboard** `/sentiment`~~ | ~~Per-team sentiment + buzz per liga, bar-visualisering, AI-summaries~~ | M2.5 | ✅ Klar (Session 4) |
+| 4.10 | ~~Responsiv design~~ | ~~Mobile hamburger-meny, grid-breakpoints, mobile-first~~ | 4.2–4.9 | ✅ Klar (Session 4) |
+| 4.11 | ~~SEO~~ | ~~Unika `<title>`, `<meta>`, OG-tags, `sitemap.xml`, `robots.txt` per sida~~ | 4.3 | ✅ Klar (Session 4) |
+| 4.12 | ~~Auth-flöde~~ | ~~Login + signup på svenska, validation, auto-login efter registrering~~ | — | ✅ Klar (Session 4) |
+| 4.13 | ~~Loading + error states~~ | ~~Skeleton loaders per rutt, 404-sida, global-error, empty states~~ | 4.2–4.9 | ✅ Klar (Session 4) |
+| 4.14 | ~~Branding~~ | ~~OG-bild, meta-tags, favicon, `lang="sv"`, professionellt intryck~~ | — | ✅ Klar (Session 4) |
 
 **Exit Criteria**: En icke-teknisk person kan öppna sajten, läsa artiklar, se prediktioner
 och standings, och förstå vad ScoreLock är — på mobil och desktop.
@@ -688,5 +682,5 @@ Vecka 1      Vecka 2      Vecka 3       Vecka 4      Vecka 5     Vecka 6     Vec
 
 ---
 
-*Senast uppdaterad: 2026-02-11 — Session 3*
+*Senast uppdaterad: 2026-02-11 — Session 4 (M1–M4 complete)*
 *Källdokument: PROJECT_BLUEPRINT.md + ROADMAP v1 + ROADMAP v2*
