@@ -1,9 +1,7 @@
 "use client";
 
 import { useLocale } from "@/components/locale-provider";
-import { ArticleCard } from "@/components/article-card";
-import { MatchCard } from "@/components/match-card";
-import type { Article, Fixture, Prediction, ValueBet, WeeklyTopTipper } from "@/lib/types";
+import type { Article, Fixture, League, Prediction, ValueBet, WeeklyTopTipper } from "@/lib/types";
 import Link from "next/link";
 
 interface HomeContentProps {
@@ -15,6 +13,16 @@ interface HomeContentProps {
     weeklyTop: WeeklyTopTipper | null;
 }
 
+const LEAGUE_ORDER: Record<string, number> = {
+    "Premier League": 1, "premier_league": 1,
+    "La Liga": 2, "la_liga": 2,
+    "Serie A": 3, "serie_a": 3,
+    "Bundesliga": 4, "bundesliga": 4,
+    "Ligue 1": 5, "ligue_1": 5,
+    "Champions League": 6, "champions_league": 6,
+    "Allsvenskan": 7, "allsvenskan": 7,
+};
+
 export function HomeContent({
     articles,
     fixtures,
@@ -25,257 +33,186 @@ export function HomeContent({
 }: HomeContentProps) {
     const { t } = useLocale();
 
-    // Build lookup maps
     const predMap = new Map(predictions.map((p) => [p.fixture_id, p]));
     const vbMap = new Map(valueBets.map((vb) => [vb.fixture.id, vb]));
 
-    // Live matches from all fixtures
+    // Live matches
     const liveFixtures = allFixtures.filter((f) => f.status === "live" || f.status === "halftime");
+
+    // Upcoming, sorted by kickoff
+    const upcoming = allFixtures
+        .filter((f) => f.status === "scheduled")
+        .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime())
+        .slice(0, 20);
 
     // Recent results
     const recentResults = allFixtures
         .filter((f) => f.status === "finished")
         .sort((a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime())
-        .slice(0, 9);
+        .slice(0, 15);
+
+    // Use live if available, otherwise upcoming, otherwise results
+    const displayFixtures = liveFixtures.length > 0 ? liveFixtures :
+        upcoming.length > 0 ? upcoming :
+        recentResults;
+
+    const sectionTitle = liveFixtures.length > 0 ? "Live" :
+        upcoming.length > 0 ? "Kommande matcher" :
+        "Senaste resultat";
+
+    // Group by league
+    const leagueGroups = groupByLeague(displayFixtures);
 
     return (
         <div>
-            {/* Hero */}
-            <section className="relative overflow-hidden border-b border-white/[0.04]">
-                <div className="absolute inset-0 bg-gradient-mesh" />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface" />
-                <div className="relative container-main py-16 sm:py-24 text-center">
-                    <div className="inline-flex items-center gap-2 badge bg-scorelock-500/10 text-scorelock-400 border-scorelock-500/20 mb-6">
+            {/* Compact hero */}
+            <section className="border-b border-white/[0.04] bg-gradient-to-b from-white/[0.02] to-transparent">
+                <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14 text-center">
+                    <div className="inline-flex items-center gap-2 text-xs font-medium text-scorelock-400 bg-scorelock-500/10 border border-scorelock-500/20 rounded-full px-3 py-1 mb-4">
                         <span className="w-1.5 h-1.5 rounded-full bg-scorelock-500 animate-pulse" />
                         {t("hero.badge")}
                     </div>
-                    <h1 className="text-display-lg sm:text-display-xl max-w-3xl mx-auto mb-5">
+                    <h1 className="text-3xl sm:text-4xl font-bold mb-3">
                         {t("hero.title.prefix")}{" "}
                         <span className="text-gradient">{t("hero.title.highlight")}</span>
                     </h1>
-                    <p className="text-gray-400 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
+                    <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto mb-6">
                         {t("hero.subtitle")}
                     </p>
-                    <div className="flex items-center justify-center gap-3 mt-8">
-                        <Link href="/matches" className="btn-primary">
+                    <div className="flex items-center justify-center gap-3">
+                        <Link href="/matches" className="btn-primary text-sm">
                             {t("hero.cta.primary")}
                         </Link>
-                        <Link href="/value-bets" className="btn-secondary">
-                            {t("hero.cta.secondary")}
+                        <Link href="/standings" className="btn-secondary text-sm">
+                            Tabeller
                         </Link>
                     </div>
                 </div>
             </section>
 
-            <div className="container-main py-10">
-
-                {/* LIVE MATCHES */}
-                {liveFixtures.length > 0 && (
-                    <section className="mb-10 animate-fade-in">
-                        <div className="section-header">
-                            <div className="flex items-center gap-2.5">
+            <div className="max-w-3xl mx-auto px-4 py-8">
+                {/* Match section — grouped by league */}
+                <section className="mb-10">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            {liveFixtures.length > 0 && (
                                 <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                                <h2 className="section-title">{t("section.live")}</h2>
-                                <span className="badge-live ml-1">{liveFixtures.length}</span>
-                            </div>
-                            <Link href="/matches" className="btn-ghost text-scorelock-400 text-sm">
-                                {t("section.allMatches")}
-                            </Link>
+                            )}
+                            <h2 className="text-lg font-bold">{sectionTitle}</h2>
+                            {liveFixtures.length > 0 && (
+                                <span className="text-xs bg-red-500/20 text-red-400 rounded-md px-1.5 py-0.5">
+                                    {liveFixtures.length}
+                                </span>
+                            )}
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {liveFixtures.slice(0, 6).map((f) => (
-                                <MatchCard
-                                    key={f.id}
-                                    fixture={f}
-                                    prediction={predMap.get(f.id)}
-                                    valueBet={vbMap.get(f.id)}
-                                />
+                        <Link href="/matches" className="text-sm text-scorelock-400 hover:text-scorelock-300 transition-colors">
+                            Alla matcher →
+                        </Link>
+                    </div>
+
+                    {leagueGroups.length > 0 ? (
+                        <div className="space-y-3">
+                            {leagueGroups.map(({ league, fixtures: groupFixtures }) => (
+                                <div key={league.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                                    {/* League header */}
+                                    <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.01]">
+                                        {league.logo_url ? (
+                                            <img src={league.logo_url} alt="" className="w-4 h-4 object-contain" />
+                                        ) : (
+                                            <div className="w-4 h-4 rounded bg-white/[0.06] flex items-center justify-center">
+                                                <span className="text-[8px]">🏆</span>
+                                            </div>
+                                        )}
+                                        <span className="text-xs font-semibold text-gray-300">{league.name}</span>
+                                        {league.country && (
+                                            <span className="text-[10px] text-gray-600">{league.country}</span>
+                                        )}
+                                    </div>
+
+                                    {/* Match rows */}
+                                    <div className="border-t border-white/[0.04]">
+                                        {groupFixtures.map((f) => (
+                                            <CompactMatchRow key={f.id} fixture={f} />
+                                        ))}
+                                    </div>
+                                </div>
                             ))}
                         </div>
-                    </section>
-                )}
+                    ) : (
+                        <div className="text-center py-12 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                            <p className="text-gray-500 text-sm">Inga matcher just nu</p>
+                        </div>
+                    )}
+                </section>
 
-                {/* VALUE BETS CALLOUT */}
+                {/* Value bets callout */}
                 {valueBets.length > 0 && (
-                    <section className="mb-10 animate-fade-in">
-                        <div className="p-5 rounded-2xl border border-scorelock-500/10 bg-scorelock-500/[0.03]">
-                            <div className="flex items-center justify-between mb-4">
+                    <section className="mb-10">
+                        <Link
+                            href="/value-bets"
+                            className="block p-4 rounded-xl border border-scorelock-500/10 bg-scorelock-500/[0.03] hover:border-scorelock-500/20 transition-all group"
+                        >
+                            <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-scorelock-500/10 flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-scorelock-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                                    <div className="w-9 h-9 rounded-lg bg-scorelock-500/10 flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-scorelock-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </div>
                                     <div>
-                                        <h2 className="text-base font-semibold text-white">{t("section.valueBetsToday", { count: valueBets.length })}</h2>
-                                        <p className="text-xs text-gray-400">{t("section.valueBetsDesc")}</p>
+                                        <p className="text-sm font-semibold text-white">
+                                            {valueBets.length} value bets
+                                        </p>
+                                        <p className="text-[11px] text-gray-500">AI-modellen hittar värde</p>
                                     </div>
                                 </div>
-                                <Link href="/value-bets" className="btn-primary text-sm px-4 py-2">
-                                    {t("section.seeAll")}
-                                </Link>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-3">
-                                {valueBets.slice(0, 3).map((vb) => (
-                                    <Link
-                                        key={vb.fixture.id}
-                                        href={`/matches/${vb.fixture.id}`}
-                                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] hover:border-scorelock-500/20 transition-all group"
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-medium text-white truncate group-hover:text-scorelock-400 transition-colors">
-                                                {vb.fixture.home_team.name} - {vb.fixture.away_team.name}
-                                            </p>
-                                            <p className="text-[10px] text-gray-500">{vb.suggested_bet === "Home" ? vb.fixture.home_team.name : vb.suggested_bet === "Away" ? vb.fixture.away_team.name : t("common.draw")}</p>
-                                        </div>
-                                        <span className="badge-value text-[10px] px-1.5 py-0.5 ml-2">
-                                            +{vb.edge_percent.toFixed(0)}%
-                                        </span>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-                    </section>
-                )}
-
-                {/* UPCOMING MATCHES */}
-                {fixtures.length > 0 ? (
-                    <section className="mb-12">
-                        <div className="section-header">
-                            <div>
-                                <h2 className="section-title">{t("section.upcoming")}</h2>
-                                <p className="section-subtitle">{t("section.upcomingDesc")}</p>
-                            </div>
-                            <Link href="/matches" className="btn-ghost text-scorelock-400 text-sm">
-                                {t("section.allMatchesShort")}
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                                </svg>
-                            </Link>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {fixtures.slice(0, 6).map((fixture) => (
-                                <MatchCard
-                                    key={fixture.id}
-                                    fixture={fixture}
-                                    prediction={predMap.get(fixture.id)}
-                                    valueBet={vbMap.get(fixture.id)}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                ) : recentResults.length > 0 ? (
-                    <section className="mb-12 animate-fade-in">
-                        <div className="section-header">
-                            <div>
-                                <h2 className="section-title">{t("section.recentResults")}</h2>
-                                <p className="section-subtitle">{t("section.recentResultsDesc")}</p>
-                            </div>
-                            <Link href="/matches" className="btn-ghost text-scorelock-400 text-sm">
-                                {t("section.allMatchesShort")}
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                                </svg>
-                            </Link>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {recentResults.map((fixture) => (
-                                <MatchCard
-                                    key={fixture.id}
-                                    fixture={fixture}
-                                    prediction={predMap.get(fixture.id)}
-                                    valueBet={vbMap.get(fixture.id)}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                ) : null}
-
-                {/* Weekly top tipper */}
-                {weeklyTop && (
-                    <section className="mb-10 animate-fade-in">
-                        <Link href="/leaderboard" className="block card-interactive border-accent-amber/10 bg-gradient-to-r from-amber-950/20 via-surface-900/80 to-surface-900/80">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-accent-amber/10 flex items-center justify-center text-2xl">
-                                    👑
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-accent-amber font-semibold text-xs uppercase tracking-wider">{t("section.weeklyTipper")}</p>
-                                    <p className="text-lg font-bold truncate mt-0.5">{weeklyTop.user_name || "Anonym"}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="stat-value text-scorelock-400">{weeklyTop.points_this_week}p</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{weeklyTop.tips_this_week} {t("common.tips")} · {weeklyTop.accuracy_this_week}%</p>
-                                </div>
-                                <svg className="w-5 h-5 text-gray-600 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                <svg className="w-4 h-4 text-gray-600 group-hover:text-scorelock-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                 </svg>
                             </div>
                         </Link>
                     </section>
                 )}
 
-                {/* ARTICLES */}
-                <section>
-                    <div className="section-header">
-                        <div>
-                            <h2 className="section-title">{t("section.latestArticles")}</h2>
-                            <p className="section-subtitle">{t("section.latestArticlesDesc")}</p>
-                        </div>
-                        <div className="hidden sm:flex gap-1">
-                            <FilterLink label={t("filter.all")} type="" />
-                            <FilterLink label={t("filter.previews")} type="MATCH_PREVIEW" />
-                            <FilterLink label={t("filter.reports")} type="MATCH_REPORT" />
-                            <FilterLink label={t("filter.valueBets")} type="VALUE_BET_ALERT" />
-                        </div>
-                    </div>
-
-                    {articles.length === 0 ? (
-                        <div className="card text-center py-16">
-                            <div className="w-16 h-16 rounded-2xl bg-white/[0.03] flex items-center justify-center text-3xl mx-auto mb-4">
-                                📝
+                {/* Weekly top tipper */}
+                {weeklyTop && (
+                    <section className="mb-10">
+                        <Link href="/leaderboard" className="block p-4 rounded-xl border border-amber-500/10 bg-amber-500/[0.03] hover:border-amber-500/20 transition-all group">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-lg">
+                                    👑
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] text-amber-400 font-semibold uppercase tracking-wider">{t("section.weeklyTipper")}</p>
+                                    <p className="text-sm font-bold truncate">{weeklyTop.user_name || "Anonym"}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-lg font-bold text-scorelock-400">{weeklyTop.points_this_week}p</p>
+                                    <p className="text-[10px] text-gray-500">{weeklyTop.tips_this_week} tips</p>
+                                </div>
                             </div>
-                            <p className="text-gray-400 max-w-sm mx-auto">
-                                {t("section.noArticles")}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {articles.map((article, i) => (
-                                <ArticleCard
-                                    key={article.id}
-                                    article={article}
-                                    featured={i === 0}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
+                        </Link>
+                    </section>
+                )}
 
-                {/* Features */}
-                <section className="mt-20 mb-8">
-                    <div className="text-center mb-10">
-                        <h2 className="text-display-sm">{t("features.title")}</h2>
-                        <p className="text-gray-400 mt-2 max-w-lg mx-auto">
-                            {t("features.subtitle")}
-                        </p>
+                {/* Standings preview — quick links */}
+                <section className="mb-10">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold">Tabeller</h2>
+                        <Link href="/standings" className="text-sm text-scorelock-400 hover:text-scorelock-300 transition-colors">
+                            Alla tabeller →
+                        </Link>
                     </div>
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        <FeatureCard
-                            icon={<LiveIcon />}
-                            title={t("features.live.title")}
-                            description={t("features.live.desc")}
-                        />
-                        <FeatureCard
-                            icon={<ModelIcon />}
-                            title={t("features.ml.title")}
-                            description={t("features.ml.desc")}
-                        />
-                        <FeatureCard
-                            icon={<ValueIcon />}
-                            title={t("features.value.title")}
-                            description={t("features.value.desc")}
-                        />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1", "Allsvenskan"].map((name) => (
+                            <Link
+                                key={name}
+                                href="/standings"
+                                className="flex items-center gap-2 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1] transition-all"
+                            >
+                                <span className="text-sm font-medium text-gray-300">{name}</span>
+                            </Link>
+                        ))}
                     </div>
                 </section>
             </div>
@@ -283,57 +220,93 @@ export function HomeContent({
     );
 }
 
-function FilterLink({ label, type }: { label: string; type: string }) {
+/* ── Compact match row for homepage ───────────────────── */
+
+function CompactMatchRow({ fixture }: { fixture: Fixture }) {
+    const isLive = fixture.status === "live" || fixture.status === "halftime";
+    const isFinished = fixture.status === "finished";
+    const homeWin = isFinished && (fixture.home_goals ?? 0) > (fixture.away_goals ?? 0);
+    const awayWin = isFinished && (fixture.away_goals ?? 0) > (fixture.home_goals ?? 0);
+
+    const kickoff = new Date(fixture.kickoff);
+    const timeStr = kickoff.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+
     return (
-        <Link
-            href={type ? `/?type=${type}` : "/"}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/[0.05] transition-all duration-150"
+        <a
+            href={`/matches/${fixture.id}`}
+            className="flex items-center px-4 py-2 hover:bg-white/[0.03] transition-colors border-b border-white/[0.03] last:border-b-0 group"
         >
-            {label}
-        </Link>
-    );
-}
-
-function FeatureCard({
-    icon,
-    title,
-    description,
-}: {
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-}) {
-    return (
-        <div className="card-hover group">
-            <div className="w-10 h-10 rounded-xl bg-scorelock-500/10 flex items-center justify-center mb-4 group-hover:bg-scorelock-500/15 transition-colors">
-                {icon}
+            {/* Time */}
+            <div className="w-12 flex-shrink-0 text-center mr-3">
+                {isLive ? (
+                    <span className="text-xs font-bold text-red-400">LIVE</span>
+                ) : isFinished ? (
+                    <span className="text-xs text-gray-500">FT</span>
+                ) : (
+                    <span className="text-xs text-gray-400">{timeStr}</span>
+                )}
             </div>
-            <h3 className="text-base font-semibold mb-2 text-white">{title}</h3>
-            <p className="text-gray-400 text-sm leading-relaxed">{description}</p>
-        </div>
+
+            {/* Teams */}
+            <div className="flex-1 min-w-0 space-y-0.5">
+                <div className="flex items-center gap-2">
+                    {fixture.home_team.logo_url ? (
+                        <img src={fixture.home_team.logo_url} alt="" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                    ) : (
+                        <div className="w-3.5 h-3.5 rounded-full bg-white/[0.06] flex-shrink-0" />
+                    )}
+                    <span className={`text-xs truncate ${homeWin ? "font-semibold text-white" : "text-gray-300"}`}>
+                        {fixture.home_team.name}
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                    {fixture.away_team.logo_url ? (
+                        <img src={fixture.away_team.logo_url} alt="" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                    ) : (
+                        <div className="w-3.5 h-3.5 rounded-full bg-white/[0.06] flex-shrink-0" />
+                    )}
+                    <span className={`text-xs truncate ${awayWin ? "font-semibold text-white" : "text-gray-300"}`}>
+                        {fixture.away_team.name}
+                    </span>
+                </div>
+            </div>
+
+            {/* Score */}
+            {(isLive || isFinished) && fixture.home_goals !== null && fixture.away_goals !== null ? (
+                <div className="w-8 flex-shrink-0 text-right space-y-0.5">
+                    <div className={`text-xs font-mono ${isLive ? "text-red-400 font-bold" : homeWin ? "font-bold text-white" : "text-gray-400"}`}>
+                        {fixture.home_goals}
+                    </div>
+                    <div className={`text-xs font-mono ${isLive ? "text-red-400 font-bold" : awayWin ? "font-bold text-white" : "text-gray-400"}`}>
+                        {fixture.away_goals}
+                    </div>
+                </div>
+            ) : (
+                <div className="w-8 flex-shrink-0 text-right">
+                    <span className="text-[10px] text-gray-600">—</span>
+                </div>
+            )}
+        </a>
     );
 }
 
-function LiveIcon() {
-    return (
-        <svg className="w-5 h-5 text-scorelock-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-        </svg>
-    );
-}
+/* ── Helpers ──────────────────────────────────────────── */
 
-function ModelIcon() {
-    return (
-        <svg className="w-5 h-5 text-scorelock-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-        </svg>
-    );
-}
+function groupByLeague(fixtures: Fixture[]): { league: League; fixtures: Fixture[] }[] {
+    const map = new Map<number, { league: League; fixtures: Fixture[] }>();
 
-function ValueIcon() {
-    return (
-        <svg className="w-5 h-5 text-scorelock-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-        </svg>
-    );
+    for (const f of fixtures) {
+        const existing = map.get(f.league.id);
+        if (existing) {
+            existing.fixtures.push(f);
+        } else {
+            map.set(f.league.id, { league: f.league, fixtures: [f] });
+        }
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+        const orderA = LEAGUE_ORDER[a.league.name] ?? 99;
+        const orderB = LEAGUE_ORDER[b.league.name] ?? 99;
+        return orderA - orderB;
+    });
 }
