@@ -3,6 +3,9 @@ import type { ValueBet } from "@/lib/types";
 import { formatKickoff, formatProb } from "@/lib/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AffiliateCTA } from "@/components/affiliate-cta";
+import type { AffiliateLink } from "@/components/affiliate-cta";
+import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
 
 export const metadata: Metadata = {
     title: "Value Bets",
@@ -13,11 +16,17 @@ export const revalidate = 120;
 
 export default async function ValueBetsPage() {
     let valueBets: ValueBet[] = [];
+    let affiliateLinks: AffiliateLink[] = [];
 
     try {
         valueBets = await fetchApi<ValueBet[]>("/api/v1/value-bets?min_edge=3");
     } catch {
         // Handled in UI
+    }
+    try {
+        affiliateLinks = await fetchApi<AffiliateLink[]>("/api/v1/affiliate/links?country=SE");
+    } catch {
+        // Not critical
     }
 
     return (
@@ -75,16 +84,36 @@ export default async function ValueBetsPage() {
                                     </p>
                                 </div>
                             </div>
+
+                            {/* Affiliate inline links */}
+                            {affiliateLinks.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-gray-800/50">
+                                    <AffiliateCTA
+                                        links={affiliateLinks}
+                                        fixtureId={vb.fixture.id}
+                                        pageSource="value-bets"
+                                        variant="inline"
+                                    />
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
             )}
 
-            <div className="mt-8 card bg-yellow-900/10 border-yellow-800/30">
-                <p className="text-sm text-yellow-200/80">
-                    ⚠️ Spela alltid ansvarsfullt. Value bets baseras på statistiska modeller och garanterar inte vinst.
-                    Sätt aldrig mer än du har råd att förlora.
-                </p>
+            {/* Affiliate banner */}
+            {affiliateLinks.length > 0 && (
+                <div className="mt-8">
+                    <AffiliateCTA
+                        links={affiliateLinks}
+                        pageSource="value-bets"
+                        variant="banner"
+                    />
+                </div>
+            )}
+
+            <div className="mt-6">
+                <GamblingDisclaimer />
             </div>
         </div>
     );

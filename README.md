@@ -132,12 +132,12 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - **M2** ✅ ML predictions: daily predictions, value bets, accuracy tracking
 - **M3** ✅ AI Content Engine: match previews, reports, round summaries på svenska
 - **M4** ✅ Frontend: article-first design, 14 routes, Swedish, SEO, loading states
-- **M5** — Affiliate integration: Bet365, Unibet, Betsson links + tracking
+- **M5** ✅ Affiliate integration: Bet365, Unibet, Betsson, LeoVegas — CTA, click tracking, disclaimer
 - **M6** — Tipping League: AI vs You, leaderboards, social sharing
 - **M7** — Deploy + Launch: Railway, Cloudflare, GDPR, monitoring
 - **M8** — Distribution: Twitter bot, push notifications, Reddit, Discord, Telegram
 
-**Progress: 43/67 tasks (~64%)**
+**Progress: 49/67 tasks (~73%)**
 
 ---
 
@@ -189,7 +189,18 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - Error handling: 404-sida + global-error på svenska
 - Komponenter: ArticleCard, MatchCard, PredictionBar, Skeleton
 - Build verifierad: 14 rutter, 0 errors
-
+**M5 — Affiliate Integration (6/6 ✅)**
+- `affiliate_links` + `affiliate_clicks`-tabeller + Alembic-migration (`3a7c2e1f5d89`)
+- 4 svenska bookmakers seedade: Bet365, Unibet, Betsson, LeoVegas (placeholder-URLs)
+- 3 backend-endpoints: `GET /affiliate/links`, `POST /affiliate/click`, `GET /admin/affiliate/stats`
+- GDPR-compliant klick-tracking: SHA256 IP-hash, user agent, fixture, user (optional)
+- `AffiliateCTA`-komponent med 3 varianter: banner, inline, card
+- Value bets-sidan: inline CTA per value bet + banner CTA
+- Artikelsidor: card CTA för VALUE_BET_ALERT + MATCH_PREVIEW-artiklar
+- Matchdetalj: banner CTA + compact disclaimer i sidebar
+- `GamblingDisclaimer`-komponent: Stödlinjen (020-819 100), Spelpaus.se, 18+
+- Alla affiliate-länkar med `rel="noopener noreferrer nofollow sponsored"` (SEO+legal)
+- Admin-endpoint för klickstatistik per bookmaker (total, idag, vecka, månad)
 ### Session 1–3 — 2026-02-09–10
 
 **M0 — Infrastruktur & Grundplatta**

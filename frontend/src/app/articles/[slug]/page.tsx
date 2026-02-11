@@ -2,6 +2,9 @@ import { fetchApi } from "@/lib/api";
 import type { Article, ArticleList, FixtureDetail } from "@/lib/types";
 import { ARTICLE_TYPE_META, timeAgo } from "@/lib/utils";
 import { ArticleCard } from "@/components/article-card";
+import { AffiliateCTA } from "@/components/affiliate-cta";
+import type { AffiliateLink } from "@/components/affiliate-cta";
+import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
@@ -66,6 +69,17 @@ export default async function ArticlePage({ params }: PageProps) {
         related = res.articles.filter((a) => a.id !== article.id).slice(0, 3);
     } catch {
         // Not critical
+    }
+
+    // Fetch affiliate links for value bet + preview articles
+    let affiliateLinks: AffiliateLink[] = [];
+    const showAffiliate = ["VALUE_BET_ALERT", "MATCH_PREVIEW", "value_bet_alert", "match_preview"].includes(article.type);
+    if (showAffiliate) {
+        try {
+            affiliateLinks = await fetchApi<AffiliateLink[]>("/api/v1/affiliate/links?country=SE");
+        } catch {
+            // Not critical
+        }
     }
 
     return (
@@ -155,6 +169,19 @@ export default async function ArticlePage({ params }: PageProps) {
                     </Link>
                 </div>
             )}
+
+            {/* Affiliate CTA for betting-related articles */}
+            {showAffiliate && affiliateLinks.length > 0 && (
+                <AffiliateCTA
+                    links={affiliateLinks}
+                    variant="card"
+                    fixtureId={article.fixture_id ?? undefined}
+                    pageSource={`article-${article.slug}`}
+                />
+            )}
+
+            {/* Gambling disclaimer for betting-related articles */}
+            {showAffiliate && <GamblingDisclaimer />}
 
             {/* Related articles */}
             {related.length > 0 && (

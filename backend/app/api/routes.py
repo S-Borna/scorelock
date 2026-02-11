@@ -4,11 +4,11 @@ All routes query the database via the db_service layer.
 """
 
 from datetime import date, datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_optional_user
 from app.schemas.schemas import (
     FixtureResponse,
     FixtureDetail,
@@ -21,6 +21,10 @@ from app.schemas.schemas import (
     OddsResponse,
     ArticleResponse,
     ArticleListResponse,
+    AffiliateLinkResponse,
+    AffiliateClickCreate,
+    AffiliateClickResponse,
+    AffiliateStatsResponse,
 )
 from app.services import db_service
 from app.models.models import User, ArticleType
@@ -504,3 +508,54 @@ async def get_article(
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
     return ArticleResponse.model_validate(article)
+
+
+# ── Affiliate System ──────────────────────────────────────
+
+@router.get("/affiliate/links", response_model=list[AffiliateLinkResponse])
+async def get_affiliate_links(
+    country: str = Query("SE", description="Country code (e.g. SE, UK)"),
+    bookmaker: str | None = Query(None, description="Filter by bookmaker slug"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get active affiliate links for a given country."""
+    links = await db_service.get_affiliate_links(db, country, bookmaker)
+    return [AffiliateLinkResponse.model_validate(l) for l in links]
+
+
+@router.post("/affiliate/click", response_model=AffiliateClickResponse)
+async def record_click(
+    click: AffiliateClickCreate,
+    request: Request,
+    user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Record an affiliate link click (called by frontend before redirect)."""
+    import hashlib
+    ip = request.client.host if request.client else "unknown"
+    ip_hash = hashlib.sha256(ip.encode()).hexdigest()[:16]
+    ua = request.headers.get("user-agent", "")[:500]
+
+    result = await db_service.record_affiliate_click(
+        db,
+        link_id=click.link_id,
+        fixture_id=click.fixture_id,
+        user_id=user.id if user else None,
+        page_source=click.page_source,
+        ip_hash=ip_hash,
+        user_agent=ua,
+    )
+    await db.commit()
+    return AffiliateClickResponse.model_validate(result)
+
+
+@router.get("/admin/affiliate/stats", response_model=list[AffiliateStatsResponse])
+async def get_affiliate_stats(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get affiliate click statistics (admin only)."""
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    stats = await db_service.get_affiliate_stats(db)
+    return stats

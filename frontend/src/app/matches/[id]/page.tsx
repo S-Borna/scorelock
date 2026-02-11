@@ -1,5 +1,8 @@
 import { PredictionBar } from "@/components/prediction-bar";
 import { ArticleCard } from "@/components/article-card";
+import { AffiliateCTA } from "@/components/affiliate-cta";
+import type { AffiliateLink } from "@/components/affiliate-cta";
+import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
 import { fetchApi } from "@/lib/api";
 import type { Article, ArticleList, FixtureDetail, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
@@ -52,6 +55,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
     } catch { /* not critical */ }
     try {
         awaySentiment = await fetchApi<Sentiment[]>(`/api/v1/sentiment/${fixture.away_team.id}`);
+    } catch { /* not critical */ }
+
+    // Fetch affiliate links
+    let affiliateLinks: AffiliateLink[] = [];
+    try {
+        affiliateLinks = await fetchApi<AffiliateLink[]>("/api/v1/affiliate/links?country=SE");
     } catch { /* not critical */ }
 
     return (
@@ -154,6 +163,16 @@ export default async function MatchDetailPage({ params }: PageProps) {
                             </div>
                         </div>
                     )}
+
+                    {/* Affiliate CTA after odds + articles */}
+                    {affiliateLinks.length > 0 && (
+                        <AffiliateCTA
+                            links={affiliateLinks}
+                            variant="banner"
+                            fixtureId={fixture.id}
+                            pageSource={`match-${fixture.id}`}
+                        />
+                    )}
                 </div>
 
                 {/* Sidebar */}
@@ -182,6 +201,9 @@ export default async function MatchDetailPage({ params }: PageProps) {
                             </Link>
                         </div>
                     </div>
+
+                    {/* Gambling disclaimer */}
+                    <GamblingDisclaimer compact />
                 </div>
             </div>
         </div>

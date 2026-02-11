@@ -323,3 +323,45 @@ class Article(Base):
         Index("ix_article_type_league", "type", "league_id"),
         Index("ix_article_published", "published_at"),
     )
+
+
+# ── Affiliate Links ───────────────────────────────────────
+
+class AffiliateLink(Base):
+    __tablename__ = "affiliate_links"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bookmaker: Mapped[str] = mapped_column(String(100), index=True)  # e.g. "bet365", "unibet"
+    bookmaker_display: Mapped[str] = mapped_column(String(100))  # e.g. "Bet365", "Unibet"
+    logo_url: Mapped[str | None] = mapped_column(String(500))
+    base_url: Mapped[str] = mapped_column(String(1000))  # Affiliate URL with tracking
+    tracking_id: Mapped[str | None] = mapped_column(String(255))  # Our affiliate tracking ID
+    market: Mapped[str] = mapped_column(String(50), default="1X2")  # market type
+    country: Mapped[str] = mapped_column(String(5), default="SE")  # SE, UK, etc.
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    priority: Mapped[int] = mapped_column(Integer, default=0)  # Higher = shown first
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    clicks: Mapped[list["AffiliateClick"]] = relationship(back_populates="link")
+
+
+class AffiliateClick(Base):
+    __tablename__ = "affiliate_clicks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    link_id: Mapped[int] = mapped_column(ForeignKey("affiliate_links.id"), index=True)
+    fixture_id: Mapped[int | None] = mapped_column(ForeignKey("fixtures.id"), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    page_source: Mapped[str | None] = mapped_column(String(100))  # "value-bets", "article", "match"
+    ip_hash: Mapped[str | None] = mapped_column(String(64))  # Hashed IP for analytics (GDPR)
+    user_agent: Mapped[str | None] = mapped_column(String(500))
+    clicked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    link: Mapped["AffiliateLink"] = relationship(back_populates="clicks")
+
+    __table_args__ = (
+        Index("ix_affiliate_click_link_date", "link_id", "clicked_at"),
+    )

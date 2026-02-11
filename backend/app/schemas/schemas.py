@@ -183,5 +183,46 @@ class ArticleListResponse(BaseModel):
     offset: int
 
 
+# ── Affiliate ──────────────────────────────────────────────
+
+class AffiliateLinkResponse(BaseModel):
+    id: int
+    bookmaker: str
+    bookmaker_display: str
+    logo_url: str | None
+    base_url: str
+    tracking_id: str | None
+    market: str
+    country: str
+    priority: int
+
+    model_config = {"from_attributes": True}
+
+
+class AffiliateClickCreate(BaseModel):
+    link_id: int
+    fixture_id: int | None = None
+    page_source: str | None = None
+
+
+class AffiliateClickResponse(BaseModel):
+    id: int
+    link_id: int
+    fixture_id: int | None
+    page_source: str | None
+    clicked_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AffiliateStatsResponse(BaseModel):
+    bookmaker: str
+    bookmaker_display: str
+    total_clicks: int
+    clicks_today: int
+    clicks_this_week: int
+    clicks_this_month: int
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

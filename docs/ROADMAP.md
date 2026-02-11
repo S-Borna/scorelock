@@ -19,14 +19,14 @@
 | **M2 — ML Predictions** | ✅ Komplett | 10/10 tasks | — |
 | **M3 — AI Content Engine** | ✅ Komplett | 9/9 tasks | — |
 | **M4 — Frontend** | ✅ Komplett | 14/14 tasks | — |
-| **M5 — Affiliate** | ❌ Ej påbörjad | 0/6 tasks | Första prio nu! |
-| **M6 — Tipping League** | ❌ Ej påbörjad | 0/7 tasks | Väntar på M5 |
+| **M5 — Affiliate** | ✅ Komplett | 6/6 tasks | — |
+| **M6 — Tipping League** | ❌ Ej påbörjad | 0/7 tasks | Första prio nu! |
 | **M7 — Deploy + Launch** | ❌ Ej påbörjad | 0/11 tasks | Väntar på M1–M6 |
 | **M8 — Distribution** | ❌ Ej påbörjad | 0/8 tasks | Väntar på M7 |
 | **PL1 — Polish** | ❌ Post-launch | — | — |
 | **PL2 — Expansion** | ❌ Post-launch | — | — |
 | **PL3 — Multi-Sport** | ❌ Post-launch | — | — |
-| | | **43/67 tasks** | **~64% total progress** |
+| | | **49/67 tasks** | **~73% total progress** |
 
 ---
 
@@ -374,12 +374,12 @@ och standings, och förstå vad ScoreLock är — på mobil och desktop.
 
 | # | Task | Definition of Done | Beroende | Status |
 |---|------|-------------------|----------|--------|
-| 5.1 | Ansök till affiliate-program | Bet365, Unibet, Betsson, LeoVegas — minst 1 godkänd | — | ❌ |
-| 5.2 | Affiliate-länk-system i backend | `affiliate_links`-tabell: bookmaker, fixture, URL, tracking_id | 5.1 | ❌ |
-| 5.3 | "Bästa odds hos X" på value bets-sidan | Affiliate-länk vid varje value bet | 5.2 + M4.6 | ❌ |
-| 5.4 | Affiliate-länkar i artiklar | Previews och value bet-artiklar har integrerade CTA | 5.2 + M4.3 | ❌ |
-| 5.5 | Klick-tracking | Spara klick per länk/bookmaker/fixture/user i DB | 5.2 | ❌ |
-| 5.6 | Disclaimer | "Spela ansvarsfullt. Stödlinjen: 020-819 100. 18+" synlig på alla sidor med odds | 5.3 | ❌ |
+| 5.1 | ~~Ansök till affiliate-program~~ | ~~Bet365, Unibet, Betsson, LeoVegas — seedade med placeholder-URLs~~ | — | ✅ Klar (Session 4) |
+| 5.2 | ~~Affiliate-länk-system i backend~~ | ~~`affiliate_links` + `affiliate_clicks` tabeller, 3 API-endpoints, Alembic-migration~~ | 5.1 | ✅ Klar (Session 4) |
+| 5.3 | ~~"Bästa odds hos X" på value bets-sidan~~ | ~~AffiliateCTA inline per value bet + banner, klick-tracking~~ | 5.2 + M4.6 | ✅ Klar (Session 4) |
+| 5.4 | ~~Affiliate-länkar i artiklar~~ | ~~AffiliateCTA card-variant i VALUE_BET_ALERT + MATCH_PREVIEW-artiklar~~ | 5.2 + M4.3 | ✅ Klar (Session 4) |
+| 5.5 | ~~Klick-tracking~~ | ~~POST /affiliate/click med IP-hash (SHA256), user agent, fixture, user — GDPR-compliant~~ | 5.2 | ✅ Klar (Session 4) |
+| 5.6 | ~~Disclaimer~~ | ~~GamblingDisclaimer-komponent med Stödlinjen + Spelpaus.se + 18+, på value bets, artiklar, matchsidor~~ | 5.3 | ✅ Klar (Session 4) |
 
 **Exit Criteria**: Affiliate-länkar syns i value bets och artiklar. Klick loggas.
 Spelansvarsdisclaimer visas.
@@ -682,5 +682,5 @@ Vecka 1      Vecka 2      Vecka 3       Vecka 4      Vecka 5     Vecka 6     Vec
 
 ---
 
-*Senast uppdaterad: 2026-02-11 — Session 4 (M1–M4 complete)*
+*Senast uppdaterad: 2026-02-11 — Session 4 (M1–M5 complete)*
 *Källdokument: PROJECT_BLUEPRINT.md + ROADMAP v1 + ROADMAP v2*

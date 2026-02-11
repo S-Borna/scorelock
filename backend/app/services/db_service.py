@@ -16,6 +16,7 @@ from app.models.models import (
     League, Team, Fixture, Odds, Prediction,
     SentimentScore, Standing, MatchStatus,
     Article, ArticleType,
+    AffiliateLink, AffiliateClick,
 )
 
 logger = structlog.get_logger()
@@ -675,3 +676,81 @@ async def count_articles(
         q = q.where(Article.league_id == league_id)
     result = await session.execute(q)
     return result.scalar_one()
+
+
+# ── Affiliate operations ──────────────────────────────────
+
+async def get_affiliate_links(
+    session: AsyncSession,
+    country: str = "SE",
+    bookmaker: str | None = None,
+) -> list[AffiliateLink]:
+    """Get active affiliate links, ordered by priority (highest first)."""
+    q = (
+        select(AffiliateLink)
+        .where(AffiliateLink.is_active.is_(True))
+        .where(AffiliateLink.country == country)
+        .order_by(AffiliateLink.priority.desc())
+    )
+    if bookmaker:
+        q = q.where(AffiliateLink.bookmaker == bookmaker.lower())
+    result = await session.execute(q)
+    return list(result.scalars().all())
+
+
+async def record_affiliate_click(
+    session: AsyncSession,
+    link_id: int,
+    fixture_id: int | None = None,
+    user_id: int | None = None,
+    page_source: str | None = None,
+    ip_hash: str | None = None,
+    user_agent: str | None = None,
+) -> AffiliateClick:
+    """Record an affiliate link click."""
+    click = AffiliateClick(
+        link_id=link_id,
+        fixture_id=fixture_id,
+        user_id=user_id,
+        page_source=page_source,
+        ip_hash=ip_hash,
+        user_agent=user_agent,
+    )
+    session.add(click)
+    await session.flush()
+    return click
+
+
+async def get_affiliate_stats(
+    session: AsyncSession,
+) -> list[dict]:
+    """Get aggregate click stats per bookmaker."""
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=today_start.weekday())
+    month_start = today_start.replace(day=1)
+
+    links = await get_affiliate_links(session)
+    stats = []
+
+    for link in links:
+        total_q = select(func.count(AffiliateClick.id)).where(AffiliateClick.link_id == link.id)
+        today_q = total_q.where(AffiliateClick.clicked_at >= today_start)
+        week_q = total_q.where(AffiliateClick.clicked_at >= week_start)
+        month_q = total_q.where(AffiliateClick.clicked_at >= month_start)
+
+        total = (await session.execute(total_q)).scalar_one()
+        today = (await session.execute(today_q)).scalar_one()
+        week = (await session.execute(week_q)).scalar_one()
+        month = (await session.execute(month_q)).scalar_one()
+
+        stats.append({
+            "bookmaker": link.bookmaker,
+            "bookmaker_display": link.bookmaker_display,
+            "total_clicks": total,
+            "clicks_today": today,
+            "clicks_this_week": week,
+            "clicks_this_month": month,
+        })
+
+    return stats
