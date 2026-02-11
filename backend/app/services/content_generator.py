@@ -62,7 +62,7 @@ async def _call_claude(system_prompt: str, user_prompt: str, max_tokens: int = 2
     try:
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-3-5-haiku-20241022",
             max_tokens=max_tokens,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
