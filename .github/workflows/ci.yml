@@ -105,7 +105,6 @@ jobs:
     frontend-test:
         name: Frontend — Lint & Build
         runs-on: ubuntu-latest
-        if: hashFiles('frontend/package.json') != ''
 
         steps:
             - uses: actions/checkout@v4
