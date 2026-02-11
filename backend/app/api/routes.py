@@ -3,6 +3,7 @@
 All routes query the database via the db_service layer.
 """
 
+import asyncio
 from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
@@ -57,10 +58,11 @@ async def health_check():
 
     checks: dict = {"status": "ok", "service": "scorelock-api", "version": "0.1.0"}
 
-    # DB check
+    # DB check — short timeout so healthcheck never hangs
     try:
-        async with async_session() as session:
-            await session.execute(text("SELECT 1"))
+        async with asyncio.timeout(3):
+            async with async_session() as session:
+                await session.execute(text("SELECT 1"))
         checks["database"] = "ok"
     except Exception:
         checks["database"] = "error"
