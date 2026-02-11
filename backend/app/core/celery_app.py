@@ -72,6 +72,33 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.train_model",
         "schedule": crontab(hour=3, minute=0, day_of_week=0),
     },
+
+    # ── AI Content Engine (M3) ──────────────────────────────
+    # Match previews — daily at 10:00 UTC (for tomorrow's fixtures)
+    "content-previews": {
+        "task": "app.services.tasks.generate_content_previews",
+        "schedule": crontab(hour=10, minute=0),
+    },
+    # Match reports — every hour 14:00–23:00 UTC (after matches finish)
+    "content-reports": {
+        "task": "app.services.tasks.generate_content_reports",
+        "schedule": crontab(minute=30, hour="14-23"),
+    },
+    # Round summaries — daily at 04:00 UTC
+    "content-round-summaries": {
+        "task": "app.services.tasks.generate_content_round_summaries",
+        "schedule": crontab(hour=4, minute=0),
+    },
+    # Value bet articles — daily at 09:00 UTC
+    "content-value-bets": {
+        "task": "app.services.tasks.generate_content_value_bets",
+        "schedule": crontab(hour=9, minute=0),
+    },
+    # News rewrites — every 4 hours
+    "content-news-rewrites": {
+        "task": "app.services.tasks.generate_content_news_rewrites",
+        "schedule": crontab(minute=15, hour="*/4"),
+    },
 }
 
 # Auto-discover tasks from services module

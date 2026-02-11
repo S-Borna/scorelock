@@ -156,5 +156,32 @@ class StandingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Articles ───────────────────────────────────────────────
+
+class ArticleResponse(BaseModel):
+    id: int
+    type: str
+    slug: str
+    title: str
+    summary: str | None
+    body: str
+    language: str
+    league_id: int | None
+    fixture_id: int | None
+    round: str | None
+    tags: list | None
+    auto_generated: bool
+    published_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+class ArticleListResponse(BaseModel):
+    articles: list[ArticleResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

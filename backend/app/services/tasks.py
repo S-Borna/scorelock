@@ -10,7 +10,7 @@ Data source strategy:
 """
 
 import asyncio
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import structlog
 from app.core.celery_app import celery_app
@@ -611,3 +611,170 @@ def fetch_historical_data():
         }
 
     return run_async(_fetch())
+
+
+# ══════════════════════════════════════════════════════════
+# AI Content Engine Tasks  (M3)
+# ══════════════════════════════════════════════════════════
+
+@celery_app.task(name="app.services.tasks.generate_content_previews")
+def generate_content_previews():
+    """Generate match previews for tomorrow's fixtures.
+
+    Runs daily at 10:00 UTC — generates Swedish AI-articles for
+    every scheduled fixture in the next 24 hours.
+    """
+    async def _gen():
+        from app.services.content_generator import generate_match_preview
+        from app.services.db_service import get_fixtures
+        from app.models.models import MatchStatus
+
+        created = 0
+        async with async_session() as session:
+            fixtures = await get_fixtures(
+                session, days_ahead=1, league_id=None, status="scheduled"
+            )
+            for fixture in fixtures:
+                article = await generate_match_preview(session, fixture)
+                if article:
+                    created += 1
+        return {"status": "ok", "previews_created": created}
+
+    return run_async(_gen())
+
+
+@celery_app.task(name="app.services.tasks.generate_content_reports")
+def generate_content_reports():
+    """Generate match reports for recently finished fixtures.
+
+    Runs every hour during match hours — picks up fixtures that
+    finished within the last 3 hours and generates reports.
+    """
+    async def _gen():
+        from app.services.content_generator import generate_match_report
+        from app.models.models import MatchStatus, Fixture
+        from sqlalchemy import select
+
+        created = 0
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=3)
+        async with async_session() as session:
+            q = (
+                select(Fixture)
+                .where(
+                    Fixture.status == MatchStatus.FINISHED,
+                    Fixture.updated_at >= cutoff,
+                )
+                .order_by(Fixture.kickoff.desc())
+            )
+            result = await session.execute(q)
+            fixtures = list(result.scalars().all())
+
+            for fixture in fixtures:
+                article = await generate_match_report(session, fixture)
+                if article:
+                    created += 1
+        return {"status": "ok", "reports_created": created}
+
+    return run_async(_gen())
+
+
+@celery_app.task(name="app.services.tasks.generate_content_round_summaries")
+def generate_content_round_summaries():
+    """Generate round summaries for completed rounds.
+
+    Runs daily at 04:00 UTC — checks each league for rounds
+    where all fixtures are finished but no summary exists yet.
+    """
+    async def _gen():
+        from app.services.content_generator import generate_round_summary
+        from app.services.db_service import get_all_leagues
+        from app.models.models import Fixture, MatchStatus
+        from sqlalchemy import select, func
+
+        created = 0
+        async with async_session() as session:
+            leagues = await get_all_leagues(session)
+            for league in leagues:
+                # Find rounds with all fixtures finished
+                rounds_q = await session.execute(
+                    select(Fixture.round)
+                    .where(Fixture.league_id == league.id)
+                    .group_by(Fixture.round)
+                    .having(
+                        func.count(Fixture.id)
+                        == func.count(
+                            func.nullif(Fixture.status != MatchStatus.FINISHED, True)
+                        )
+                    )
+                )
+                rounds_done = [r[0] for r in rounds_q.all() if r[0]]
+
+                for round_str in rounds_done[-3:]:  # Last 3 completed rounds
+                    article = await generate_round_summary(
+                        session, league.id, round_str
+                    )
+                    if article:
+                        created += 1
+
+        return {"status": "ok", "summaries_created": created}
+
+    return run_async(_gen())
+
+
+@celery_app.task(name="app.services.tasks.generate_content_value_bets")
+def generate_content_value_bets():
+    """Generate daily value bet article.
+
+    Runs daily at 09:00 UTC — analyses all upcoming fixtures (next 48h)
+    and creates a value bet article if any value bets are found.
+    """
+    async def _gen():
+        from app.services.content_generator import generate_value_bet_article
+
+        async with async_session() as session:
+            article = await generate_value_bet_article(session)
+            return {
+                "status": "ok",
+                "created": article is not None,
+                "slug": article.slug if article else None,
+            }
+
+    return run_async(_gen())
+
+
+@celery_app.task(name="app.services.tasks.generate_content_news_rewrites")
+def generate_content_news_rewrites():
+    """Fetch RSS news and rewrite as original Swedish articles.
+
+    Runs every 4 hours — fetches top stories from 10 RSS feeds,
+    deduplicates, and rewrites as Swedish articles.
+    """
+    async def _gen():
+        from app.services.content_generator import generate_news_rewrite
+        from app.services.news_fetcher import fetch_team_news
+
+        created = 0
+        top_teams = [
+            "Arsenal", "Manchester City", "Liverpool", "Barcelona",
+            "Real Madrid", "Bayern Munich", "Inter", "PSG",
+        ]
+
+        async with async_session() as session:
+            for team in top_teams:
+                articles = fetch_team_news(team)
+                for art in articles[:2]:  # Max 2 per team per run
+                    if len(art.get("content", "")) < 100:
+                        continue
+                    article = await generate_news_rewrite(
+                        session,
+                        source=art.get("source", "Unknown"),
+                        original_title=art.get("title", ""),
+                        original_content=art.get("content", ""),
+                        context=f"Lag: {team}",
+                    )
+                    if article:
+                        created += 1
+
+        return {"status": "ok", "rewrites_created": created}
+
+    return run_async(_gen())

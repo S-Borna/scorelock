@@ -29,6 +29,14 @@ class SubscriptionTier(str, enum.Enum):
     ELITE = "elite"
 
 
+class ArticleType(str, enum.Enum):
+    MATCH_PREVIEW = "match_preview"
+    MATCH_REPORT = "match_report"
+    ROUND_SUMMARY = "round_summary"
+    VALUE_BET_ALERT = "value_bet_alert"
+    NEWS_REWRITE = "news_rewrite"
+
+
 # ── Users & Auth ───────────────────────────────────────────
 
 class User(Base):
@@ -276,4 +284,42 @@ class PredictionView(Base):
 
     __table_args__ = (
         Index("ix_prediction_view_user_week", "user_id", "viewed_at"),
+    )
+
+
+# ── Articles (AI-generated content) ───────────────────────
+
+class Article(Base):
+    __tablename__ = "articles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[ArticleType] = mapped_column(SAEnum(ArticleType), index=True)
+    slug: Mapped[str] = mapped_column(String(300), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    summary: Mapped[str | None] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)
+    language: Mapped[str] = mapped_column(String(5), default="sv")  # ISO 639-1
+
+    # Linked entities (optional — not every article type has all)
+    league_id: Mapped[int | None] = mapped_column(ForeignKey("leagues.id"), index=True)
+    fixture_id: Mapped[int | None] = mapped_column(ForeignKey("fixtures.id"), index=True)
+    round: Mapped[str | None] = mapped_column(String(50))
+
+    # Metadata
+    tags: Mapped[list | None] = mapped_column(JSONB)
+    meta_data: Mapped[dict | None] = mapped_column(JSONB)  # model_version, prompt tokens, etc.
+    auto_generated: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    published_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    league: Mapped["League | None"] = relationship()
+    fixture: Mapped["Fixture | None"] = relationship()
+
+    __table_args__ = (
+        Index("ix_article_type_league", "type", "league_id"),
+        Index("ix_article_published", "published_at"),
     )

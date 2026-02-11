@@ -15,6 +15,7 @@ from app.core.database import async_session
 from app.models.models import (
     League, Team, Fixture, Odds, Prediction,
     SentimentScore, Standing, MatchStatus,
+    Article, ArticleType,
 )
 
 logger = structlog.get_logger()
@@ -630,3 +631,47 @@ async def update_prediction_results(session: AsyncSession) -> int:
         count += 1
 
     return count
+
+
+# ── Article operations ─────────────────────────────────────
+
+async def get_articles(
+    session: AsyncSession,
+    article_type: ArticleType | None = None,
+    league_id: int | None = None,
+    language: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[Article]:
+    """Get published articles with optional filters, newest first."""
+    q = select(Article).where(Article.published_at.is_not(None)).order_by(Article.published_at.desc())
+    if article_type:
+        q = q.where(Article.type == article_type)
+    if league_id:
+        q = q.where(Article.league_id == league_id)
+    if language:
+        q = q.where(Article.language == language)
+    q = q.offset(offset).limit(limit)
+    result = await session.execute(q)
+    return list(result.scalars().all())
+
+
+async def get_article_by_slug(session: AsyncSession, slug: str) -> Article | None:
+    """Get a single article by its unique slug."""
+    result = await session.execute(select(Article).where(Article.slug == slug))
+    return result.scalar_one_or_none()
+
+
+async def count_articles(
+    session: AsyncSession,
+    article_type: ArticleType | None = None,
+    league_id: int | None = None,
+) -> int:
+    """Count articles with optional filters."""
+    q = select(func.count(Article.id)).where(Article.published_at.is_not(None))
+    if article_type:
+        q = q.where(Article.type == article_type)
+    if league_id:
+        q = q.where(Article.league_id == league_id)
+    result = await session.execute(q)
+    return result.scalar_one()

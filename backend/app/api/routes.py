@@ -19,9 +19,11 @@ from app.schemas.schemas import (
     SentimentResponse,
     TeamResponse,
     OddsResponse,
+    ArticleResponse,
+    ArticleListResponse,
 )
 from app.services import db_service
-from app.models.models import User
+from app.models.models import User, ArticleType
 
 router = APIRouter()
 
@@ -437,6 +439,11 @@ async def trigger_task(
         "sentiment": "app.services.tasks.run_sentiment_analysis",
         "odds": "app.services.tasks.fetch_odds_updates",
         "train": "app.services.tasks.train_model",
+        "content-previews": "app.services.tasks.generate_content_previews",
+        "content-reports": "app.services.tasks.generate_content_reports",
+        "content-round-summaries": "app.services.tasks.generate_content_round_summaries",
+        "content-value-bets": "app.services.tasks.generate_content_value_bets",
+        "content-news-rewrites": "app.services.tasks.generate_content_news_rewrites",
     }
 
     if task_name not in task_map:
@@ -456,3 +463,44 @@ async def get_quota_status(user: User = Depends(get_current_user)):
     quota = get_quota_manager()
     usage = await quota.get_all_usage()
     return {"quotas": usage}
+
+
+# ── Articles (AI Content Engine) ──────────────────────────
+
+@router.get("/articles", response_model=ArticleListResponse)
+async def list_articles(
+    article_type: str | None = Query(None, description="Filter by type: MATCH_PREVIEW, MATCH_REPORT, ROUND_SUMMARY, VALUE_BET_ALERT, NEWS_REWRITE"),
+    league_id: int | None = Query(None, description="Filter by league ID"),
+    language: str | None = Query(None, description="Filter by language (e.g. sv)"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """List published articles with optional filters."""
+    a_type = None
+    if article_type:
+        try:
+            a_type = ArticleType(article_type)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid type. Choose from: {[t.value for t in ArticleType]}")
+
+    articles = await db_service.get_articles(db, a_type, league_id, language, limit, offset)
+    total = await db_service.count_articles(db, a_type, league_id)
+    return ArticleListResponse(
+        articles=[ArticleResponse.model_validate(a) for a in articles],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/articles/{slug}", response_model=ArticleResponse)
+async def get_article(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single article by slug."""
+    article = await db_service.get_article_by_slug(db, slug)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return ArticleResponse.model_validate(article)
