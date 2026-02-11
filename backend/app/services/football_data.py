@@ -256,7 +256,7 @@ class FootballDataClient:
             "league": {
                 "id": league_api_football_id,
                 "round": f"Regular Season - {match.get('matchday', '?')}",
-                "season": match.get("season", {}).get("startDate", "2024")[:4],
+                "season": int(match.get("season", {}).get("startDate", "2024")[:4]),
             },
             "teams": {
                 "home": {
