@@ -51,11 +51,11 @@ export default function RootLayout({
 
 /* ── Navigation items ─────────────────────────────────── */
 const NAV_ITEMS = [
-    { href: "/", label: "Artiklar" },
     { href: "/matches", label: "Matcher" },
-    { href: "/predictions", label: "Prediktioner" },
     { href: "/value-bets", label: "Value Bets" },
     { href: "/standings", label: "Tabeller" },
+    { href: "/predictions", label: "Prediktioner" },
+    { href: "/", label: "Artiklar" },
     { href: "/sentiment", label: "Sentiment" },
     { href: "/leaderboard", label: "Tipsligan" },
 ];
@@ -156,14 +156,14 @@ function Footer() {
                     </div>
 
                     {/* Link columns */}
-                    <FooterCol title="Analys" links={[
-                        { href: "/", label: "Artiklar" },
-                        { href: "/predictions", label: "Prediktioner" },
+                    <FooterCol title="Matcher" links={[
+                        { href: "/matches", label: "Livescore" },
                         { href: "/value-bets", label: "Value Bets" },
-                    ]} />
-                    <FooterCol title="Data" links={[
-                        { href: "/matches", label: "Matcher" },
                         { href: "/standings", label: "Tabeller" },
+                    ]} />
+                    <FooterCol title="Analys" links={[
+                        { href: "/predictions", label: "Prediktioner" },
+                        { href: "/", label: "Artiklar" },
                         { href: "/sentiment", label: "Sentiment" },
                     ]} />
                     <FooterCol title="Konto" links={[
