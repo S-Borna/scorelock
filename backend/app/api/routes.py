@@ -557,15 +557,25 @@ async def fix_league_metadata(
     from app.models.models import League as LeagueModel
 
     LEAGUE_META = {
+        # Match by slug OR display name (idempotent)
         "premier_league": {"display": "Premier League", "logo_url": "https://crests.football-data.org/PL.png", "country": "England", "league_type": "league"},
+        "Premier League": {"display": "Premier League", "logo_url": "https://crests.football-data.org/PL.png", "country": "England", "league_type": "league"},
         "la_liga": {"display": "La Liga", "logo_url": "https://crests.football-data.org/laliga.png", "country": "Spain", "league_type": "league"},
+        "La Liga": {"display": "La Liga", "logo_url": "https://crests.football-data.org/laliga.png", "country": "Spain", "league_type": "league"},
         "serie_a": {"display": "Serie A", "logo_url": "https://crests.football-data.org/c111.png", "country": "Italy", "league_type": "league"},
+        "Serie A": {"display": "Serie A", "logo_url": "https://crests.football-data.org/c111.png", "country": "Italy", "league_type": "league"},
         "bundesliga": {"display": "Bundesliga", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Germany", "league_type": "league"},
+        "Bundesliga": {"display": "Bundesliga", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Germany", "league_type": "league"},
         "ligue_1": {"display": "Ligue 1", "logo_url": "https://crests.football-data.org/FL1.png", "country": "France", "league_type": "league"},
+        "Ligue 1": {"display": "Ligue 1", "logo_url": "https://crests.football-data.org/FL1.png", "country": "France", "league_type": "league"},
         "champions_league": {"display": "Champions League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
+        "Champions League": {"display": "Champions League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
         "europa_league": {"display": "Europa League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
+        "Europa League": {"display": "Europa League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
         "conference_league": {"display": "Conference League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
+        "Conference League": {"display": "Conference League", "logo_url": "https://crests.football-data.org/CL.png", "country": "Europe", "league_type": "cup"},
         "allsvenskan": {"display": "Allsvenskan", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Sweden", "league_type": "league"},
+        "Allsvenskan": {"display": "Allsvenskan", "logo_url": "https://crests.football-data.org/BL1.png", "country": "Sweden", "league_type": "league"},
     }
 
     updated = []
