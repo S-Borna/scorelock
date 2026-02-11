@@ -761,7 +761,7 @@ def generate_content_news_rewrites():
 
         async with async_session() as session:
             for team in top_teams:
-                articles = fetch_team_news(team)
+                articles = await fetch_team_news(team)
                 for art in articles[:2]:  # Max 2 per team per run
                     if len(art.get("content", "")) < 100:
                         continue
