@@ -1,5 +1,6 @@
 """ScoreLock Football Analytics — FastAPI Application."""
 
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,11 +39,13 @@ async def lifespan(app: FastAPI):
     logger.info("scorelock_starting", environment=settings.environment)
 
     # Best-effort table creation (Alembic is the source of truth in prod).
-    # Wrapped in try/except so a temporarily-unreachable DB never prevents
-    # uvicorn from binding its port — the /health endpoint must always respond.
+    # Wrapped in try/except + asyncio.timeout so a slow / unreachable DB
+    # never blocks uvicorn from binding its port — the /health endpoint
+    # must always respond for Railway healthchecks.
     try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        async with asyncio.timeout(15):
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
         logger.info("scorelock_tables_ok")
     except Exception as exc:
         logger.error("startup_create_tables_failed", error=str(exc))

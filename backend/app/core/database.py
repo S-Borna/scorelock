@@ -12,6 +12,8 @@ engine = create_async_engine(
     echo=settings.environment == "development",
     pool_size=20,
     max_overflow=10,
+    pool_timeout=10,
+    connect_args={"timeout": 10},
 )
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
