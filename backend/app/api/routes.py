@@ -453,6 +453,57 @@ async def get_match_sentiment(fixture_id: int, db: AsyncSession = Depends(get_db
 ADMIN_EMAILS: set[str] = {"REDACTED-EMAIL", "admin@scorelock.saidborna.com"}
 
 
+@router.get("/admin/debug/fixtures")
+async def debug_fixtures(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Debug endpoint: test API-Football fixture fetch inline (admin only)."""
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
+    from app.services.db_service import upsert_fixtures_batch, get_league_by_api_id, upsert_league
+    from datetime import date as d
+    import traceback
+
+    results = {}
+    current_year = d.today().year
+
+    for league_name in PHASE_1_LEAGUES[:2]:  # Test first 2 leagues only
+        api_id = LEAGUE_IDS[league_name]
+        season = current_year if league_name == "allsvenskan" else current_year - 1
+        try:
+            league = await get_league_by_api_id(db, api_id)
+            if not league:
+                league = await upsert_league(
+                    db, api_id=api_id, name=league_name, country=league_name,
+                    logo_url=None, league_type="league", current_season=current_year,
+                )
+
+            fixtures = await api_football.get_fixtures_by_league(api_id, season)
+            sample = fixtures[:2] if fixtures else []
+            count = 0
+            if fixtures:
+                count = await upsert_fixtures_batch(db, fixtures, league)
+            await db.commit()
+
+            results[league_name] = {
+                "api_id": api_id,
+                "season": season,
+                "total_returned": len(fixtures) if fixtures else 0,
+                "upserted": count,
+                "sample": sample,
+            }
+        except Exception as exc:
+            results[league_name] = {
+                "error": str(exc),
+                "traceback": traceback.format_exc(),
+            }
+
+    return results
+
+
 @router.post("/admin/trigger/{task_name}")
 async def trigger_task(
     task_name: str,
