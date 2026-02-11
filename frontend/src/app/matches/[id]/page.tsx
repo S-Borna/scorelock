@@ -4,6 +4,7 @@ import { AffiliateCTA } from "@/components/affiliate-cta";
 import type { AffiliateLink } from "@/components/affiliate-cta";
 import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
 import { MatchTipSection } from "@/components/match-tip-section";
+import { LiveMatchHeader, LiveMatchStats } from "@/components/live-match-header";
 import { fetchApi } from "@/lib/api";
 import type { Article, ArticleList, FixtureDetail, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
@@ -73,44 +74,13 @@ export default async function MatchDetailPage({ params }: PageProps) {
                 <span>{fixture.home_team.name} vs {fixture.away_team.name}</span>
             </nav>
 
-            {/* Match header card */}
-            <div className="card mb-8">
-                <div className="flex items-center justify-between mb-2">
-                    <Link href={`/standings`} className="text-sm text-gray-500 hover:text-scorelock-400">
-                        {fixture.league.name} · {fixture.round}
-                    </Link>
-                    <span className={getStatusClass(fixture.status)}>
-                        {fixture.status === "live" && "● "}
-                        {fixture.status.toUpperCase()}
-                    </span>
-                </div>
-
-                <div className="flex items-center justify-between py-6">
-                    <TeamDisplay
-                        name={fixture.home_team.name}
-                        logoUrl={fixture.home_team.logo_url}
-                    />
-                    <div className="text-center">
-                        {fixture.home_goals !== null && fixture.away_goals !== null ? (
-                            <div className="text-4xl font-bold font-mono tabular-nums animate-score-pop">
-                                {fixture.home_goals} – {fixture.away_goals}
-                            </div>
-                        ) : (
-                            <div className="text-2xl text-gray-500">vs</div>
-                        )}
-                        <div className="text-xs text-gray-500 mt-2">
-                            {formatKickoff(fixture.kickoff)}
-                        </div>
-                    </div>
-                    <TeamDisplay
-                        name={fixture.away_team.name}
-                        logoUrl={fixture.away_team.logo_url}
-                    />
-                </div>
-            </div>
+            {/* Match header card — live updating */}
+            <LiveMatchHeader fixture={fixture} />
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-6">
+                    {/* Live match stats (auto-refreshing) */}
+                    <LiveMatchStats fixtureId={fixture.id} />
                     {/* Prediction */}
                     {fixture.prediction && (
                         <div className="card">
@@ -210,19 +180,6 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     <GamblingDisclaimer compact />
                 </div>
             </div>
-        </div>
-    );
-}
-
-function TeamDisplay({ name, logoUrl }: { name: string; logoUrl: string | null }) {
-    return (
-        <div className="flex flex-col items-center gap-2 w-28 sm:w-32">
-            {logoUrl ? (
-                <img src={logoUrl} alt={name} className="w-14 h-14 sm:w-16 sm:h-16 object-contain" />
-            ) : (
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/[0.04] rounded-full flex items-center justify-center text-2xl">⚽</div>
-            )}
-            <span className="text-sm font-medium text-center">{name}</span>
         </div>
     );
 }

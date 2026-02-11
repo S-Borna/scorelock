@@ -499,6 +499,183 @@ async def get_quota_status(user: User = Depends(get_current_user)):
     return {"quotas": usage}
 
 
+@router.get("/admin/debug/api-test")
+async def debug_api_test(
+    league_id: int = Query(39, description="API-Football league ID"),
+    season: int = Query(2025, description="Season year"),
+    user: User = Depends(get_current_user),
+):
+    """Test API-Football endpoint directly — returns raw JSON (admin only, 1 API call)."""
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from app.services.api_football import api_football
+    from app.core.config import get_settings
+    from app.services.tasks import _detect_season
+    import httpx
+
+    s = get_settings()
+    key = s.api_football_key
+    key_status = f"{key[:4]}...{key[-4:]}" if len(key) > 8 else ("SET" if key else "EMPTY")
+
+    try:
+        async with httpx.AsyncClient(
+            base_url=api_football.base_url,
+            headers=api_football.headers,
+            timeout=30.0,
+        ) as client:
+            resp = await client.get("/fixtures", params={"league": league_id, "season": season})
+            data = resp.json()
+            return {
+                "api_key_status": key_status,
+                "base_url": api_football.base_url,
+                "detected_season": _detect_season(date.today().year, "premier_league"),
+                "requested": {"league_id": league_id, "season": season},
+                "status_code": resp.status_code,
+                "errors": data.get("errors"),
+                "results_count": data.get("results", 0),
+                "paging": data.get("paging"),
+                "first_3": data.get("response", [])[:3],
+                "headers": {
+                    "x-ratelimit-requests-remaining": resp.headers.get("x-ratelimit-requests-remaining"),
+                    "x-ratelimit-requests-limit": resp.headers.get("x-ratelimit-requests-limit"),
+                },
+            }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@router.get("/admin/debug/db-stats")
+async def debug_db_stats(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get database fixture/standings counts by season (admin only)."""
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from sqlalchemy import func, text, select as sa_select
+    from app.models.models import Fixture, Standing, League, Team
+
+    # Count fixtures by season
+    fixture_stats = await db.execute(
+        sa_select(Fixture.season, func.count(Fixture.id))
+        .group_by(Fixture.season)
+        .order_by(Fixture.season.desc())
+    )
+    fixtures_by_season = [{"season": s, "count": c} for s, c in fixture_stats.all()]
+
+    # Count standings by season
+    standing_stats = await db.execute(
+        sa_select(Standing.season, func.count(Standing.id))
+        .group_by(Standing.season)
+        .order_by(Standing.season.desc())
+    )
+    standings_by_season = [{"season": s, "count": c} for s, c in standing_stats.all()]
+
+    # League count
+    league_count = await db.execute(sa_select(func.count(League.id)))
+    team_count = await db.execute(sa_select(func.count(Team.id)))
+
+    # Date range of fixtures
+    date_range = await db.execute(
+        sa_select(func.min(Fixture.kickoff), func.max(Fixture.kickoff))
+    )
+    min_date, max_date = date_range.one()
+
+    return {
+        "fixtures_by_season": fixtures_by_season,
+        "standings_by_season": standings_by_season,
+        "total_leagues": league_count.scalar(),
+        "total_teams": team_count.scalar(),
+        "fixture_date_range": {
+            "earliest": str(min_date) if min_date else None,
+            "latest": str(max_date) if max_date else None,
+        },
+    }
+
+
+@router.post("/admin/sync-now")
+async def admin_sync_now(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch fixtures + standings synchronously (admin only). Returns results immediately.
+    Uses ~13 API-Football calls (8 fixtures + 5 standings).
+    """
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
+    from app.services.db_service import (
+        upsert_fixtures_batch, get_league_by_api_id, upsert_league, upsert_standing,
+    )
+    from app.core.quota_manager import get_quota_manager
+    from app.services.tasks import _detect_season
+
+    quota = get_quota_manager()
+    current_year = date.today().year
+    results = {"fixtures": {}, "standings": {}, "errors": []}
+
+    # ── Fixtures ──
+    for league_name in PHASE_1_LEAGUES:
+        api_id = LEAGUE_IDS[league_name]
+        league = await get_league_by_api_id(db, api_id)
+        if not league:
+            league = await upsert_league(
+                db, api_id=api_id, name=league_name, country=league_name,
+                logo_url=None,
+                league_type="cup" if league_name in ("champions_league", "europa_league", "conference_league") else "league",
+                current_season=current_year,
+            )
+
+        season = _detect_season(current_year, league_name)
+
+        if not await quota.can_call("api_football"):
+            results["errors"].append(f"Quota exhausted at {league_name}")
+            break
+
+        try:
+            await quota.record_call("api_football")
+            fixtures = await api_football.get_fixtures_by_league(api_id, season)
+            if fixtures:
+                count = await upsert_fixtures_batch(db, fixtures, league)
+                results["fixtures"][league_name] = {"season": season, "fetched": len(fixtures), "upserted": count}
+            else:
+                results["fixtures"][league_name] = {"season": season, "fetched": 0, "error": "empty response"}
+        except Exception as exc:
+            results["errors"].append(f"{league_name}: {str(exc)}")
+
+    # ── Standings (domestic leagues only) ──
+    STANDINGS_LEAGUES = ["premier_league", "la_liga", "serie_a", "bundesliga", "allsvenskan"]
+    for league_name in STANDINGS_LEAGUES:
+        api_id = LEAGUE_IDS[league_name]
+        league = await get_league_by_api_id(db, api_id)
+        if not league:
+            continue
+
+        season = _detect_season(current_year, league_name)
+
+        if not await quota.can_call("api_football"):
+            results["errors"].append(f"Quota exhausted at standings/{league_name}")
+            break
+
+        try:
+            await quota.record_call("api_football")
+            standings = await api_football.get_standings(api_id, season)
+            count = 0
+            for entry in standings:
+                result = await upsert_standing(db, entry, league, season)
+                if result:
+                    count += 1
+            results["standings"][league_name] = {"season": season, "count": count}
+        except Exception as exc:
+            results["errors"].append(f"standings/{league_name}: {str(exc)}")
+
+    await db.commit()
+    return results
+
+
 # ── Articles (AI Content Engine) ──────────────────────────
 
 @router.get("/articles", response_model=ArticleListResponse)
