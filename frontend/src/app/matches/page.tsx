@@ -32,7 +32,9 @@ export default async function MatchesPage() {
 
     const live = fixtures.filter((f) => f.status === "live" || f.status === "halftime");
     const scheduled = fixtures.filter((f) => f.status === "scheduled");
-    const finished = fixtures.filter((f) => f.status === "finished");
+    const finished = fixtures
+        .filter((f) => f.status === "finished")
+        .sort((a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime());
 
     // Unique leagues for context
     const leagues = [...new Map(fixtures.map((f) => [f.league.id, f.league])).values()];

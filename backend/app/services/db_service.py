@@ -238,7 +238,7 @@ async def get_fixtures(
     match_date: date | None = None,
     league_id: int | None = None,
     status: str | None = None,
-    limit: int = 50,
+    limit: int = 100,
 ) -> list[Fixture]:
     """Query fixtures with optional filters."""
     query = (
@@ -248,7 +248,7 @@ async def get_fixtures(
             selectinload(Fixture.home_team),
             selectinload(Fixture.away_team),
         )
-        .order_by(Fixture.kickoff)
+        .order_by(Fixture.kickoff.desc())
         .limit(limit)
     )
 

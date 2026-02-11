@@ -37,6 +37,12 @@ export default async function HomePage() {
     // Live matches from all fixtures
     const liveFixtures = allFixtures.filter((f) => f.status === "live" || f.status === "halftime");
 
+    // Recent results — show when no upcoming scheduled matches
+    const recentResults = allFixtures
+        .filter((f) => f.status === "finished")
+        .sort((a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime())
+        .slice(0, 9);
+
     return (
         <div>
             {/* Hero */}
@@ -140,7 +146,7 @@ export default async function HomePage() {
                 )}
 
                 {/* UPCOMING MATCHES — with predictions and value bets inline */}
-                {fixtures.length > 0 && (
+                {fixtures.length > 0 ? (
                     <section className="mb-12">
                         <div className="section-header">
                             <div>
@@ -165,7 +171,32 @@ export default async function HomePage() {
                             ))}
                         </div>
                     </section>
-                )}
+                ) : recentResults.length > 0 ? (
+                    <section className="mb-12 animate-fade-in">
+                        <div className="section-header">
+                            <div>
+                                <h2 className="section-title">Senaste resultaten</h2>
+                                <p className="section-subtitle">Avslutade matcher från ligan</p>
+                            </div>
+                            <Link href="/matches" className="btn-ghost text-scorelock-400 text-sm">
+                                Alla matcher
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                </svg>
+                            </Link>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {recentResults.map((fixture) => (
+                                <MatchCard
+                                    key={fixture.id}
+                                    fixture={fixture}
+                                    prediction={predMap.get(fixture.id)}
+                                    valueBet={vbMap.get(fixture.id)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
 
                 {/* Weekly top tipper */}
                 {weeklyTop && (
