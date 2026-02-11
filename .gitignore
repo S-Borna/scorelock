@@ -64,3 +64,9 @@ backups/
 
 # ── OS ─────────────────────────────────────────────────────
 Thumbs.db
+
+# ── Railway config-as-code (per-service config in dashboard instead) ──
+railway.json
+railway.toml
+railway-*.json
+railway-*.toml
