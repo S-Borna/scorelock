@@ -43,16 +43,24 @@ router = APIRouter()
 
 
 @router.get("/health")
-async def health_check(db: AsyncSession = Depends(get_db)):
-    """Service health check — validates DB + Redis connectivity."""
+async def health_check():
+    """Service health check — validates DB + Redis connectivity.
+
+    Does NOT use the get_db dependency so the endpoint always
+    returns 200 even when the database is completely unreachable.
+    Railway / k8s healthchecks need a response; downstream checks
+    are reported as "ok" or "error" in the JSON body.
+    """
     import redis as redis_lib
     from app.core.config import get_settings
+    from app.core.database import async_session
 
     checks: dict = {"status": "ok", "service": "scorelock-api", "version": "0.1.0"}
 
     # DB check
     try:
-        await db.execute(text("SELECT 1"))
+        async with async_session() as session:
+            await session.execute(text("SELECT 1"))
         checks["database"] = "ok"
     except Exception:
         checks["database"] = "error"

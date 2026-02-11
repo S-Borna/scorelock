@@ -8,7 +8,11 @@ export const metadata: Metadata = {
     description: "AI-driven sentimentanalys av nyheter och sociala medier för fotbollslag i Europas toppligor.",
 };
 
-export const revalidate = 300;
+// Force server-side rendering on each request — skip SSG.
+// SSG times out because the page makes ~29 sequential API calls
+// (4 leagues × (1 standings + 6 sentiment)), each with a 3s timeout.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface TeamWithSentiment {
     team: Team;
