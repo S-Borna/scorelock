@@ -655,3 +655,76 @@ async def weekly_top_tipper(
 ):
     """Get the top tipper for the current week."""
     return await db_service.get_weekly_top_tipper(db)
+
+
+# ── Prediction Cards (M8) ─────────────────────────────────
+
+@router.get("/prediction-card/{fixture_id}")
+async def get_prediction_card(
+    fixture_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a shareable prediction card image for a fixture.
+
+    Returns a PNG image (1200×630 OG-image format).
+    """
+    from fastapi.responses import Response
+    from app.models.models import Fixture, Prediction, ValueBet
+    from app.services.social.prediction_card import generate_prediction_card
+    from sqlalchemy import select
+
+    # Get fixture
+    result = await db.execute(select(Fixture).where(Fixture.id == fixture_id))
+    fixture = result.scalar_one_or_none()
+    if not fixture:
+        raise HTTPException(status_code=404, detail="Fixture not found")
+
+    # Get prediction
+    pred_result = await db.execute(
+        select(Prediction).where(Prediction.fixture_id == fixture_id)
+    )
+    pred = pred_result.scalar_one_or_none()
+
+    # Get value bet
+    vb_result = await db.execute(
+        select(ValueBet)
+        .where(ValueBet.fixture_id == fixture_id)
+        .order_by(ValueBet.edge.desc())
+        .limit(1)
+    )
+    vb = vb_result.scalar_one_or_none()
+
+    prediction_text = "Ingen prognos tillgänglig"
+    home_pct = draw_pct = away_pct = None
+    if pred:
+        prediction_text = pred.predicted_outcome or "—"
+        home_pct = pred.home_win_probability
+        draw_pct = pred.draw_probability
+        away_pct = pred.away_win_probability
+
+    value_bet_text = None
+    if vb:
+        value_bet_text = f"{vb.bet_type} @{vb.odds:.2f} (edge: +{vb.edge:.1f}%)"
+
+    kickoff_str = fixture.kickoff.strftime("%Y-%m-%d %H:%M UTC") if fixture.kickoff else "TBD"
+
+    image_bytes = generate_prediction_card(
+        home_team=fixture.home_team,
+        away_team=fixture.away_team,
+        league_name=fixture.league_name or "League",
+        kickoff=kickoff_str,
+        prediction=prediction_text,
+        home_win_pct=home_pct,
+        draw_pct=draw_pct,
+        away_win_pct=away_pct,
+        value_bet=value_bet_text,
+    )
+
+    return Response(
+        content=image_bytes,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "Content-Disposition": f"inline; filename=scorelock-{fixture_id}.png",
+        },
+    )

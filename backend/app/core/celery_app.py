@@ -106,6 +106,23 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.score_user_predictions",
         "schedule": crontab(minute="*/15", hour="14-23"),
     },
+
+    # ── Social Distribution (M8) ─────────────────────────────
+    # Distribute match previews — 10:30 UTC (after content generation at 10:00)
+    "distribute-previews": {
+        "task": "app.services.tasks.distribute_match_previews",
+        "schedule": crontab(hour=10, minute=30),
+    },
+    # Distribute value bet alerts — 09:30 UTC (after value bet articles at 09:00)
+    "distribute-value-bets": {
+        "task": "app.services.tasks.distribute_value_bet_alerts",
+        "schedule": crontab(hour=9, minute=30),
+    },
+    # Push match results — every hour during match hours
+    "distribute-match-results": {
+        "task": "app.services.tasks.distribute_match_results",
+        "schedule": crontab(minute=45, hour="14-23"),
+    },
 }
 
 # Auto-discover tasks from services module

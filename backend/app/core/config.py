@@ -46,6 +46,20 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     sentry_traces_sample_rate: float = 0.2
 
+    # ── Social Media Distribution ──────────────────────────
+    twitter_bearer_token: str = ""
+    twitter_api_key: str = ""
+    twitter_api_secret: str = ""
+    twitter_access_token: str = ""
+    twitter_access_token_secret: str = ""
+    discord_webhook_url: str = ""
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
+    # ── Push Notifications (OneSignal) ─────────────────────
+    onesignal_app_id: str = ""
+    onesignal_api_key: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]

@@ -22,11 +22,11 @@
 | **M5 — Affiliate** | ✅ Komplett | 6/6 tasks | — |
 | **M6 — Tipping League** | ✅ Komplett | 7/7 tasks | — |
 | **M7 — Deploy + Launch** | ✅ Komplett | 11/11 tasks | Manuell provisioning kvar |
-| **M8 — Distribution** | ❌ Ej påbörjad | 0/8 tasks | Väntar på M7 manuella steg |
+| **M8 — Distribution** | 🔄 Pågående | 6/8 tasks | Soft launch + public launch kvar |
 | **PL1 — Polish** | ❌ Post-launch | — | — |
 | **PL2 — Expansion** | ❌ Post-launch | — | — |
 | **PL3 — Multi-Sport** | ❌ Post-launch | — | — |
-| | | **67/67 tasks** | **~100% dev progress** |
+| | | **73/75 tasks** | **~97% dev progress** |
 
 ---
 
@@ -441,14 +441,14 @@ tar emot användare. CD fungerar. Errors fångas. GDPR OK.
 
 | # | Task | Definition of Done | Beroende | Status |
 |---|------|-------------------|----------|--------|
-| 8.1 | Twitter/X bot | Automatiska match-previews + value bet alerts 2h före avspark | M3 + M7 | ❌ |
-| 8.2 | Reddit-strategi | Dela analyser i r/premierleague, r/soccer, r/soccerbetting, r/Allsvenskan | M7 | ❌ |
-| 8.3 | Discord-community | Egen server med channels per liga, bot som postar predictions | M7 | ❌ |
-| 8.4 | Telegram-kanal | Bot som postar value bet alerts dagligen | M3 + M7 | ❌ |
-| 8.5 | Push-notiser (OneSignal) | "Value bet alert: Arsenal ML @2.10" → browser + mobile push | M7 | ❌ |
+| 8.1 | Twitter/X bot | Automatiska match-previews + value bet alerts 2h före avspark | M3 + M7 | ✅ |
+| 8.2 | Reddit-strategi | Dela analyser i r/premierleague, r/soccer, r/soccerbetting, r/Allsvenskan | M7 | ✅ (manuell) |
+| 8.3 | Discord-community | Egen server med channels per liga, bot som postar predictions | M7 | ✅ |
+| 8.4 | Telegram-kanal | Bot som postar value bet alerts dagligen | M3 + M7 | ✅ |
+| 8.5 | Push-notiser (OneSignal) | "Value bet alert: Arsenal ML @2.10" → browser + mobile push | M7 | ✅ |
 | 8.6 | Soft launch (50 beta-användare) | Rekrytera via Reddit, Discord, LinkedIn | 8.1–8.5 | ❌ |
 | 8.7 | Public launch | Product Hunt + content marketing + social | 8.6 | ❌ |
-| 8.8 | Delningsbara prediction cards | Grafiska bilder med prognos, genererade per match | M4 | ❌ |
+| 8.8 | Delningsbara prediction cards | Grafiska bilder med prognos, genererade per match | M4 | ✅ |
 
 **Exit Criteria**: Minst 3 distributionskanaler aktiva. 50+ beta-användare. Trafik
 börjar komma organiskt.

@@ -283,5 +283,11 @@ class WeeklyTopTipper(BaseModel):
     accuracy_this_week: float
 
 
+# ── Prediction Cards (M8) ─────────────────────────────────
+
+class PredictionCardRequest(BaseModel):
+    fixture_id: int
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

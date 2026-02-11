@@ -817,3 +817,227 @@ def score_user_predictions_task():
         return {"status": "ok", "scored": total_scored}
 
     return run_async(_score())
+
+
+# ── Social Media Distribution (M8) ─────────────────────────
+
+@celery_app.task(name="app.services.tasks.distribute_match_previews")
+def distribute_match_previews():
+    """Distribute match previews to all social channels.
+
+    Runs daily at 10:30 UTC (after content-previews generates articles).
+    Posts the top 5 previews to Twitter, Discord, Telegram, and push.
+    """
+    async def _distribute():
+        from app.models.models import Article, ArticleType
+        from app.services.social.twitter import post_match_preview_tweet
+        from app.services.social.discord import post_match_preview_discord
+        from app.services.social.telegram import post_match_preview_telegram
+        from app.services.social.push import push_match_preview
+        from sqlalchemy import select
+
+        posted = {"twitter": 0, "discord": 0, "telegram": 0, "push": 0}
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Article)
+                .where(
+                    Article.article_type == ArticleType.MATCH_PREVIEW,
+                    Article.created_at >= cutoff,
+                )
+                .order_by(Article.created_at.desc())
+                .limit(5)
+            )
+            articles = list(result.scalars().all())
+
+            for article in articles:
+                # Extract match info from article context
+                home = article.home_team or "Home"
+                away = article.away_team or "Away"
+                league = article.league_name or "League"
+                fixture_id = article.fixture_id or 0
+                prediction = article.title or ""
+                kickoff = article.match_date or ""
+
+                try:
+                    await post_match_preview_tweet(
+                        home_team=home, away_team=away, league=league,
+                        prediction=prediction, fixture_id=fixture_id,
+                    )
+                    posted["twitter"] += 1
+                except Exception as e:
+                    logger.error("twitter_post_failed", error=str(e))
+
+                try:
+                    await post_match_preview_discord(
+                        home_team=home, away_team=away, league=league,
+                        kickoff=str(kickoff), prediction=prediction,
+                        fixture_id=fixture_id,
+                    )
+                    posted["discord"] += 1
+                except Exception as e:
+                    logger.error("discord_post_failed", error=str(e))
+
+                try:
+                    await post_match_preview_telegram(
+                        home_team=home, away_team=away, league=league,
+                        kickoff=str(kickoff), prediction=prediction,
+                        fixture_id=fixture_id,
+                    )
+                    posted["telegram"] += 1
+                except Exception as e:
+                    logger.error("telegram_post_failed", error=str(e))
+
+                try:
+                    await push_match_preview(
+                        home_team=home, away_team=away, league=league,
+                        prediction=prediction, fixture_id=fixture_id,
+                    )
+                    posted["push"] += 1
+                except Exception as e:
+                    logger.error("push_preview_failed", error=str(e))
+
+        logger.info("previews_distributed", counts=posted)
+        return {"status": "ok", "posted": posted}
+
+    return run_async(_distribute())
+
+
+@celery_app.task(name="app.services.tasks.distribute_value_bet_alerts")
+def distribute_value_bet_alerts():
+    """Distribute value bet alerts to all social channels.
+
+    Runs daily at 09:30 UTC (after content-value-bets).
+    Posts high-edge value bets (edge > 5%) to all channels.
+    """
+    async def _distribute():
+        from app.models.models import ValueBet, Fixture
+        from app.services.social.twitter import post_value_bet_alert_tweet
+        from app.services.social.discord import post_value_bet_alert_discord
+        from app.services.social.telegram import post_value_bet_alert_telegram
+        from app.services.social.push import push_value_bet_alert
+        from sqlalchemy import select
+
+        posted = {"twitter": 0, "discord": 0, "telegram": 0, "push": 0}
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(ValueBet, Fixture)
+                .join(Fixture, ValueBet.fixture_id == Fixture.id)
+                .where(ValueBet.edge > 5.0)
+                .order_by(ValueBet.edge.desc())
+                .limit(5)
+            )
+            rows = result.all()
+
+            for vb, fixture in rows:
+                home = fixture.home_team
+                away = fixture.away_team
+                league = fixture.league_name or "League"
+                bet_desc = f"{vb.bet_type} @{vb.odds:.2f} (edge: +{vb.edge:.1f}%)"
+
+                try:
+                    await post_value_bet_alert_tweet(
+                        home_team=home, away_team=away, league=league,
+                        bet_type=vb.bet_type, odds=vb.odds, edge=vb.edge,
+                        fixture_id=fixture.id,
+                    )
+                    posted["twitter"] += 1
+                except Exception as e:
+                    logger.error("twitter_vb_failed", error=str(e))
+
+                try:
+                    await post_value_bet_alert_discord(
+                        home_team=home, away_team=away, league=league,
+                        bet_type=vb.bet_type, odds=vb.odds, edge=vb.edge,
+                        fixture_id=fixture.id,
+                    )
+                    posted["discord"] += 1
+                except Exception as e:
+                    logger.error("discord_vb_failed", error=str(e))
+
+                try:
+                    await post_value_bet_alert_telegram(
+                        home_team=home, away_team=away, league=league,
+                        bet_type=vb.bet_type, odds=vb.odds, edge=vb.edge,
+                        fixture_id=fixture.id,
+                    )
+                    posted["telegram"] += 1
+                except Exception as e:
+                    logger.error("telegram_vb_failed", error=str(e))
+
+                try:
+                    await push_value_bet_alert(
+                        home_team=home, away_team=away,
+                        bet_description=bet_desc, fixture_id=fixture.id,
+                    )
+                    posted["push"] += 1
+                except Exception as e:
+                    logger.error("push_vb_failed", error=str(e))
+
+        logger.info("value_bets_distributed", counts=posted)
+        return {"status": "ok", "posted": posted}
+
+    return run_async(_distribute())
+
+
+@celery_app.task(name="app.services.tasks.distribute_match_results")
+def distribute_match_results():
+    """Push notifications for match results (checking prediction accuracy).
+
+    Runs hourly during match hours. Sends push for recently finished matches.
+    """
+    async def _distribute():
+        from app.models.models import Fixture, Prediction, MatchStatus
+        from app.services.social.push import push_match_result
+        from sqlalchemy import select
+
+        sent = 0
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Fixture)
+                .where(
+                    Fixture.status == MatchStatus.FINISHED,
+                    Fixture.updated_at >= cutoff,
+                )
+                .order_by(Fixture.kickoff.desc())
+                .limit(10)
+            )
+            fixtures = list(result.scalars().all())
+
+            for fixture in fixtures:
+                # Check if AI predicted correctly
+                pred_result = await session.execute(
+                    select(Prediction).where(Prediction.fixture_id == fixture.id)
+                )
+                pred = pred_result.scalar_one_or_none()
+
+                prediction_correct = False
+                if pred and fixture.home_score is not None and fixture.away_score is not None:
+                    actual = (
+                        "home" if fixture.home_score > fixture.away_score
+                        else "away" if fixture.away_score > fixture.home_score
+                        else "draw"
+                    )
+                    prediction_correct = pred.predicted_outcome == actual
+
+                score = f"{fixture.home_score or 0}-{fixture.away_score or 0}"
+                try:
+                    await push_match_result(
+                        home_team=fixture.home_team,
+                        away_team=fixture.away_team,
+                        score=score,
+                        prediction_correct=prediction_correct,
+                        fixture_id=fixture.id,
+                    )
+                    sent += 1
+                except Exception as e:
+                    logger.error("push_result_failed", error=str(e))
+
+        logger.info("results_distributed", sent=sent)
+        return {"status": "ok", "sent": sent}
+
+    return run_async(_distribute())
