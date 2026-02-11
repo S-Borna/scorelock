@@ -35,29 +35,28 @@ def run_async(coro):
 
 
 def _detect_season(current_year: int, league_name: str) -> int:
-    """Return the correct API-Football season (start year of the campaign).
+    """Return the correct API-Football season parameter.
 
-    API-Football uses the START year of the season:
-      - European leagues: Aug 2024 → May 2025 = season **2024**
-      - Allsvenskan: calendar-year season = **2025**
+    API-Football uses the START year of each campaign:
+      - European leagues (PL, La Liga, etc.): 2025-2026 season → param **2025**
+      - European cups (CL, EL, ECL): 2025-2026 season → param **2025**
+      - Allsvenskan: calendar-year league, 2026 season → param **2026**
 
-    The real-world calendar matters, not the system clock.
-    We pick the most recent season that could actually have data.
+    Logic:
+      - European: season runs Aug → May. If month >= 8 → current_year, else year-1
+      - Allsvenskan: season runs Apr → Nov. If month >= 4 → current_year, else year-1
     """
+    month = date.today().month
+
     if league_name == "allsvenskan":
-        # Calendar-year league: use current OR previous year
-        # Allsvenskan runs Apr–Nov, so Jan-Mar = previous year is latest
-        month = date.today().month
+        # Calendar-year league: Apr–Nov
+        # Jan-Mar = previous year's season is the latest completed
         return current_year if month >= 4 else current_year - 1
 
-    # European leagues: Aug-May cycle
-    # Real-world latest available season on free tier = 2024 (2024-25)
-    # We compute: if month >= 8, season = current_year; else season = year-1
-    # BUT clock is 2026 and API only has up to 2024-25, so we cap it.
-    month = date.today().month
-    computed = current_year if month >= 8 else current_year - 1
-    # API-Football free tier only has current + 2 previous → cap at 2024
-    return min(computed, 2024)
+    # European leagues & cups: Aug–May cycle
+    # Feb 2026 → month < 8 → season = 2026-1 = 2025 (correct: 2025-26 season)
+    # Sep 2026 → month >= 8 → season = 2026 (correct: 2026-27 season)
+    return current_year if month >= 8 else current_year - 1
 
 
 @celery_app.task(name="app.services.tasks.fetch_daily_fixtures")
