@@ -17,14 +17,13 @@ from datetime import datetime, timezone
 
 import anthropic
 import structlog
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.database import async_session
 from app.models.models import (
-    Article, ArticleType, Fixture, League, Team, Prediction,
-    Odds, Standing, SentimentScore, MatchStatus,
+    Article, ArticleType, Fixture, League, Team,
+    Odds, MatchStatus,
 )
 from app.services import db_service
 
@@ -568,8 +567,7 @@ async def generate_value_bet_article(session: AsyncSession) -> Article | None:
         return None
 
     # Get upcoming fixtures with value bets
-    from datetime import date as date_type, timedelta
-    tomorrow = date_type.today() + timedelta(days=1)
+    from datetime import timedelta
     fixtures_q = await session.execute(
         select(Fixture)
         .where(

@@ -9,7 +9,7 @@ Rate limits:
 
 import httpx
 import structlog
-from datetime import date, datetime
+from datetime import date
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import get_settings

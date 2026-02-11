@@ -79,10 +79,8 @@ def fetch_daily_fixtures():
         from app.services.db_service import (
             upsert_fixtures_batch, get_league_by_api_id, upsert_league,
         )
-        from app.core.quota_manager import get_quota_manager
 
         total = 0
-        quota = get_quota_manager()
         current_year = date.today().year
 
         # Build reverse map: league_name → FD competition code
@@ -528,7 +526,6 @@ def update_standings():
         )
         from app.services.api_football import LEAGUE_IDS, PHASE_1_LEAGUES
         from app.services.db_service import upsert_standing, get_league_by_api_id
-        from app.core.quota_manager import get_quota_manager
 
         current_year = date.today().year
         total = 0
@@ -633,7 +630,6 @@ def generate_content_previews():
     async def _gen():
         from app.services.content_generator import generate_match_preview
         from app.services.db_service import get_fixtures
-        from app.models.models import MatchStatus
 
         created = 0
         async with async_session() as session:
@@ -801,7 +797,7 @@ def score_user_predictions_task():
 
         async with async_session() as session:
             # Find finished fixtures with unscored user predictions
-            from sqlalchemy import select, func
+            from sqlalchemy import select
             result = await session.execute(
                 select(Fixture.id)
                 .join(UserPrediction, UserPrediction.fixture_id == Fixture.id)

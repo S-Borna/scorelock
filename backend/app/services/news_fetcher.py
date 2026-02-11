@@ -6,8 +6,6 @@ text about specific teams. This feeds into the sentiment analyzer.
 
 import asyncio
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
-
 import httpx
 import structlog
 

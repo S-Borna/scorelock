@@ -148,7 +148,7 @@ async def get_prediction_accuracy(
     Returns overall accuracy, per-league breakdown, calibration,
     value bet performance, and model version info.
     """
-    from sqlalchemy import select, func, and_, case, Integer as SAInt
+    from sqlalchemy import select, func, and_, case
     from app.models.models import Prediction, Fixture, League
 
     cutoff = datetime.utcnow() - __import__("datetime").timedelta(days=days)
@@ -554,7 +554,7 @@ async def debug_db_stats(
     if user.email not in ADMIN_EMAILS:
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    from sqlalchemy import func, text, select as sa_select
+    from sqlalchemy import func, select as sa_select
     from app.models.models import Fixture, Standing, League, Team
 
     # Count fixtures by season
@@ -734,7 +734,7 @@ async def get_affiliate_links(
 ):
     """Get active affiliate links for a given country."""
     links = await db_service.get_affiliate_links(db, country, bookmaker)
-    return [AffiliateLinkResponse.model_validate(l) for l in links]
+    return [AffiliateLinkResponse.model_validate(link) for link in links]
 
 
 @router.post("/affiliate/click", response_model=AffiliateClickResponse)

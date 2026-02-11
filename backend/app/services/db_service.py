@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import structlog
 
-from app.core.database import async_session
 from app.models.models import (
     League, Team, Fixture, Odds, Prediction,
     SentimentScore, Standing, MatchStatus,
@@ -939,8 +938,6 @@ async def get_leaderboard(
 
 async def get_ai_vs_user(session: AsyncSession, user_id: int) -> dict:
     """Compare user's tipping performance vs the AI model."""
-    from app.models.models import User as UserModel
-
     # Get user's scored predictions
     user_preds = await get_user_predictions(session, user_id, scored_only=True, limit=500)
 

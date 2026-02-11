@@ -1,6 +1,6 @@
 """Pydantic schemas for API request/response validation."""
 
-from datetime import datetime, date
+from datetime import datetime
 from pydantic import BaseModel, EmailStr
 
 

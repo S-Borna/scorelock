@@ -25,7 +25,7 @@ if settings.sentry_dsn:
         dsn=settings.sentry_dsn,
         traces_sample_rate=settings.sentry_traces_sample_rate,
         environment=settings.environment,
-        release=f"scorelock-api@0.1.0",
+        release="scorelock-api@0.1.0",
         send_default_pii=False,
     )
     logger.info("sentry_initialized", environment=settings.environment)

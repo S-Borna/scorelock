@@ -8,7 +8,6 @@ Safe on the Free plan (100 requests/day).
 """
 
 import asyncio
-from datetime import date
 
 import structlog
 
