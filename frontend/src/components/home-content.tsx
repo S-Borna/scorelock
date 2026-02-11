@@ -54,11 +54,11 @@ export function HomeContent({
     // Use live if available, otherwise upcoming, otherwise results
     const displayFixtures = liveFixtures.length > 0 ? liveFixtures :
         upcoming.length > 0 ? upcoming :
-        recentResults;
+            recentResults;
 
     const sectionTitle = liveFixtures.length > 0 ? "Live" :
         upcoming.length > 0 ? "Kommande matcher" :
-        "Senaste resultat";
+            "Senaste resultat";
 
     // Group by league
     const leagueGroups = groupByLeague(displayFixtures);

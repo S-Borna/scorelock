@@ -80,8 +80,8 @@ export function MatchesClient({
 
     const currentFixtures =
         activeTab === "live" ? live :
-        activeTab === "upcoming" ? scheduled :
-        finished.slice(0, 100);
+            activeTab === "upcoming" ? scheduled :
+                finished.slice(0, 100);
 
     // Group by league
     const leagueGroups = groupByLeague(currentFixtures);
@@ -141,8 +141,8 @@ export function MatchesClient({
                         {activeTab === "live"
                             ? "Inga livematcher just nu"
                             : activeTab === "upcoming"
-                            ? "Inga kommande matcher"
-                            : "Inga resultat"}
+                                ? "Inga kommande matcher"
+                                : "Inga resultat"}
                     </p>
                 </div>
             ) : (
@@ -368,22 +368,20 @@ function TabButton({
     return (
         <button
             onClick={onClick}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                active
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${active
                     ? "bg-white/[0.08] text-white shadow-sm"
                     : "text-gray-400 hover:text-gray-300 hover:bg-white/[0.03]"
-            }`}
+                }`}
         >
             {isLive && count > 0 && (
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
             )}
             {children}
             {count > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-md ${
-                    active
+                <span className={`text-xs px-1.5 py-0.5 rounded-md ${active
                         ? isLive ? "bg-red-500/20 text-red-400" : "bg-white/[0.08] text-gray-300"
                         : "bg-white/[0.04] text-gray-500"
-                }`}>
+                    }`}>
                     {count}
                 </span>
             )}
