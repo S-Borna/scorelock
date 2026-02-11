@@ -83,7 +83,22 @@ urls: ## Show all service URLs
 	@echo ""
 	@echo "  API:        http://localhost:8000"
 	@echo "  API Docs:   http://localhost:8000/docs"
+	@echo "  Frontend:   http://localhost:3000"
 	@echo "  Redis UI:   http://localhost:8001"
 	@echo "  Prometheus: http://localhost:9090"
 	@echo "  Grafana:    http://localhost:3001"
 	@echo ""
+
+# ── Production ─────────────────────────────────────────────
+
+backup: ## Backup local database
+	./infra/backup-db.sh
+
+backup-prod: ## Backup production database (needs DATABASE_URL)
+	./infra/backup-db.sh --railway
+
+smoke-test: ## Run smoke test against production
+	./infra/smoke-test.sh
+
+smoke-test-local: ## Run smoke test against local
+	./infra/smoke-test.sh http://localhost:8000

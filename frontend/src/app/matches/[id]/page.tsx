@@ -178,7 +178,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                {/* Tipping */}
+                    {/* Tipping */}
                     <MatchTipSection fixture={fixture} />
 
                     {/* Sentiment */}

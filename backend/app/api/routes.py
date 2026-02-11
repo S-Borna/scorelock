@@ -5,6 +5,7 @@ All routes query the database via the db_service layer.
 
 from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -41,9 +42,32 @@ router = APIRouter()
 # ── Health ─────────────────────────────────────────────────
 
 @router.get("/health")
-async def health_check():
-    """Service health check."""
-    return {"status": "ok", "service": "scorelock-api", "version": "0.1.0"}
+async def health_check(db: AsyncSession = Depends(get_db)):
+    """Service health check — validates DB + Redis connectivity."""
+    import redis as redis_lib
+    from app.core.config import get_settings
+
+    checks: dict = {"status": "ok", "service": "scorelock-api", "version": "0.1.0"}
+
+    # DB check
+    try:
+        await db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception:
+        checks["database"] = "error"
+        checks["status"] = "degraded"
+
+    # Redis check
+    try:
+        settings = get_settings()
+        r = redis_lib.from_url(settings.redis_url, socket_timeout=2)
+        r.ping()
+        checks["redis"] = "ok"
+    except Exception:
+        checks["redis"] = "error"
+        checks["status"] = "degraded"
+
+    return checks
 
 
 # ── Leagues ────────────────────────────────────────────────

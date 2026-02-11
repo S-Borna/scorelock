@@ -39,6 +39,9 @@ prometheus-fastapi-instrumentator==7.0.2
 # ── LLM (sentiment analysis) ──────────────────────────────
 anthropic==0.43.0
 
+# ── Error Monitoring ───────────────────────────────────────
+sentry-sdk[fastapi]==2.19.2
+
 # ── Utilities ──────────────────────────────────────────────
 python-dotenv==1.0.1
 structlog==24.4.0

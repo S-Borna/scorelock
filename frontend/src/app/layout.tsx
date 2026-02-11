@@ -1,3 +1,5 @@
+import { CookieConsent } from "@/components/cookie-consent";
+import { SentryProvider } from "@/components/sentry-provider";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
@@ -32,9 +34,12 @@ export default function RootLayout({
         <html lang="sv" className="dark">
             <body className={`${inter.className} bg-gray-950 text-gray-100 antialiased`}>
                 <div className="min-h-screen flex flex-col">
-                    <Header />
-                    <main className="flex-1">{children}</main>
-                    <Footer />
+                    <SentryProvider>
+                        <Header />
+                        <main className="flex-1">{children}</main>
+                        <Footer />
+                        <CookieConsent />
+                    </SentryProvider>
                 </div>
             </body>
         </html>
@@ -148,15 +153,22 @@ function Footer() {
                         <h4 className="font-semibold mb-2 text-gray-300">Konto</h4>
                         <Link href="/login" className="block text-gray-500 hover:text-gray-300">Logga in</Link>
                         <Link href="/signup" className="block text-gray-500 hover:text-gray-300">Skapa konto</Link>
+                        <Link href="/leaderboard" className="block text-gray-500 hover:text-gray-300">Tipsligan</Link>
                     </div>
                     <div>
-                        <h4 className="font-semibold mb-2 text-gray-300">ScoreLock</h4>
-                        <p className="text-gray-500 text-xs">AI-driven fotbollsanalys med maskininlärning och sentimentdata.</p>
+                        <h4 className="font-semibold mb-2 text-gray-300">Om ScoreLock</h4>
+                        <Link href="/privacy" className="block text-gray-500 hover:text-gray-300">Integritetspolicy</Link>
+                        <Link href="/terms" className="block text-gray-500 hover:text-gray-300">Användarvillkor</Link>
+                        <p className="text-gray-600 text-xs mt-2">AI-driven fotbollsanalys.</p>
                     </div>
                 </div>
                 <div className="text-center text-xs text-gray-600 pt-4 border-t border-gray-800">
                     <p>© 2026 ScoreLock. Datadriven analysplattform — inte spelrådgivning. 18+.</p>
-                    <p className="mt-1">Spela ansvarsfullt. Stödlinjen: 020-819 100.</p>
+                    <p className="mt-1">
+                        Spela ansvarsfullt. Stödlinjen: 020-819 100 ·{" "}
+                        <Link href="/privacy" className="hover:text-gray-400">Integritetspolicy</Link>{" · "}
+                        <Link href="/terms" className="hover:text-gray-400">Villkor</Link>
+                    </p>
                 </div>
             </div>
         </footer>

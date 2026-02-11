@@ -60,11 +60,10 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
                     <button
                         key={o.value}
                         onClick={() => setSelected(o.value)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                            selected === o.value
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${selected === o.value
                                 ? "bg-scorelock-600 text-white ring-2 ring-scorelock-400"
                                 : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                        }`}
+                            }`}
                     >
                         {o.emoji} {o.label}
                     </button>
@@ -113,13 +112,12 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
             <button
                 onClick={handleSubmit}
                 disabled={!selected || submitting}
-                className={`w-full py-2 rounded-lg text-sm font-medium transition-all ${
-                    submitted
+                className={`w-full py-2 rounded-lg text-sm font-medium transition-all ${submitted
                         ? "bg-green-700 text-white"
                         : selected
                             ? "bg-scorelock-600 hover:bg-scorelock-500 text-white"
                             : "bg-gray-800 text-gray-600 cursor-not-allowed"
-                }`}
+                    }`}
             >
                 {submitted ? "✓ Tips sparat!" : submitting ? "Sparar..." : existingTip ? "Uppdatera tips" : "Skicka tips"}
             </button>

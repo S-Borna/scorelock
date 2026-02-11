@@ -302,10 +302,9 @@ export function getMockData(path: string): unknown | null {
 
     // Predictions
     if (basePath === "/api/v1/predictions/today" || basePath === "/api/v1/predictions") {
-        return mockFixtures.filter((f) => f.status === "scheduled").map((f) => ({
-            ...f,
-            prediction: mockPrediction(f.id, 0.45 + Math.random() * 0.15, 0.24, 0.26),
-        }));
+        return mockFixtures.filter((f) => f.status === "scheduled").map((f) =>
+            mockPrediction(f.id, 0.45 + Math.random() * 0.15, 0.24, 0.26),
+        );
     }
 
     // Value bets

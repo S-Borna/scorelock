@@ -134,18 +134,41 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - **M4** ✅ Frontend: article-first design, 14 routes, Swedish, SEO, loading states
 - **M5** ✅ Affiliate integration: Bet365, Unibet, Betsson, LeoVegas — CTA, click tracking, disclaimer
 - **M6** ✅ Tipping League: AI vs You, leaderboards, social sharing
-- **M7** — Deploy + Launch: Railway, Cloudflare, GDPR, monitoring
+- **M7** ✅ Deploy + Launch: Railway, Vercel, Sentry, GDPR, smoke tests, backups
 - **M8** — Distribution: Twitter bot, push notifications, Reddit, Discord, Telegram
 
-**Progress: 56/67 tasks (~84%)**
+**Progress: 67/67 tasks (100% dev)**
+> M7 kräver manuell provisioning (Railway, Vercel, Cloudflare, Stripe) — alla configs och scripts finns.
 
 ---
 
 ## Changelog
 
+### Session 5 — 2026-02-11
+
+**M7 — Deploy + Launch (11/11 ✅)**
+
+- Railway deploy configs: `railway.json` (API med auto `alembic upgrade head`), `railway-worker.json` (Celery worker), `railway-beat.json` (Celery beat)
+- Vercel deploy config: `vercel.json` med `arn1` (Stockholm), security headers, API rewrites
+- CI/CD pipeline: GitHub Actions split deploy (Railway backend + Vercel frontend), smoke test, Sentry release
+- Enhanced `/health` endpoint: DB connectivity check (`SELECT 1`), Redis ping, degraded status support
+- Sentry error monitoring: backend via `sentry-sdk[fastapi]` (traces, PII-off), frontend via `@sentry/react` (client-only)
+  - Anmärkning: `@sentry/nextjs` v8 är inkompatibel med Next.js 16 Turbopack (60s build timeout) — bytt till `@sentry/react`
+- Database backup script: `infra/backup-db.sh` (lokal Docker + `--railway` prod-läge), auto-cleanup behåller 10 senaste
+- Smoke test script: `infra/smoke-test.sh` testor 15 endpoints, färgkodad output, greppbar exit code
+- GDPR-compliance:
+  - Cookie consent banner (localStorage, accept/decline, länk till /privacy)
+  - Integritetspolicy (`/privacy`) — 9 sektioner, svenska, IMY-hänvisning
+  - Användarvillkor (`/terms`) — 12 sektioner, svenska, Spelinspektionen, ansvarsfullt spelande
+- Environment variables: komplett `.env.example` + `DEPLOYMENT.toml` med alla prod-secrets
+- Makefile: `backup`, `backup-prod`, `smoke-test`, `smoke-test-local` targets
+- Bugfix: `prediction-bar.tsx` null-safety för `expected_goals`/`value_edge` (mock data returnerade fixtures istället för predictions)
+- Build verifierad: 18 rutter, 0 errors
+
 ### Session 4 — 2026-02-11
 
 **M1 — Data Pipeline (10/10 ✅)**
+
 - Integrerat football-data.org som primär datakälla (fixtures + standings)
 - Integrerat The Odds API för realtidsodds från 40+ bookmakers
 - Smart quota budget system med Redis-counters per API (hard stop vid 90%)
@@ -153,6 +176,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - Synk av standings, upcoming fixtures (14 dagar), och odds automatiserad
 
 **M2 — ML Predictions (10/10 ✅)**
+
 - Dagliga prediktioner för upcoming fixtures via `run_daily_predictions`
 - Value bet detection med best-odds från 40+ bookmakers + Kelly Criterion
 - Accuracy tracking endpoint (`/predictions/accuracy`) med per-liga breakdown
@@ -160,6 +184,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - 5 nya RSS-källor (SVT Sport, Fotbollskanalen, Aftonbladet, UEFA, Transfermarkt)
 
 **M3 — AI Content Engine (9/9 ✅)**
+
 - `articles`-tabell + Alembic-migration (`1f5b8ca20887`)
 - `content_generator.py` (738 rader) — Claude-driven, 5 artikeltyper:
   - Match Preview (förhandsanalys med form, H2H, odds, prognos)
@@ -172,6 +197,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - Estimerad Anthropic-kostnad: ~$21/månad (~$250/år)
 
 **M4 — Frontend (14/14 ✅)** ⚠️ *MVP-scaffold — designen är funktionell men generisk. Kräver 100x visuell förbättring innan launch (planeras i PL1).*
+
 - Uppgraderat Next.js 14 → 16.1.6 (säkerhetsfix), Turbopack, 0 vulnerabilities
 - Mock-data fallback: frontend fungerar utan Docker (offline dev mode)
 - Komplett svensk frontend med 14 rutter:
@@ -213,9 +239,11 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 mil
 - ShareCard-komponent: 3 varianter (ai-win, leaderboard, streak), Web Share API + clipboard fallback
 - Mock data: 8 leaderboard-entries (svenska användarnamn) + weekly top tipper för offline dev
 - Build verifierad: 16 rutter, 0 errors
+
 ### Session 1–3 — 2026-02-09–10
 
 **M0 — Infrastruktur & Grundplatta**
+
 - Docker Compose med 5 containers (api, db, redis, worker, beat)
 - PostgreSQL 16 + TimescaleDB, Alembic-migrationer
 - FastAPI backend med 22 endpoints, JWT auth, rate limiting

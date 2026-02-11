@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # ── LLM ────────────────────────────────────────────────
     anthropic_api_key: str = ""
 
+    # ── Error Monitoring ───────────────────────────────────
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.2
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]

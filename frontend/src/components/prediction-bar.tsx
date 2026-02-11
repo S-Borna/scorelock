@@ -34,10 +34,10 @@ export function PredictionBar({ prediction }: PredictionBarProps) {
 
             {/* Extra stats */}
             <div className="flex justify-between text-xs text-gray-500">
-                {prediction.expected_goals !== null && (
+                {prediction.expected_goals != null && (
                     <span>xG: {prediction.expected_goals.toFixed(1)}</span>
                 )}
-                {prediction.over_25_prob !== null && (
+                {prediction.over_25_prob != null && (
                     <span>O2.5: {formatProb(prediction.over_25_prob)}</span>
                 )}
                 <span>Confidence: {formatProb(prediction.confidence)}</span>
@@ -61,7 +61,7 @@ export function PredictionBar({ prediction }: PredictionBarProps) {
                             💰 Value: Away
                         </span>
                     )}
-                    {prediction.value_edge !== null && (
+                    {prediction.value_edge != null && (
                         <span className="text-xs text-green-500">
                             Edge: {prediction.value_edge.toFixed(1)}%
                         </span>

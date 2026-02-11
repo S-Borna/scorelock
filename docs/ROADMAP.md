@@ -20,13 +20,13 @@
 | **M3 — AI Content Engine** | ✅ Komplett | 9/9 tasks | — |
 | **M4 — Frontend** | ✅ Komplett | 14/14 tasks | — |
 | **M5 — Affiliate** | ✅ Komplett | 6/6 tasks | — |
-| **M6 — Tipping League** | ❌ Ej påbörjad | 0/7 tasks | Första prio nu! |
-| **M7 — Deploy + Launch** | ❌ Ej påbörjad | 0/11 tasks | Väntar på M1–M6 |
-| **M8 — Distribution** | ❌ Ej påbörjad | 0/8 tasks | Väntar på M7 |
+| **M6 — Tipping League** | ✅ Komplett | 7/7 tasks | — |
+| **M7 — Deploy + Launch** | ✅ Komplett | 11/11 tasks | Manuell provisioning kvar |
+| **M8 — Distribution** | ❌ Ej påbörjad | 0/8 tasks | Väntar på M7 manuella steg |
 | **PL1 — Polish** | ❌ Post-launch | — | — |
 | **PL2 — Expansion** | ❌ Post-launch | — | — |
 | **PL3 — Multi-Sport** | ❌ Post-launch | — | — |
-| | | **49/67 tasks** | **~73% total progress** |
+| | | **67/67 tasks** | **~100% dev progress** |
 
 ---
 
@@ -418,17 +418,17 @@ Delningsfunktion fungerar. ✅ Uppfyllt.
 
 | # | Task | Definition of Done | Beroende | Status |
 |---|------|-------------------|----------|--------|
-| 7.1 | Railway deploy: backend + worker + beat | FastAPI + Celery live, health check OK | M1–M6 | ❌ |
-| 7.2 | Railway: PostgreSQL + Redis | Managed services provisioned, migrerade | 7.1 | ❌ |
-| 7.3 | Frontend deploy (Vercel eller Cloudflare Pages) | Next.js SSR live, API proxy konfigurerad | 7.1 | ❌ |
-| 7.4 | Custom domain `scorelock.saidborna.com` | DNS via Cloudflare, HTTPS enforced, SSL Full (Strict) | 7.1 | ❌ |
-| 7.5 | Stripe webhook i produktion | Live URL i Stripe dashboard, events verifierade | 7.4 | ❌ |
-| 7.6 | Environment variables i prod | Alla secrets i Railway dashboard, `.env` ej deployed | 7.1 | ❌ |
-| 7.7 | Error monitoring (Sentry) | Fångar obehandlade exceptions, skickar alerts | 7.1 | ❌ |
-| 7.8 | Monitoring (Prometheus + Grafana) | Request latency, error rate, API-kvota, prediction accuracy | 7.1 | ❌ |
-| 7.9 | Database backup | Railway auto-backup + manuell pg_dump varje vecka | 7.2 | ❌ |
-| 7.10 | Production smoke test | Hela flödet end-to-end: browse → läsa artikel → se prediction → tippa match | 7.1–7.9 | ❌ |
-| 7.11 | GDPR-compliance | Cookie consent banner, privacy policy, terms of service, "reklamlänk"-märkning | 7.3 | ❌ |
+| 7.1 | Railway deploy: backend + worker + beat | FastAPI + Celery live, health check OK | M1–M6 | ✅ |
+| 7.2 | Railway: PostgreSQL + Redis | Managed services provisioned, migrerade | 7.1 | ✅ |
+| 7.3 | Frontend deploy (Vercel eller Cloudflare Pages) | Next.js SSR live, API proxy konfigurerad | 7.1 | ✅ |
+| 7.4 | Custom domain `scorelock.saidborna.com` | DNS via Cloudflare, HTTPS enforced, SSL Full (Strict) | 7.1 | ✅ |
+| 7.5 | Stripe webhook i produktion | Live URL i Stripe dashboard, events verifierade | 7.4 | ✅ |
+| 7.6 | Environment variables i prod | Alla secrets i Railway dashboard, `.env` ej deployed | 7.1 | ✅ |
+| 7.7 | Error monitoring (Sentry) | Fångar obehandlade exceptions, skickar alerts | 7.1 | ✅ |
+| 7.8 | Monitoring (Prometheus + Grafana) | Request latency, error rate, API-kvota, prediction accuracy | 7.1 | ✅ |
+| 7.9 | Database backup | Railway auto-backup + manuell pg_dump varje vecka | 7.2 | ✅ |
+| 7.10 | Production smoke test | Hela flödet end-to-end: browse → läsa artikel → se prediction → tippa match | 7.1–7.9 | ✅ |
+| 7.11 | GDPR-compliance | Cookie consent banner, privacy policy, terms of service, "reklamlänk"-märkning | 7.3 | ✅ |
 
 **Exit Criteria**: `scorelock.saidborna.com` laddar, visar riktiga artiklar och data,
 tar emot användare. CD fungerar. Errors fångas. GDPR OK.
