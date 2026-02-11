@@ -588,7 +588,7 @@ async def fix_league_metadata(
         if meta:
             league.logo_url = meta["logo_url"]
             league.country = meta["country"]
-            league.league_type = meta["league_type"]
+            league.type = meta["league_type"]
             league.name = meta["display"]
             updated.append(meta["display"])
 
