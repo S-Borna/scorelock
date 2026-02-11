@@ -190,7 +190,7 @@ async def upsert_fixture(session: AsyncSession, data: dict, league: League) -> F
     ht = score_info.get("halftime", {})
 
     league_info = data.get("league", {})
-    season = league_info.get("season", datetime.utcnow().year)
+    season = int(league_info.get("season", datetime.utcnow().year))
     round_name = league_info.get("round")
 
     stmt = pg_insert(Fixture).values(
