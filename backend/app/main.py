@@ -47,8 +47,10 @@ async def lifespan(app: FastAPI):
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
         logger.info("scorelock_tables_ok")
+    except TimeoutError:
+        logger.error("startup_create_tables_failed", error="timeout after 15s")
     except Exception as exc:
-        logger.error("startup_create_tables_failed", error=str(exc))
+        logger.error("startup_create_tables_failed", error=repr(exc))
 
     logger.info("scorelock_ready")
     yield
