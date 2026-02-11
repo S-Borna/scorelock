@@ -4,9 +4,15 @@ These tasks run on schedule (configured in celery_app.py) and keep
 the database up to date with fixtures, scores, odds, and predictions.
 
 Data source strategy:
-  - football-data.org: Primary for fixtures + standings (generous free quota)
-  - API-Football: Live scores only + Allsvenskan/EL/ECL (not on football-data.org)
+  - API-Football: PRIMARY for fixtures + standings + live scores (100 req/day)
+  - football-data.org: Fallback only if API-Football quota exhausted
   - The Odds API: All odds (40+ bookmakers, 500 req/month)
+
+Daily API-Football budget (~26 of 100 calls):
+  - Fixtures: 8 calls (1/league)
+  - Standings: 5 calls (1/league, skip cups)
+  - Live scores: ~5-10 calls
+  - Remaining: ~57 calls buffer
 """
 
 import asyncio
@@ -30,91 +36,103 @@ def run_async(coro):
 
 @celery_app.task(name="app.services.tasks.fetch_daily_fixtures")
 def fetch_daily_fixtures():
-    """Fetch upcoming fixtures — football-data.org primary, API-Football fallback.
+    """Fetch upcoming fixtures — API-Football primary (100 req/day), football-data.org fallback.
 
     Strategy:
-      - football-data.org: PL, La Liga, Serie A, Bundesliga, CL (14 days ahead)
-      - API-Football: Allsvenskan, EL, ECL (today + tomorrow only, quota-limited)
+      - API-Football: ALL Phase 1 leagues via get_fixtures_by_league (1 call/league = 8 calls)
+      - football-data.org: Fallback if API-Football quota exhausted
+    Budget: 8 calls out of 100/day — leaves 92 for live scores, odds, etc.
     """
     async def _fetch():
-        from app.services.football_data import (
-            football_data, FD_COMPETITIONS, FD_UNSUPPORTED_LEAGUES,
-            FootballDataClient,
-        )
         from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
         from app.services.db_service import (
-            upsert_fixtures_batch, upsert_fixture, get_league_by_api_id,
-            ensure_team,
+            upsert_fixtures_batch, get_league_by_api_id, upsert_league,
         )
         from app.core.quota_manager import get_quota_manager
 
         total = 0
         quota = get_quota_manager()
+        current_year = date.today().year
+        failed_leagues: list[str] = []
 
         async with async_session() as session:
-            # ── 1. football-data.org leagues (generous quota) ──
-            for code, info in FD_COMPETITIONS.items():
-                api_football_id = info["api_football_id"]
-                league = await get_league_by_api_id(session, api_football_id)
-                if not league:
-                    # Auto-create league if not in DB yet
-                    from app.services.db_service import upsert_league
-                    league = await upsert_league(
-                        session,
-                        api_id=api_football_id,
-                        name=info["name"],
-                        country=code,
-                        logo_url=None,
-                        league_type="league" if code != "CL" else "cup",
-                        current_season=date.today().year,
-                    )
-
-                try:
-                    matches = await football_data.get_upcoming_matches(code, days_ahead=14)
-                    normalized = [
-                        FootballDataClient.normalize_match_to_fixture(m, api_football_id)
-                        for m in matches
-                    ]
-                    normalized = [n for n in normalized if n]  # Filter empty
-                    if normalized:
-                        count = await upsert_fixtures_batch(session, normalized, league)
-                        total += count
-                        logger.info(
-                            "fd_fixtures_synced",
-                            league=info["name"],
-                            count=count,
-                        )
-                except Exception as exc:
-                    logger.error("fd_fixture_fetch_failed", league=info["name"], error=str(exc))
-
-            # ── 2. API-Football for unsupported leagues ──
-            today = date.today()
-            tomorrow = today + timedelta(days=1)
-
+            # ── 1. API-Football — primary source for ALL leagues ──
             for league_name in PHASE_1_LEAGUES:
-                if league_name not in FD_UNSUPPORTED_LEAGUES:
-                    continue  # Already handled by football-data.org
-
-                if not await quota.can_call("api_football"):
-                    logger.warning("api_football_quota_exhausted", skipping=league_name)
-                    break
-
                 api_id = LEAGUE_IDS[league_name]
                 league = await get_league_by_api_id(session, api_id)
                 if not league:
+                    league = await upsert_league(
+                        session,
+                        api_id=api_id,
+                        name=league_name,
+                        country=league_name,
+                        logo_url=None,
+                        league_type="cup" if "league" not in league_name and league_name in (
+                            "champions_league", "europa_league", "conference_league"
+                        ) else "league",
+                        current_season=current_year,
+                    )
+
+                if not await quota.can_call("api_football"):
+                    logger.warning("api_football_quota_exhausted", skipping=league_name)
+                    failed_leagues.append(league_name)
                     continue
 
-                for day in [today, tomorrow]:
-                    try:
-                        await quota.record_call("api_football")
-                        fixtures = await api_football.get_fixtures_by_date(day, api_id)
-                    except Exception as exc:
-                        logger.error("fixture_fetch_failed", league=league_name, error=str(exc))
-                        continue
+                # Season logic: Allsvenskan = calendar year, others = year-1
+                season = current_year if league_name == "allsvenskan" else current_year - 1
 
+                try:
+                    await quota.record_call("api_football")
+                    fixtures = await api_football.get_fixtures_by_league(api_id, season)
                     if fixtures:
                         count = await upsert_fixtures_batch(session, fixtures, league)
                         total += count
+                        logger.info(
+                            "fixtures_synced",
+                            source="api_football",
+                            league=league_name,
+                            count=count,
+                            total_returned=len(fixtures),
+                        )
+                    else:
+                        logger.warning("fixtures_empty", source="api_football", league=league_name, season=season)
+                except Exception as exc:
+                    logger.error("fixture_fetch_failed", source="api_football", league=league_name, error=str(exc))
+                    failed_leagues.append(league_name)
+
+            # ── 2. football-data.org fallback for failed leagues ──
+            if failed_leagues:
+                try:
+                    from app.services.football_data import (
+                        football_data, FD_COMPETITIONS, FootballDataClient,
+                    )
+                    fd_reverse = {v["name"]: code for code, v in FD_COMPETITIONS.items()}
+
+                    for league_name in failed_leagues:
+                        fd_code = fd_reverse.get(league_name)
+                        if not fd_code:
+                            continue  # Not available in football-data.org
+
+                        api_football_id = FD_COMPETITIONS[fd_code]["api_football_id"]
+                        league = await get_league_by_api_id(session, api_football_id)
+                        if not league:
+                            continue
+
+                        try:
+                            matches = await football_data.get_upcoming_matches(fd_code, days_ahead=14)
+                            normalized = [
+                                FootballDataClient.normalize_match_to_fixture(m, api_football_id)
+                                for m in matches
+                            ]
+                            normalized = [n for n in normalized if n]
+                            if normalized:
+                                count = await upsert_fixtures_batch(session, normalized, league)
+                                total += count
+                                logger.info("fixtures_synced", source="football_data_fallback", league=league_name, count=count)
+                        except Exception as exc:
+                            logger.error("fd_fixture_fallback_failed", league=league_name, error=str(exc))
+                except ImportError:
+                    logger.warning("football_data_module_unavailable")
 
             await session.commit()
 
@@ -493,16 +511,12 @@ def run_sentiment_analysis():
 
 @celery_app.task(name="app.services.tasks.update_standings")
 def update_standings():
-    """Update league standings — football-data.org primary, API-Football fallback.
+    """Update league standings — API-Football primary (100 req/day), football-data.org fallback.
 
-    football-data.org: PL, La Liga, Serie A, Bundesliga, CL
-    API-Football: Allsvenskan, EL, ECL
+    API-Football: ALL Phase 1 leagues (1 call/league = 8 calls)
+    football-data.org: Fallback only if API-Football quota exhausted
     """
     async def _update():
-        from app.services.football_data import (
-            football_data, FD_COMPETITIONS, FD_UNSUPPORTED_LEAGUES,
-            FootballDataClient,
-        )
         from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
         from app.services.db_service import upsert_standing, get_league_by_api_id
         from app.core.quota_manager import get_quota_manager
@@ -510,42 +524,23 @@ def update_standings():
         current_year = date.today().year
         total = 0
         quota = get_quota_manager()
+        failed_leagues: list[str] = []
 
         async with async_session() as session:
-            # ── 1. football-data.org leagues ──
-            for code, info in FD_COMPETITIONS.items():
-                api_football_id = info["api_football_id"]
-                league = await get_league_by_api_id(session, api_football_id)
+            # ── 1. API-Football — primary source for ALL leagues ──
+            for league_name in PHASE_1_LEAGUES:
+                api_id = LEAGUE_IDS[league_name]
+                league = await get_league_by_api_id(session, api_id)
                 if not league:
                     continue
 
-                try:
-                    standings = await football_data.get_standings(code)
-                except Exception as exc:
-                    logger.error("fd_standings_failed", league=info["name"], error=str(exc))
-                    continue
-
-                season = current_year if code == "BL1" else current_year - 1
-                for entry in standings:
-                    normalized = FootballDataClient.normalize_standing(entry, code)
-                    result = await upsert_standing(session, normalized, league, season)
-                    if result:
-                        total += 1
-
-                logger.info("fd_standings_synced", league=info["name"], teams=len(standings))
-
-            # ── 2. API-Football for unsupported leagues ──
-            for league_name in PHASE_1_LEAGUES:
-                if league_name not in FD_UNSUPPORTED_LEAGUES:
+                # Skip cups without traditional standings
+                if league_name in ("champions_league", "europa_league", "conference_league"):
                     continue
 
                 if not await quota.can_call("api_football"):
                     logger.warning("api_football_quota_exhausted", skipping=league_name)
-                    break
-
-                api_id = LEAGUE_IDS[league_name]
-                league = await get_league_by_api_id(session, api_id)
-                if not league:
+                    failed_leagues.append(league_name)
                     continue
 
                 season = current_year if league_name == "allsvenskan" else current_year - 1
@@ -554,7 +549,8 @@ def update_standings():
                     await quota.record_call("api_football")
                     standings = await api_football.get_standings(api_id, season)
                 except Exception as exc:
-                    logger.error("standings_fetch_failed", league=league_name, error=str(exc))
+                    logger.error("standings_fetch_failed", source="api_football", league=league_name, error=str(exc))
+                    failed_leagues.append(league_name)
                     continue
 
                 for entry in standings:
@@ -562,7 +558,42 @@ def update_standings():
                     if result:
                         total += 1
 
-                logger.info("standings_upserted", league=league_name, teams=len(standings))
+                logger.info("standings_synced", source="api_football", league=league_name, teams=len(standings))
+
+            # ── 2. football-data.org fallback for failed leagues ──
+            if failed_leagues:
+                try:
+                    from app.services.football_data import (
+                        football_data, FD_COMPETITIONS, FootballDataClient,
+                    )
+                    fd_name_to_code = {v["name"]: code for code, v in FD_COMPETITIONS.items()}
+
+                    for league_name in failed_leagues:
+                        fd_code = fd_name_to_code.get(league_name)
+                        if not fd_code:
+                            continue
+
+                        api_football_id = FD_COMPETITIONS[fd_code]["api_football_id"]
+                        league = await get_league_by_api_id(session, api_football_id)
+                        if not league:
+                            continue
+
+                        try:
+                            standings = await football_data.get_standings(fd_code)
+                        except Exception as exc:
+                            logger.error("fd_standings_fallback_failed", league=league_name, error=str(exc))
+                            continue
+
+                        season = current_year if fd_code == "BL1" else current_year - 1
+                        for entry in standings:
+                            normalized = FootballDataClient.normalize_standing(entry, fd_code)
+                            result = await upsert_standing(session, normalized, league, season)
+                            if result:
+                                total += 1
+
+                        logger.info("standings_synced", source="football_data_fallback", league=league_name, teams=len(standings))
+                except ImportError:
+                    logger.warning("football_data_module_unavailable")
 
             await session.commit()
 
