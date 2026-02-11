@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     twitter_access_token: str = ""
     twitter_access_token_secret: str = ""
     discord_webhook_url: str = ""
+    discord_webhook_valuebets: str = ""
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 

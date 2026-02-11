@@ -96,7 +96,10 @@ async def post_value_bet_alert_discord(
     matches: list[dict],
     article_url: str,
 ) -> dict:
-    """Post a daily value bet alert embed to Discord."""
+    """Post a daily value bet alert embed to Discord #value-bets channel."""
+    settings = get_settings()
+    vb_webhook = settings.discord_webhook_valuebets or settings.discord_webhook_url
+
     lines = []
     for m in matches[:8]:
         edge_str = f" (edge: +{m['edge']:.1f}%)" if m.get("edge") else ""
@@ -110,4 +113,4 @@ async def post_value_bet_alert_discord(
         "footer": {"text": "ScoreLock AI — scorelock.saidborna.com"},
     }
 
-    return await post_to_discord(embed=embed)
+    return await post_to_discord(embed=embed, webhook_url=vb_webhook)
