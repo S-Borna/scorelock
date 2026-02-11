@@ -84,9 +84,8 @@ function TeamRow({
                 </span>
             </div>
             {goals !== null && (
-                <span className={`text-lg font-mono tabular-nums ml-3 ${
-                    isWinner ? "font-bold text-white" : isLive ? "text-red-400 font-semibold" : "text-gray-400"
-                }`}>
+                <span className={`text-lg font-mono tabular-nums ml-3 ${isWinner ? "font-bold text-white" : isLive ? "text-red-400 font-semibold" : "text-gray-400"
+                    }`}>
                     {goals}
                 </span>
             )}

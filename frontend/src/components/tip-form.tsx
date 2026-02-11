@@ -61,8 +61,8 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
                         key={o.value}
                         onClick={() => setSelected(o.value)}
                         className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all duration-200 ${selected === o.value
-                                ? "bg-scorelock-600 text-white shadow-glow-sm ring-1 ring-scorelock-400/30"
-                                : "bg-white/[0.04] text-gray-400 hover:bg-white/[0.07] border border-white/[0.06]"
+                            ? "bg-scorelock-600 text-white shadow-glow-sm ring-1 ring-scorelock-400/30"
+                            : "bg-white/[0.04] text-gray-400 hover:bg-white/[0.07] border border-white/[0.06]"
                             }`}
                     >
                         {o.emoji} {o.label}
@@ -113,10 +113,10 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
                 onClick={handleSubmit}
                 disabled={!selected || submitting}
                 className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${submitted
-                        ? "bg-scorelock-600 text-white shadow-glow-sm"
-                        : selected
-                            ? "btn-primary"
-                            : "bg-white/[0.04] text-gray-600 cursor-not-allowed border border-white/[0.04]"
+                    ? "bg-scorelock-600 text-white shadow-glow-sm"
+                    : selected
+                        ? "btn-primary"
+                        : "bg-white/[0.04] text-gray-600 cursor-not-allowed border border-white/[0.04]"
                     }`}
             >
                 {submitted ? "✓ Tips sparat!" : submitting ? "Sparar..." : existingTip ? "Uppdatera tips" : "Skicka tips"}

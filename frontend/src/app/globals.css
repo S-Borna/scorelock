@@ -31,13 +31,16 @@
         width: 6px;
         height: 6px;
     }
+
     ::-webkit-scrollbar-track {
         background: transparent;
     }
+
     ::-webkit-scrollbar-thumb {
         background: rgba(var(--border), 0.08);
         border-radius: 3px;
     }
+
     ::-webkit-scrollbar-thumb:hover {
         background: rgba(var(--border), 0.15);
     }
@@ -49,16 +52,14 @@
 }
 
 @layer components {
+
     /* ── Surface Cards ─────────────────────────────────── */
     .card {
-        @apply relative bg-surface-900/80 border border-white/[0.06] rounded-2xl p-6
-               shadow-card backdrop-blur-sm
-               transition-all duration-300 ease-out;
+        @apply relative bg-surface-900/80 border border-white/[0.06] rounded-2xl p-6 shadow-card backdrop-blur-sm transition-all duration-300 ease-out;
     }
 
     .card-hover {
-        @apply card hover:border-scorelock-500/20 hover:shadow-card-hover
-               hover:-translate-y-0.5;
+        @apply card hover:border-scorelock-500/20 hover:shadow-card-hover hover:-translate-y-0.5;
     }
 
     .card-interactive {
@@ -71,19 +72,16 @@
 
     /* ── Glass surfaces ────────────────────────────────── */
     .glass {
-        @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.06]
-               rounded-2xl shadow-inner-glow;
+        @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl shadow-inner-glow;
     }
 
     .glass-strong {
-        @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08]
-               rounded-2xl shadow-inner-glow;
+        @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08] rounded-2xl shadow-inner-glow;
     }
 
     /* ── Badges ────────────────────────────────────────── */
     .badge {
-        @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg
-               text-xs font-medium tracking-wide;
+        @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide;
     }
 
     .badge-live {
@@ -113,8 +111,7 @@
     }
 
     .prob-bar-track {
-        @apply flex h-2.5 rounded-full overflow-hidden bg-white/[0.04]
-               backdrop-blur-sm border border-white/[0.03];
+        @apply flex h-2.5 rounded-full overflow-hidden bg-white/[0.04] backdrop-blur-sm border border-white/[0.03];
     }
 
     /* ── Data display ──────────────────────────────────── */
@@ -128,37 +125,20 @@
 
     /* ── Buttons ───────────────────────────────────────── */
     .btn-primary {
-        @apply inline-flex items-center justify-center gap-2
-               bg-scorelock-600 hover:bg-scorelock-500
-               text-white font-medium text-sm
-               px-5 py-2.5 rounded-xl
-               shadow-glow-sm hover:shadow-glow-md
-               transition-all duration-200 ease-out
-               active:scale-[0.97];
+        @apply inline-flex items-center justify-center gap-2 bg-scorelock-600 hover:bg-scorelock-500 text-white font-medium text-sm px-5 py-2.5 rounded-xl shadow-glow-sm hover:shadow-glow-md transition-all duration-200 ease-out active:scale-[0.97];
     }
 
     .btn-secondary {
-        @apply inline-flex items-center justify-center gap-2
-               bg-white/[0.05] hover:bg-white/[0.08]
-               border border-white/[0.08] hover:border-white/[0.12]
-               text-gray-200 font-medium text-sm
-               px-5 py-2.5 rounded-xl
-               transition-all duration-200 ease-out
-               active:scale-[0.97];
+        @apply inline-flex items-center justify-center gap-2 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.12] text-gray-200 font-medium text-sm px-5 py-2.5 rounded-xl transition-all duration-200 ease-out active:scale-[0.97];
     }
 
     .btn-ghost {
-        @apply inline-flex items-center justify-center gap-2
-               text-gray-400 hover:text-white hover:bg-white/[0.05]
-               font-medium text-sm
-               px-4 py-2 rounded-xl
-               transition-all duration-200 ease-out;
+        @apply inline-flex items-center justify-center gap-2 text-gray-400 hover:text-white hover:bg-white/[0.05] font-medium text-sm px-4 py-2 rounded-xl transition-all duration-200 ease-out;
     }
 
     /* ── Active nav link ───────────────────────────────── */
     .nav-link {
-        @apply relative text-sm font-medium text-gray-400
-               hover:text-white transition-colors duration-200;
+        @apply relative text-sm font-medium text-gray-400 hover:text-white transition-colors duration-200;
     }
 
     .nav-link-active {
@@ -167,8 +147,7 @@
 
     .nav-link-active::after {
         content: "";
-        @apply absolute -bottom-1 left-0 right-0 h-0.5
-               bg-scorelock-500 rounded-full;
+        @apply absolute -bottom-1 left-0 right-0 h-0.5 bg-scorelock-500 rounded-full;
     }
 
     /* ── Section headers ───────────────────────────────── */
@@ -222,8 +201,7 @@
     }
 
     .prose-scorelock blockquote {
-        @apply border-l-2 border-scorelock-500/40 pl-5 italic text-gray-400 my-6
-               bg-white/[0.02] py-4 pr-5 rounded-r-xl;
+        @apply border-l-2 border-scorelock-500/40 pl-5 italic text-gray-400 my-6 bg-white/[0.02] py-4 pr-5 rounded-r-xl;
     }
 
     .prose-scorelock hr {
@@ -231,9 +209,7 @@
     }
 
     .prose-scorelock a {
-        @apply text-scorelock-400 hover:text-scorelock-300
-               underline underline-offset-2 decoration-scorelock-500/30
-               hover:decoration-scorelock-400/60 transition-colors;
+        @apply text-scorelock-400 hover:text-scorelock-300 underline underline-offset-2 decoration-scorelock-500/30 hover:decoration-scorelock-400/60 transition-colors;
     }
 
     /* ── Sentiment ─────────────────────────────────────── */
@@ -256,12 +232,10 @@
 
     .skeleton-shimmer {
         @apply relative overflow-hidden rounded-xl;
-        background: linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0.02) 0%,
-            rgba(255, 255, 255, 0.06) 50%,
-            rgba(255, 255, 255, 0.02) 100%
-        );
+        background: linear-gradient(90deg,
+                rgba(255, 255, 255, 0.02) 0%,
+                rgba(255, 255, 255, 0.06) 50%,
+                rgba(255, 255, 255, 0.02) 100%);
         background-size: 200% 100%;
         animation: shimmer 2s linear infinite;
     }
@@ -273,44 +247,40 @@
 
     /* ── Input fields ──────────────────────────────────── */
     .input {
-        @apply w-full bg-white/[0.03] border border-white/[0.08] rounded-xl
-               px-4 py-3 text-sm text-white placeholder-gray-500
-               focus:outline-none focus:border-scorelock-500/40 focus:ring-1 focus:ring-scorelock-500/20
-               transition-all duration-200;
+        @apply w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-scorelock-500/40 focus:ring-1 focus:ring-scorelock-500/20 transition-all duration-200;
     }
 
     /* ── Table ─────────────────────────────────────────── */
     .table-header {
-        @apply text-xs font-medium uppercase tracking-wider text-gray-500 pb-3
-               border-b border-white/[0.06];
+        @apply text-xs font-medium uppercase tracking-wider text-gray-500 pb-3 border-b border-white/[0.06];
     }
 
     .table-row {
-        @apply border-b border-white/[0.04] hover:bg-white/[0.02]
-               transition-colors duration-150;
+        @apply border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors duration-150;
     }
 }
 
 @layer utilities {
+
     /* Text gradient for hero headers */
     .text-gradient {
-        @apply bg-clip-text text-transparent
-               bg-gradient-to-r from-scorelock-400 via-scorelock-300 to-accent-cyan;
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-scorelock-400 via-scorelock-300 to-accent-cyan;
     }
 
     .text-gradient-warm {
-        @apply bg-clip-text text-transparent
-               bg-gradient-to-r from-accent-amber via-accent-rose to-accent-purple;
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-amber via-accent-rose to-accent-purple;
     }
 
     /* Glow effects behind elements */
     .glow-green {
         @apply relative;
     }
+
     .glow-green::before {
         content: "";
         @apply absolute -inset-1 bg-glow-green opacity-0 transition-opacity duration-500 rounded-3xl -z-10;
     }
+
     .glow-green:hover::before {
         @apply opacity-100;
     }
@@ -330,6 +300,7 @@
     .animate-on-scroll {
         @apply opacity-0 translate-y-4 transition-all duration-700 ease-out;
     }
+
     .animate-on-scroll.visible {
         @apply opacity-100 translate-y-0;
     }

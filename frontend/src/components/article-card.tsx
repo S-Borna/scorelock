@@ -33,9 +33,8 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
 
             {/* Title */}
             <h3
-                className={`font-semibold text-white group-hover:text-scorelock-400 transition-colors duration-200 mb-2 leading-snug ${
-                    featured ? "text-xl lg:text-2xl" : "text-base"
-                }`}
+                className={`font-semibold text-white group-hover:text-scorelock-400 transition-colors duration-200 mb-2 leading-snug ${featured ? "text-xl lg:text-2xl" : "text-base"
+                    }`}
             >
                 {article.title}
             </h3>
