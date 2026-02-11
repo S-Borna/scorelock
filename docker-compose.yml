@@ -2,8 +2,8 @@ services:
   # ── Backend API ──────────────────────────────────────────
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: scorelock-api
     ports:
       - "8000:8000"
@@ -24,8 +24,8 @@ services:
   # ── Celery Worker (scheduled tasks & ML jobs) ────────────
   celery-worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: scorelock-worker
     env_file:
       - .env
@@ -44,8 +44,8 @@ services:
   # ── Celery Beat (scheduler) ──────────────────────────────
   celery-beat:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: scorelock-beat
     env_file:
       - .env
