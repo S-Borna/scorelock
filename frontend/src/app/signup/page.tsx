@@ -5,140 +5,140 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function SignupPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+    const router = useRouter();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+        if (password !== confirmPassword) {
+            setError("Passwords do not match");
+            return;
         }
-      );
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.detail || "Registration failed");
-      }
-
-      // Auto-login after registration
-      const loginRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ username: email, password }),
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters");
+            return;
         }
-      );
 
-      if (loginRes.ok) {
-        const data = await loginRes.json();
-        localStorage.setItem("access_token", data.access_token);
-      }
+        setLoading(true);
 
-      router.push("/");
-      router.refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
-    } finally {
-      setLoading(false);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
+                }
+            );
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.detail || "Registration failed");
+            }
+
+            // Auto-login after registration
+            const loginRes = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({ username: email, password }),
+                }
+            );
+
+            if (loginRes.ok) {
+                const data = await loginRes.json();
+                localStorage.setItem("access_token", data.access_token);
+            }
+
+            router.push("/");
+            router.refresh();
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Registration failed");
+        } finally {
+            setLoading(false);
+        }
     }
-  }
 
-  return (
-    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4">
-      <div className="card max-w-md w-full p-8">
-        <h1 className="text-2xl font-bold text-center mb-6">Create account</h1>
+    return (
+        <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4">
+            <div className="card max-w-md w-full p-8">
+                <h1 className="text-2xl font-bold text-center mb-6">Create account</h1>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
-            {error}
-          </div>
-        )}
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
+                        {error}
+                    </div>
+                )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
-              placeholder="you@example.com"
-            />
-          </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-1">
+                            Email
+                        </label>
+                        <input
+                            id="email"
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
+                            placeholder="you@example.com"
+                        />
+                    </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
-              placeholder="Min. 8 characters"
-            />
-          </div>
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-1">
+                            Password
+                        </label>
+                        <input
+                            id="password"
+                            type="password"
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
+                            placeholder="Min. 8 characters"
+                        />
+                    </div>
 
-          <div>
-            <label htmlFor="confirm" className="block text-sm font-medium text-gray-400 mb-1">
-              Confirm password
-            </label>
-            <input
-              id="confirm"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
-              placeholder="Repeat password"
-            />
-          </div>
+                    <div>
+                        <label htmlFor="confirm" className="block text-sm font-medium text-gray-400 mb-1">
+                            Confirm password
+                        </label>
+                        <input
+                            id="confirm"
+                            type="password"
+                            required
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
+                            placeholder="Repeat password"
+                        />
+                    </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-scorelock-600 hover:bg-scorelock-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition"
-          >
-            {loading ? "Creating account…" : "Sign up"}
-          </button>
-        </form>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-scorelock-600 hover:bg-scorelock-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition"
+                    >
+                        {loading ? "Creating account…" : "Sign up"}
+                    </button>
+                </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Already have an account?{" "}
-          <Link href="/login" className="text-scorelock-400 hover:underline">
-            Log in
-          </Link>
-        </p>
-      </div>
-    </div>
-  );
+                <p className="text-center text-sm text-gray-500 mt-6">
+                    Already have an account?{" "}
+                    <Link href="/login" className="text-scorelock-400 hover:underline">
+                        Log in
+                    </Link>
+                </p>
+            </div>
+        </div>
+    );
 }

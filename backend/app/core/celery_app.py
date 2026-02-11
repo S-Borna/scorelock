@@ -1,4 +1,10 @@
-"""Celery application with scheduled data pipeline tasks."""
+"""Celery application with scheduled data pipeline tasks.
+
+Data source strategy:
+  - football-data.org: Primary for fixtures + standings (10 req/min free)
+  - API-Football: Live scores only + Allsvenskan/EL/ECL (100 req/day free)
+  - The Odds API: All odds from 40+ bookmakers (500 req/month free)
+"""
 
 from celery import Celery
 from celery.schedules import crontab
@@ -25,36 +31,41 @@ celery_app.conf.update(
 )
 
 # ── Scheduled Tasks ────────────────────────────────────────
+# Budget targets (monthly):
+#   API-Football:    100/day  → ~20 used/day (live scores only)
+#   football-data:   10/min   → unlimited daily (fixtures + standings)
+#   The Odds API:    500/mo   → ~16/day (odds 2x/day × 8 leagues)
 celery_app.conf.beat_schedule = {
-    # Fetch today's fixtures every morning at 06:00 UTC
+    # Fetch upcoming fixtures (football-data.org primary) — 06:00 + 18:00 UTC
     "fetch-daily-fixtures": {
         "task": "app.services.tasks.fetch_daily_fixtures",
-        "schedule": crontab(hour=6, minute=0),
+        "schedule": crontab(hour="6,18", minute=0),
     },
-    # Update live scores every 5 minutes during match hours (12:00–23:00 UTC)
+    # Update live scores (API-Football — only source with live data)
+    # Every 5 minutes during match hours (12:00–23:00 UTC)
     "update-live-scores": {
         "task": "app.services.tasks.update_live_scores",
         "schedule": crontab(minute="*/5", hour="12-23"),
     },
-    # Fetch and store odds updates every 30 minutes
+    # Fetch odds from The Odds API (2x/day to conserve 500 req/month budget)
     "fetch-odds": {
         "task": "app.services.tasks.fetch_odds_updates",
-        "schedule": crontab(minute="*/30"),
+        "schedule": crontab(hour="8,20", minute=0),
     },
-    # Run ML predictions for tomorrow's matches at 22:00 UTC
+    # Run ML predictions at 07:00 + 22:00 UTC (after fixture + odds sync)
     "run-predictions": {
         "task": "app.services.tasks.run_daily_predictions",
-        "schedule": crontab(hour=22, minute=0),
+        "schedule": crontab(hour="7,22", minute=0),
     },
     # Fetch news and run sentiment analysis every 2 hours
     "sentiment-analysis": {
         "task": "app.services.tasks.run_sentiment_analysis",
         "schedule": crontab(minute=0, hour="*/2"),
     },
-    # Update standings weekly on Monday at 05:00 UTC
+    # Update standings (football-data.org primary) — daily at 05:00 UTC
     "update-standings": {
         "task": "app.services.tasks.update_standings",
-        "schedule": crontab(hour=5, minute=0, day_of_week=1),
+        "schedule": crontab(hour=5, minute=0),
     },
     # Retrain ML model weekly on Sunday at 03:00 UTC
     "retrain-model": {

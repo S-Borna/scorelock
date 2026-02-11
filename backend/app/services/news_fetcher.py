@@ -16,11 +16,19 @@ logger = structlog.get_logger()
 # ── RSS Feed Sources ───────────────────────────────────────
 
 RSS_FEEDS: list[dict[str, str]] = [
+    # English sources
     {"name": "BBC Football", "url": "https://feeds.bbci.co.uk/sport/football/rss.xml"},
     {"name": "Guardian Football", "url": "https://www.theguardian.com/football/rss"},
     {"name": "ESPN FC", "url": "https://www.espn.com/espn/rss/soccer/news"},
     {"name": "Sky Sports Football", "url": "https://www.skysports.com/rss/12040"},
     {"name": "Goal.com", "url": "https://www.goal.com/feeds/en/news"},
+    # Swedish sources
+    {"name": "SVT Sport Fotboll", "url": "https://www.svt.se/nyheter/sport/fotboll/rss.xml"},
+    {"name": "Fotbollskanalen", "url": "https://www.fotbollskanalen.se/rss/"},
+    {"name": "Aftonbladet Sport", "url": "https://rss.aftonbladet.se/rss2/small/pages/sections/sportbladet/"},
+    # European sources
+    {"name": "UEFA", "url": "https://www.uefa.com/rssfeed/uefachampionsleague/rss.xml"},
+    {"name": "Transfermarkt News", "url": "https://www.transfermarkt.com/rss/news"},
 ]
 
 FETCH_TIMEOUT_SECONDS = 10

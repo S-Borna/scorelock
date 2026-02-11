@@ -3,34 +3,34 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 3 7 18;
-    --foreground: 243 244 246;
-  }
+    :root {
+        --background: 3 7 18;
+        --foreground: 243 244 246;
+    }
 }
 
 @layer components {
-  .card {
-    @apply bg-gray-900 border border-gray-800 rounded-xl p-6;
-  }
+    .card {
+        @apply bg-gray-900 border border-gray-800 rounded-xl p-6;
+    }
 
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
 
-  .badge-live {
-    @apply badge bg-red-900/50 text-red-400 border border-red-800;
-  }
+    .badge-live {
+        @apply badge bg-red-900/50 text-red-400 border border-red-800;
+    }
 
-  .badge-scheduled {
-    @apply badge bg-blue-900/50 text-blue-400 border border-blue-800;
-  }
+    .badge-scheduled {
+        @apply badge bg-blue-900/50 text-blue-400 border border-blue-800;
+    }
 
-  .badge-finished {
-    @apply badge bg-gray-800 text-gray-400 border border-gray-700;
-  }
+    .badge-finished {
+        @apply badge bg-gray-800 text-gray-400 border border-gray-700;
+    }
 
-  .prob-bar {
-    @apply h-2 rounded-full transition-all duration-500;
-  }
+    .prob-bar {
+        @apply h-2 rounded-full transition-all duration-500;
+    }
 }

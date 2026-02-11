@@ -13,6 +13,7 @@ The most accessible analytics tool for football enthusiasts and semi-professiona
 ## Covered Leagues & Tournaments
 
 ### Phase 1 — Launch (Month 1–3)
+
 - 🇬🇧 Premier League
 - 🇪🇸 La Liga
 - 🇮🇹 Serie A
@@ -21,6 +22,7 @@ The most accessible analytics tool for football enthusiasts and semi-professiona
 - 🏆 Champions League / Europa League / Conference League
 
 ### Phase 2 — Expansion (Month 4–6)
+
 - 🏆 Euro Qualifiers / Euros
 - 🏆 World Cup Qualifiers / World Cup
 - 🏆 Copa América
@@ -28,6 +30,7 @@ The most accessible analytics tool for football enthusiasts and semi-professiona
 - 🏆 Nations League + all qualifier rounds
 
 ### Phase 3 — Full Coverage (Month 7+)
+
 - 🇫🇷 Ligue 1, 🇵🇹 Primeira Liga, 🇳🇱 Eredivisie, 🇹🇷 Süper Lig
 - More leagues based on user demand
 
@@ -118,6 +121,21 @@ scorelock/
 ├── .env.example
 └── Makefile
 ```
+
+---
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the definitive product roadmap. 8 milestones to launch:
+
+- **M1** — Data pipeline: multi-source APIs (football-data.org + The Odds API + API-Football)
+- **M2** — ML predictions: daily predictions, value bets, accuracy tracking
+- **M3** — AI Content Engine ⭐ USP: match previews, reports, round summaries på svenska
+- **M4** — Frontend: article-first design, not just a dashboard
+- **M5** — Affiliate integration: Bet365, Unibet, Betsson links + tracking
+- **M6** — Tipping League: AI vs You, leaderboards, social sharing
+- **M7** — Deploy + Launch: Railway, Cloudflare, GDPR, monitoring
+- **M8** — Distribution: Twitter bot, push notifications, Reddit, Discord, Telegram
 
 ---
 

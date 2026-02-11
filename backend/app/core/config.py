@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # ── External APIs ──────────────────────────────────────
     api_football_key: str = ""
     api_football_base_url: str = "https://v3.football.api-sports.io"
+    football_data_key: str = ""
+    football_data_base_url: str = "https://api.football-data.org/v4"
+    the_odds_api_key: str = ""
+    the_odds_api_base_url: str = "https://api.the-odds-api.com/v4"
 
     # ── Stripe ─────────────────────────────────────────────
     stripe_secret_key: str = ""

@@ -107,19 +107,29 @@ async def get_prediction_accuracy(
     days: int = Query(30, ge=7, le=365),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get model accuracy stats over the last N days."""
-    from sqlalchemy import select, func, and_
-    from app.models.models import Prediction, Fixture
+    """Get comprehensive model accuracy stats over the last N days.
+
+    Returns overall accuracy, per-league breakdown, calibration,
+    value bet performance, and model version info.
+    """
+    from sqlalchemy import select, func, and_, case, Integer as SAInt
+    from app.models.models import Prediction, Fixture, League
 
     cutoff = datetime.utcnow() - __import__("datetime").timedelta(days=days)
 
+    # ── Overall accuracy ──
+    base_filter = and_(
+        Prediction.created_at >= cutoff,
+        Prediction.was_correct.is_not(None),
+    )
     query = (
         select(
             func.count(Prediction.id).label("total"),
-            func.sum(func.cast(Prediction.was_correct, __import__("sqlalchemy").Integer)).label("correct"),
+            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label("correct"),
+            func.avg(Prediction.confidence).label("avg_confidence"),
         )
         .join(Fixture)
-        .where(and_(Prediction.created_at >= cutoff, Prediction.was_correct.is_not(None)))
+        .where(base_filter)
     )
     if league_id:
         query = query.where(Fixture.league_id == league_id)
@@ -130,11 +140,89 @@ async def get_prediction_accuracy(
     correct = row.correct or 0
     accuracy = (correct / total * 100) if total > 0 else 0.0
 
+    # ── Per-league breakdown ──
+    league_query = (
+        select(
+            Fixture.league_id,
+            League.name.label("league_name"),
+            func.count(Prediction.id).label("total"),
+            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label("correct"),
+        )
+        .join(Fixture, Prediction.fixture_id == Fixture.id)
+        .join(League, Fixture.league_id == League.id)
+        .where(base_filter)
+        .group_by(Fixture.league_id, League.name)
+        .order_by(func.count(Prediction.id).desc())
+    )
+    league_result = await db.execute(league_query)
+    per_league = [
+        {
+            "league_id": r.league_id,
+            "league_name": r.league_name,
+            "total": r.total,
+            "correct": r.correct or 0,
+            "accuracy": round((r.correct or 0) / r.total * 100, 2) if r.total else 0,
+        }
+        for r in league_result.all()
+    ]
+
+    # ── Value bet performance ──
+    vb_query = (
+        select(
+            func.count(Prediction.id).label("total"),
+            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label("correct"),
+            func.avg(Prediction.value_edge).label("avg_edge"),
+        )
+        .join(Fixture)
+        .where(
+            base_filter,
+            Prediction.value_edge.is_not(None),
+            Prediction.value_edge > 0,
+        )
+    )
+    vb_result = await db.execute(vb_query)
+    vb_row = vb_result.one()
+    vb_total = vb_row.total or 0
+    vb_correct = vb_row.correct or 0
+
+    # ── Model version info ──
+    version_query = (
+        select(
+            Prediction.model_version,
+            func.count(Prediction.id).label("count"),
+            func.sum(case((Prediction.was_correct.is_(True), 1), else_=0)).label("correct"),
+        )
+        .where(base_filter)
+        .group_by(Prediction.model_version)
+        .order_by(func.count(Prediction.id).desc())
+    )
+    version_result = await db.execute(version_query)
+    per_version = [
+        {
+            "version": r.model_version,
+            "predictions": r.count,
+            "correct": r.correct or 0,
+            "accuracy": round((r.correct or 0) / r.count * 100, 2) if r.count else 0,
+        }
+        for r in version_result.all()
+    ]
+
     return {
         "period_days": days,
-        "total_predictions": total,
-        "correct": correct,
-        "accuracy": round(accuracy, 2),
+        "overall": {
+            "total_predictions": total,
+            "correct": correct,
+            "accuracy": round(accuracy, 2),
+            "avg_confidence": round(float(row.avg_confidence or 0), 4),
+        },
+        "per_league": per_league,
+        "value_bets": {
+            "total": vb_total,
+            "correct": vb_correct,
+            "accuracy": round((vb_correct / vb_total * 100) if vb_total else 0, 2),
+            "avg_edge": round(float(vb_row.avg_edge or 0), 2),
+        },
+        "per_model_version": per_version,
     }
 
 
@@ -356,3 +444,15 @@ async def trigger_task(
 
     result = celery_app.send_task(task_map[task_name])
     return {"status": "queued", "task_id": result.id, "task_name": task_name}
+
+
+@router.get("/admin/quota")
+async def get_quota_status(user: User = Depends(get_current_user)):
+    """Get API quota usage across all data sources (admin only)."""
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from app.core.quota_manager import get_quota_manager
+    quota = get_quota_manager()
+    usage = await quota.get_all_usage()
+    return {"quotas": usage}

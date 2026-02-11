@@ -2,6 +2,11 @@
 
 These tasks run on schedule (configured in celery_app.py) and keep
 the database up to date with fixtures, scores, odds, and predictions.
+
+Data source strategy:
+  - football-data.org: Primary for fixtures + standings (generous free quota)
+  - API-Football: Live scores only + Allsvenskan/EL/ECL (not on football-data.org)
+  - The Odds API: All odds (40+ bookmakers, 500 req/month)
 """
 
 import asyncio
@@ -25,26 +30,83 @@ def run_async(coro):
 
 @celery_app.task(name="app.services.tasks.fetch_daily_fixtures")
 def fetch_daily_fixtures():
-    """Fetch today's and tomorrow's fixtures from API-Football and store in DB."""
-    async def _fetch():
-        from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
-        from app.services.db_service import upsert_fixtures_batch, get_league_by_api_id
+    """Fetch upcoming fixtures — football-data.org primary, API-Football fallback.
 
-        today = date.today()
-        tomorrow = today + timedelta(days=1)
+    Strategy:
+      - football-data.org: PL, La Liga, Serie A, Bundesliga, CL (14 days ahead)
+      - API-Football: Allsvenskan, EL, ECL (today + tomorrow only, quota-limited)
+    """
+    async def _fetch():
+        from app.services.football_data import (
+            football_data, FD_COMPETITIONS, FD_UNSUPPORTED_LEAGUES,
+            FootballDataClient,
+        )
+        from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
+        from app.services.db_service import (
+            upsert_fixtures_batch, upsert_fixture, get_league_by_api_id,
+            ensure_team,
+        )
+        from app.core.quota_manager import get_quota_manager
+
         total = 0
+        quota = get_quota_manager()
 
         async with async_session() as session:
-            for day in [today, tomorrow]:
-                for league_name in PHASE_1_LEAGUES:
-                    api_id = LEAGUE_IDS[league_name]
+            # ── 1. football-data.org leagues (generous quota) ──
+            for code, info in FD_COMPETITIONS.items():
+                api_football_id = info["api_football_id"]
+                league = await get_league_by_api_id(session, api_football_id)
+                if not league:
+                    # Auto-create league if not in DB yet
+                    from app.services.db_service import upsert_league
+                    league = await upsert_league(
+                        session,
+                        api_id=api_football_id,
+                        name=info["name"],
+                        country=code,
+                        logo_url=None,
+                        league_type="league" if code != "CL" else "cup",
+                        current_season=date.today().year,
+                    )
 
-                    league = await get_league_by_api_id(session, api_id)
-                    if not league:
-                        logger.warning("league_not_in_db", league=league_name, api_id=api_id)
-                        continue
+                try:
+                    matches = await football_data.get_upcoming_matches(code, days_ahead=14)
+                    normalized = [
+                        FootballDataClient.normalize_match_to_fixture(m, api_football_id)
+                        for m in matches
+                    ]
+                    normalized = [n for n in normalized if n]  # Filter empty
+                    if normalized:
+                        count = await upsert_fixtures_batch(session, normalized, league)
+                        total += count
+                        logger.info(
+                            "fd_fixtures_synced",
+                            league=info["name"],
+                            count=count,
+                        )
+                except Exception as exc:
+                    logger.error("fd_fixture_fetch_failed", league=info["name"], error=str(exc))
 
+            # ── 2. API-Football for unsupported leagues ──
+            today = date.today()
+            tomorrow = today + timedelta(days=1)
+
+            for league_name in PHASE_1_LEAGUES:
+                if league_name not in FD_UNSUPPORTED_LEAGUES:
+                    continue  # Already handled by football-data.org
+
+                if not await quota.can_call("api_football"):
+                    logger.warning("api_football_quota_exhausted", skipping=league_name)
+                    break
+
+                api_id = LEAGUE_IDS[league_name]
+                league = await get_league_by_api_id(session, api_id)
+                if not league:
+                    continue
+
+                for day in [today, tomorrow]:
                     try:
+                        await quota.record_call("api_football")
                         fixtures = await api_football.get_fixtures_by_date(day, api_id)
                     except Exception as exc:
                         logger.error("fixture_fetch_failed", league=league_name, error=str(exc))
@@ -53,12 +115,6 @@ def fetch_daily_fixtures():
                     if fixtures:
                         count = await upsert_fixtures_batch(session, fixtures, league)
                         total += count
-                        logger.info(
-                            "fixtures_upserted",
-                            date=day.isoformat(),
-                            league=league_name,
-                            count=count,
-                        )
 
             await session.commit()
 
@@ -70,12 +126,19 @@ def fetch_daily_fixtures():
 
 @celery_app.task(name="app.services.tasks.update_live_scores")
 def update_live_scores():
-    """Update scores for currently live matches."""
+    """Update scores for currently live matches (API-Football only — needs live data)."""
     async def _update():
         from app.services.api_football import api_football
         from app.services.db_service import upsert_fixture, get_league_by_api_id
+        from app.core.quota_manager import get_quota_manager
+
+        quota = get_quota_manager()
+        if not await quota.can_call("api_football"):
+            logger.warning("api_football_quota_exhausted", task="update_live_scores")
+            return 0
 
         try:
+            await quota.record_call("api_football")
             live = await api_football.get_live_fixtures()
         except Exception as exc:
             logger.error("live_fetch_failed", error=str(exc))
@@ -125,70 +188,128 @@ def update_live_scores():
 
 @celery_app.task(name="app.services.tasks.fetch_odds_updates")
 def fetch_odds_updates():
-    """Fetch latest odds for upcoming fixtures."""
+    """Fetch odds from The Odds API (40+ bookmakers) — replaces API-Football odds.
+
+    Strategy: One call per league fetches ALL upcoming match odds.
+    500 req/month budget → ~2 calls/league × 8 leagues × 2/day = ~32 req/day = 960/month
+    So we only run this 1-2x/day, controlled by Celery Beat.
+    """
     async def _fetch():
-        from app.services.api_football import api_football
-        from app.services.db_service import upsert_odds
+        from app.services.odds_api import odds_api, ODDS_SPORT_KEYS, OddsAPIClient
+        from app.services.db_service import upsert_odds, get_league_by_api_id
         from app.models.models import Fixture, MatchStatus
         from sqlalchemy import select
-        from datetime import datetime
+        from sqlalchemy.orm import selectinload
+        from app.core.quota_manager import get_quota_manager
+
+        quota = get_quota_manager()
+        total_odds = 0
 
         async with async_session() as session:
-            # Get upcoming scheduled fixtures
-            result = await session.execute(
-                select(Fixture)
-                .where(
-                    Fixture.status == MatchStatus.SCHEDULED,
-                    Fixture.kickoff >= datetime.utcnow(),
-                    Fixture.kickoff <= datetime.utcnow() + timedelta(days=2),
-                )
-                .limit(10)  # Stay within API limits
-            )
-            fixtures = list(result.scalars().all())
+            for sport_key, info in ODDS_SPORT_KEYS.items():
+                if not await quota.can_call("the_odds_api"):
+                    logger.warning("odds_api_quota_exhausted")
+                    break
 
-            updated = 0
-            for fixture in fixtures:
-                try:
-                    odds_data = await api_football.get_odds(fixture.api_football_id)
-                except Exception as exc:
-                    logger.error("odds_fetch_failed", fixture_id=fixture.id, error=str(exc))
+                api_football_id = info["api_football_id"]
+                league = await get_league_by_api_id(session, api_football_id)
+                if not league:
                     continue
 
-                for bookmaker_entry in odds_data:
-                    bookmaker_info = bookmaker_entry.get("bookmakers", [])
-                    for bm in bookmaker_info:
-                        bm_name = bm.get("name", "Unknown")
-                        for bet in bm.get("bets", []):
-                            market = bet.get("name", "")
-                            values = {v.get("value"): float(v.get("odd", 0)) for v in bet.get("values", [])}
+                try:
+                    # Single call gets h2h + totals for all upcoming matches
+                    events = await odds_api.get_h2h_and_totals(sport_key)
+                except Exception as exc:
+                    logger.error("odds_fetch_failed", league=info["name"], error=str(exc))
+                    continue
 
-                            if market == "Match Winner":
+                if not events:
+                    continue
+
+                # Build fixture name map for matching
+                from datetime import datetime
+                result = await session.execute(
+                    select(Fixture)
+                    .where(
+                        Fixture.league_id == league.id,
+                        Fixture.status == MatchStatus.SCHEDULED,
+                        Fixture.kickoff >= datetime.utcnow(),
+                    )
+                    .options(
+                        selectinload(Fixture.home_team),
+                        selectinload(Fixture.away_team),
+                    )
+                )
+                fixtures = list(result.scalars().all())
+
+                # Create name → fixture_id map
+                name_map: dict[str, int] = {}
+                for f in fixtures:
+                    if f.home_team and f.away_team:
+                        key = f"{f.home_team.name.lower().strip()} vs {f.away_team.name.lower().strip()}"
+                        name_map[key] = f.id
+
+                for event in events:
+                    fixture_id = OddsAPIClient.match_event_to_fixture(event, name_map)
+                    if not fixture_id:
+                        continue
+
+                    best = OddsAPIClient.extract_best_odds(event)
+
+                    # Store 1X2 odds (best across all bookmakers)
+                    if best["home_odds"] and best["draw_odds"] and best["away_odds"]:
+                        await upsert_odds(
+                            session,
+                            fixture_id=fixture_id,
+                            bookmaker=f"Best ({best['home_bookmaker']})",
+                            market="1X2",
+                            home_odds=best["home_odds"],
+                            draw_odds=best["draw_odds"],
+                            away_odds=best["away_odds"],
+                        )
+                        total_odds += 1
+
+                    # Store individual bookmaker odds too
+                    for bm in event.get("bookmakers", []):
+                        bm_name = bm.get("title", "Unknown")
+                        for market in bm.get("markets", []):
+                            market_key = market.get("key", "")
+                            outcomes = {o["name"]: o.get("price", 0) for o in market.get("outcomes", [])}
+
+                            if market_key == "h2h":
+                                home_team = event.get("home_team", "")
+                                away_team = event.get("away_team", "")
                                 await upsert_odds(
                                     session,
-                                    fixture_id=fixture.id,
+                                    fixture_id=fixture_id,
                                     bookmaker=bm_name,
                                     market="1X2",
-                                    home_odds=values.get("Home"),
-                                    draw_odds=values.get("Draw"),
-                                    away_odds=values.get("Away"),
+                                    home_odds=outcomes.get(home_team),
+                                    draw_odds=outcomes.get("Draw"),
+                                    away_odds=outcomes.get(away_team),
                                 )
-                                updated += 1
+                                total_odds += 1
 
-                            elif "Over/Under" in market:
-                                await upsert_odds(
-                                    session,
-                                    fixture_id=fixture.id,
-                                    bookmaker=bm_name,
-                                    market=market,
-                                    over_odds=values.get("Over"),
-                                    under_odds=values.get("Under"),
-                                    line=2.5,
-                                )
+                            elif market_key == "totals":
+                                for o in market.get("outcomes", []):
+                                    point = o.get("point", 0)
+                                    if point == 2.5:
+                                        await upsert_odds(
+                                            session,
+                                            fixture_id=fixture_id,
+                                            bookmaker=bm_name,
+                                            market="Over/Under 2.5",
+                                            over_odds=outcomes.get("Over"),
+                                            under_odds=outcomes.get("Under"),
+                                            line=2.5,
+                                        )
+
+                logger.info("odds_synced", league=info["name"], events=len(events))
 
             await session.commit()
 
-        logger.info("odds_updated", fixtures=len(fixtures), odds_entries=updated)
-        return updated
+        logger.info("odds_sync_complete", total_odds=total_odds)
+        return total_odds
 
     count = run_async(_fetch())
     return {"status": "ok", "odds_updated": count}
@@ -242,7 +363,7 @@ def run_daily_predictions():
                         fixture.season,
                     )
 
-                    # Check for value bets if odds available
+                    # Check for value bets using best available odds
                     is_value_home = False
                     is_value_draw = False
                     is_value_away = False
@@ -250,14 +371,18 @@ def run_daily_predictions():
 
                     odds_1x2 = [o for o in fixture.odds if o.market == "1X2"]
                     if odds_1x2:
-                        best = odds_1x2[0]
-                        if best.home_odds and best.draw_odds and best.away_odds:
+                        # Find best odds across all bookmakers
+                        best_home = max((o.home_odds for o in odds_1x2 if o.home_odds), default=0)
+                        best_draw = max((o.draw_odds for o in odds_1x2 if o.draw_odds), default=0)
+                        best_away = max((o.away_odds for o in odds_1x2 if o.away_odds), default=0)
+
+                        if best_home and best_draw and best_away:
                             vb = identify_value_bets(
                                 prediction,
                                 {
-                                    "home": best.home_odds,
-                                    "draw": best.draw_odds,
-                                    "away": best.away_odds,
+                                    "home": best_home,
+                                    "draw": best_draw,
+                                    "away": best_away,
                                 },
                             )
                             is_value_home = vb.get("is_value_home", False)
@@ -368,25 +493,65 @@ def run_sentiment_analysis():
 
 @celery_app.task(name="app.services.tasks.update_standings")
 def update_standings():
-    """Update league standings from API-Football."""
+    """Update league standings — football-data.org primary, API-Football fallback.
+
+    football-data.org: PL, La Liga, Serie A, Bundesliga, CL
+    API-Football: Allsvenskan, EL, ECL
+    """
     async def _update():
+        from app.services.football_data import (
+            football_data, FD_COMPETITIONS, FD_UNSUPPORTED_LEAGUES,
+            FootballDataClient,
+        )
         from app.services.api_football import api_football, LEAGUE_IDS, PHASE_1_LEAGUES
         from app.services.db_service import upsert_standing, get_league_by_api_id
+        from app.core.quota_manager import get_quota_manager
 
         current_year = date.today().year
         total = 0
+        quota = get_quota_manager()
 
         async with async_session() as session:
+            # ── 1. football-data.org leagues ──
+            for code, info in FD_COMPETITIONS.items():
+                api_football_id = info["api_football_id"]
+                league = await get_league_by_api_id(session, api_football_id)
+                if not league:
+                    continue
+
+                try:
+                    standings = await football_data.get_standings(code)
+                except Exception as exc:
+                    logger.error("fd_standings_failed", league=info["name"], error=str(exc))
+                    continue
+
+                season = current_year if code == "BL1" else current_year - 1
+                for entry in standings:
+                    normalized = FootballDataClient.normalize_standing(entry, code)
+                    result = await upsert_standing(session, normalized, league, season)
+                    if result:
+                        total += 1
+
+                logger.info("fd_standings_synced", league=info["name"], teams=len(standings))
+
+            # ── 2. API-Football for unsupported leagues ──
             for league_name in PHASE_1_LEAGUES:
+                if league_name not in FD_UNSUPPORTED_LEAGUES:
+                    continue
+
+                if not await quota.can_call("api_football"):
+                    logger.warning("api_football_quota_exhausted", skipping=league_name)
+                    break
+
                 api_id = LEAGUE_IDS[league_name]
                 league = await get_league_by_api_id(session, api_id)
                 if not league:
                     continue
 
-                # Allsvenskan follows calendar year
                 season = current_year if league_name == "allsvenskan" else current_year - 1
 
                 try:
+                    await quota.record_call("api_football")
                     standings = await api_football.get_standings(api_id, season)
                 except Exception as exc:
                     logger.error("standings_fetch_failed", league=league_name, error=str(exc))

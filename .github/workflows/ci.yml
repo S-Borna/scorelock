@@ -1,157 +1,157 @@
 name: CI — Lint, Test, Build
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main]
 
 env:
-  PYTHON_VERSION: "3.12"
-  NODE_VERSION: "20"
+    PYTHON_VERSION: "3.12"
+    NODE_VERSION: "20"
 
 jobs:
-  # ── Backend Tests ──────────────────────────────────────
-  backend-test:
-    name: Backend — Lint & Test
-    runs-on: ubuntu-latest
+    # ── Backend Tests ──────────────────────────────────────
+    backend-test:
+        name: Backend — Lint & Test
+        runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
+        services:
+            postgres:
+                image: postgres:16
+                env:
+                    POSTGRES_USER: scorelock_test
+                    POSTGRES_PASSWORD: scorelock_test
+                    POSTGRES_DB: scorelock_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U scorelock_test"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+            redis:
+                image: redis:7-alpine
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "redis-cli ping"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
         env:
-          POSTGRES_USER: scorelock_test
-          POSTGRES_PASSWORD: scorelock_test
-          POSTGRES_DB: scorelock_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U scorelock_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+            DATABASE_URL: postgresql+asyncpg://scorelock_test:scorelock_test@localhost:5432/scorelock_test
+            REDIS_URL: redis://localhost:6379/0
+            CELERY_BROKER_URL: redis://localhost:6379/1
+            CELERY_RESULT_BACKEND: redis://localhost:6379/2
+            SECRET_KEY: test-secret-key-ci
+            ENVIRONMENT: test
+            API_FOOTBALL_KEY: ""
+            ANTHROPIC_API_KEY: ""
 
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        steps:
+            - uses: actions/checkout@v4
 
-    env:
-      DATABASE_URL: postgresql+asyncpg://scorelock_test:scorelock_test@localhost:5432/scorelock_test
-      REDIS_URL: redis://localhost:6379/0
-      CELERY_BROKER_URL: redis://localhost:6379/1
-      CELERY_RESULT_BACKEND: redis://localhost:6379/2
-      SECRET_KEY: test-secret-key-ci
-      ENVIRONMENT: test
-      API_FOOTBALL_KEY: ""
-      ANTHROPIC_API_KEY: ""
+            - name: Set up Python ${{ env.PYTHON_VERSION }}
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+                  cache: pip
+                  cache-dependency-path: backend/requirements.txt
 
-    steps:
-      - uses: actions/checkout@v4
+            - name: Install dependencies
+              working-directory: backend
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install -r requirements.txt
+                  pip install ruff pytest pytest-asyncio
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
+            - name: Lint with Ruff
+              working-directory: backend
+              run: ruff check .
 
-      - name: Install dependencies
-        working-directory: backend
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install ruff pytest pytest-asyncio
+            - name: Check formatting
+              working-directory: backend
+              run: ruff format --check .
 
-      - name: Lint with Ruff
-        working-directory: backend
-        run: ruff check .
+            - name: Run tests
+              working-directory: backend
+              run: python -m pytest tests/ -v --tb=short
 
-      - name: Check formatting
-        working-directory: backend
-        run: ruff format --check .
+    # ── Backend Docker Build ─────────────────────────────────
+    backend-build:
+        name: Backend — Docker Build
+        runs-on: ubuntu-latest
+        needs: backend-test
 
-      - name: Run tests
-        working-directory: backend
-        run: python -m pytest tests/ -v --tb=short
+        steps:
+            - uses: actions/checkout@v4
 
-  # ── Backend Docker Build ─────────────────────────────────
-  backend-build:
-    name: Backend — Docker Build
-    runs-on: ubuntu-latest
-    needs: backend-test
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
 
-    steps:
-      - uses: actions/checkout@v4
+            - name: Build backend image
+              uses: docker/build-push-action@v5
+              with:
+                  context: ./backend
+                  push: false
+                  tags: scorelock-backend:${{ github.sha }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+    # ── Frontend Tests ───────────────────────────────────────
+    frontend-test:
+        name: Frontend — Lint & Build
+        runs-on: ubuntu-latest
+        if: hashFiles('frontend/package.json') != ''
 
-      - name: Build backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: false
-          tags: scorelock-backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        steps:
+            - uses: actions/checkout@v4
 
-  # ── Frontend Tests ───────────────────────────────────────
-  frontend-test:
-    name: Frontend — Lint & Build
-    runs-on: ubuntu-latest
-    if: hashFiles('frontend/package.json') != ''
+            - name: Set up Node.js ${{ env.NODE_VERSION }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: npm
+                  cache-dependency-path: frontend/package-lock.json
 
-    steps:
-      - uses: actions/checkout@v4
+            - name: Install dependencies
+              working-directory: frontend
+              run: npm ci
 
-      - name: Set up Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+            - name: Lint
+              working-directory: frontend
+              run: npm run lint
 
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
+            - name: Type check
+              working-directory: frontend
+              run: npm run type-check
 
-      - name: Lint
-        working-directory: frontend
-        run: npm run lint
+            - name: Build
+              working-directory: frontend
+              run: npm run build
+              env:
+                  NEXT_PUBLIC_API_URL: http://localhost:8000
 
-      - name: Type check
-        working-directory: frontend
-        run: npm run type-check
+    # ── Security Scan ────────────────────────────────────────
+    security:
+        name: Security — Dependency Audit
+        runs-on: ubuntu-latest
 
-      - name: Build
-        working-directory: frontend
-        run: npm run build
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:8000
+        steps:
+            - uses: actions/checkout@v4
 
-  # ── Security Scan ────────────────────────────────────────
-  security:
-    name: Security — Dependency Audit
-    runs-on: ubuntu-latest
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
 
-    steps:
-      - uses: actions/checkout@v4
+            - name: Install pip-audit
+              run: pip install pip-audit
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install pip-audit
-        run: pip install pip-audit
-
-      - name: Audit Python dependencies
-        working-directory: backend
-        run: pip-audit -r requirements.txt --strict
-        continue-on-error: true
+            - name: Audit Python dependencies
+              working-directory: backend
+              run: pip-audit -r requirements.txt --strict
+              continue-on-error: true

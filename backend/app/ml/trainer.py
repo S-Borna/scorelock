@@ -197,6 +197,9 @@ def save_models(
 async def run_training_pipeline() -> dict:
     """Full training pipeline: load data -> features -> train -> save.
 
+    Compares new model against existing model's metrics. Only saves
+    if the new model is better or no old model exists.
+
     Returns:
         Training result dict with status and metrics.
     """
@@ -216,23 +219,78 @@ async def run_training_pipeline() -> dict:
         logger.warning("insufficient_features", count=len(X))
         return {"status": "skipped", "reason": msg}
 
-    # 3. Train
-    result = train_models(X, y_result, y_goals)
+    # 3. Read old model metrics for comparison
+    old_metrics = {}
+    meta_path = MODEL_DIR / "metadata.json"
+    if meta_path.exists():
+        try:
+            with open(meta_path) as f:
+                old_meta = json.load(f)
+                old_metrics = old_meta.get("metrics", {})
+        except Exception:
+            pass
 
-    # 4. Save
-    version = save_models(
-        result["result_model"],
-        result["goals_model"],
-        result["metrics"],
-        result["feature_importances"],
+    # 4. Train
+    result = train_models(X, y_result, y_goals)
+    new_metrics = result["metrics"]
+
+    # 5. Compare: save only if new model is better (lower Brier or more data)
+    old_brier = old_metrics.get("avg_brier_score", 1.0)
+    new_brier = new_metrics.get("avg_brier_score", 1.0)
+    old_samples = old_metrics.get("training_samples", 0)
+    new_samples = new_metrics.get("training_samples", 0)
+
+    should_save = (
+        not old_metrics                     # No old model → always save
+        or new_brier <= old_brier           # Better or equal calibration
+        or new_samples > old_samples * 1.1  # 10%+ more training data
     )
 
-    return {
-        "status": "ok",
-        "version": version,
-        "metrics": result["metrics"],
-        "feature_importances": result["feature_importances"],
+    comparison = {
+        "old_brier": old_brier,
+        "new_brier": new_brier,
+        "old_samples": old_samples,
+        "new_samples": new_samples,
+        "improvement": round(old_brier - new_brier, 4) if old_metrics else None,
     }
+
+    if should_save:
+        version = save_models(
+            result["result_model"],
+            result["goals_model"],
+            new_metrics,
+            result["feature_importances"],
+        )
+
+        # Reload the predictor singleton
+        try:
+            from app.ml.predictor import reload_predictor
+            reload_predictor()
+            logger.info("predictor_reloaded", version=version)
+        except Exception as exc:
+            logger.warning("predictor_reload_failed", error=str(exc))
+
+        return {
+            "status": "ok",
+            "version": version,
+            "metrics": new_metrics,
+            "comparison": comparison,
+            "saved": True,
+        }
+    else:
+        logger.info(
+            "retrain_skipped_worse",
+            old_brier=old_brier,
+            new_brier=new_brier,
+        )
+        return {
+            "status": "ok",
+            "version": old_meta.get("version", "unknown"),
+            "metrics": new_metrics,
+            "comparison": comparison,
+            "saved": False,
+            "reason": "New model not better than existing",
+        }
 
 
 # ── CLI entry point ────────────────────────────────────────
