@@ -83,7 +83,7 @@ export default async function ArticlePage({ params }: PageProps) {
     }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Breadcrumb */}
             <nav className="text-sm text-gray-500 mb-6">
                 <Link href="/" className="hover:text-gray-300">Hem</Link>
@@ -94,7 +94,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {/* Article header */}
             <header className="mb-8">
                 <div className="flex items-center gap-3 mb-3">
-                    <span className={`badge bg-gray-800 border border-gray-700 ${meta.color}`}>
+                    <span className={`badge bg-white/[0.04] border-white/[0.06] ${meta.color}`}>
                         {meta.icon} {meta.label}
                     </span>
                     {article.published_at && (
@@ -103,12 +103,12 @@ export default async function ArticlePage({ params }: PageProps) {
                         </span>
                     )}
                     {article.auto_generated && (
-                        <span className="badge bg-scorelock-900/30 text-scorelock-400 border border-scorelock-800 text-xs">
+                        <span className="badge bg-scorelock-500/10 text-scorelock-400 border-scorelock-500/20 text-xs">
                             🤖 AI-genererad
                         </span>
                     )}
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-bold leading-tight mb-4">
+                <h1 className="text-display-md sm:text-display-lg leading-tight mb-5">
                     {article.title}
                 </h1>
                 {article.tags && article.tags.length > 0 && (
@@ -116,7 +116,7 @@ export default async function ArticlePage({ params }: PageProps) {
                         {article.tags.map((tag) => (
                             <span
                                 key={tag}
-                                className="text-xs text-gray-400 bg-gray-800 px-2.5 py-1 rounded-full"
+                                className="text-xs text-gray-400 bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.06]"
                             >
                                 {tag}
                             </span>
@@ -127,7 +127,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {/* Related match card */}
             {fixture && (
-                <div className="card mb-8 flex items-center justify-between">
+                <div className="card-interactive mb-8 flex items-center justify-between">
                     <Link
                         href={`/matches/${fixture.id}`}
                         className="flex items-center gap-4 hover:text-scorelock-400 transition-colors"
@@ -157,13 +157,13 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {/* Value bet CTA */}
             {article.type === "VALUE_BET_ALERT" && (
-                <div className="card border-green-900/50 bg-green-950/20 mb-8 text-center">
+                <div className="card border-scorelock-500/15 bg-scorelock-950/20 mb-8 text-center">
                     <p className="text-green-400 font-semibold mb-2">
                         💰 Fler value bets hittar du på Value Bets-sidan
                     </p>
                     <Link
                         href="/value-bets"
-                        className="inline-block bg-green-700 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors text-sm"
+                        className="btn-primary"
                     >
                         Se alla Value Bets →
                     </Link>
@@ -185,8 +185,8 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {/* Related articles */}
             {related.length > 0 && (
-                <section className="mt-12 pt-8 border-t border-gray-800">
-                    <h2 className="text-xl font-semibold mb-6">Relaterade artiklar</h2>
+                <section className="mt-12 pt-8 border-t border-white/[0.06]">
+                    <h2 className="text-display-sm mb-6">Relaterade artiklar</h2>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {related.map((a) => (
                             <ArticleCard key={a.id} article={a} />

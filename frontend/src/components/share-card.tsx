@@ -18,9 +18,9 @@ export function ShareCard({ headline, subline, userName, variant = "ai-win" }: S
     const [copied, setCopied] = useState(false);
 
     const gradients: Record<string, string> = {
-        "ai-win": "from-green-950 to-gray-950",
-        leaderboard: "from-yellow-950 to-gray-950",
-        streak: "from-scorelock-950 to-gray-950",
+        "ai-win": "from-scorelock-950/50 to-surface-950",
+        leaderboard: "from-amber-950/30 to-surface-950",
+        streak: "from-accent-purple/10 to-surface-950",
     };
 
     const icons: Record<string, string> = {
@@ -60,7 +60,7 @@ export function ShareCard({ headline, subline, userName, variant = "ai-win" }: S
             {/* Visual card */}
             <div
                 ref={cardRef}
-                className={`bg-gradient-to-br ${gradients[variant]} rounded-xl p-6 border border-gray-800`}
+                className={`bg-gradient-to-br ${gradients[variant]} rounded-2xl p-6 border border-white/[0.06] shadow-card`}
             >
                 <div className="flex items-start gap-3">
                     <span className="text-4xl">{icons[variant]}</span>
@@ -74,7 +74,7 @@ export function ShareCard({ headline, subline, userName, variant = "ai-win" }: S
                         )}
                     </div>
                 </div>
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-800/50">
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.06]">
                     <span className="text-scorelock-400 font-semibold text-sm tracking-wide">
                         SCORELOCK
                     </span>

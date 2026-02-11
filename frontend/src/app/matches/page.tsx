@@ -25,9 +25,9 @@ export default async function MatchesPage() {
     const finished = fixtures.filter((f) => f.status === "finished");
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-3xl font-bold mb-2">Matcher</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="container-main py-10">
+            <h1 className="text-display-md mb-2">Matcher</h1>
+            <p className="text-gray-400 mb-8">
                 Live, kommande och avslutade matcher med prediktioner.
             </p>
 
@@ -43,7 +43,7 @@ export default async function MatchesPage() {
                 {scheduled.length > 0 ? (
                     scheduled.map((f) => <MatchCard key={f.id} fixture={f} />)
                 ) : (
-                    <p className="text-gray-500 col-span-full text-center py-8">
+                    <p className="text-gray-400 col-span-full text-center py-12">
                         Inga kommande matcher just nu.
                     </p>
                 )}
@@ -53,7 +53,7 @@ export default async function MatchesPage() {
                 {finished.length > 0 ? (
                     finished.slice(0, 12).map((f) => <MatchCard key={f.id} fixture={f} />)
                 ) : (
-                    <p className="text-gray-500 col-span-full text-center py-8">
+                    <p className="text-gray-400 col-span-full text-center py-12">
                         Inga avslutade matcher.
                     </p>
                 )}
@@ -70,8 +70,8 @@ function Section({
     children: React.ReactNode;
 }) {
     return (
-        <section className="mb-10">
-            <h2 className="text-xl font-semibold mb-4">{title}</h2>
+        <section className="mb-12">
+            <h2 className="text-display-sm mb-5">{title}</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{children}</div>
         </section>
     );

@@ -30,22 +30,25 @@ export default async function ValueBetsPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-3xl font-bold mb-2">💰 Value Bets</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="container-main py-10">
+            <h1 className="text-display-md mb-2">Value Bets</h1>
+            <p className="text-gray-400 mb-8">
                 Matcher där vår ML-modell identifierar värde gentemot bookmaker-oddsen.
             </p>
 
             {valueBets.length === 0 ? (
-                <div className="card text-center text-gray-400 py-12">
-                    Inga value bets identifierade just nu. Kolla tillbaka när nya odds finns tillgängliga.
+                <div className="card text-center py-16">
+                    <div className="w-16 h-16 rounded-2xl bg-white/[0.03] flex items-center justify-center text-3xl mx-auto mb-4">💰</div>
+                    <p className="text-gray-400 max-w-sm mx-auto">
+                        Inga value bets identifierade just nu. Kolla tillbaka när nya odds finns tillgängliga.
+                    </p>
                 </div>
             ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
                     {valueBets.map((vb) => (
                         <div
                             key={vb.fixture.id}
-                            className="card border-green-900/50 hover:border-green-800 transition-colors"
+                            className="card-hover border-scorelock-500/10"
                         >
                             <div className="flex justify-between items-start mb-3">
                                 <div>
@@ -59,22 +62,22 @@ export default async function ValueBetsPage() {
                                         {vb.fixture.league.name} · {formatKickoff(vb.fixture.kickoff)}
                                     </p>
                                 </div>
-                                <span className="badge bg-green-900/50 text-green-400 border border-green-800">
+                                <span className="badge-value">
                                     {vb.edge_percent.toFixed(1)}% edge
                                 </span>
                             </div>
 
                             <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
-                                    <span className="text-gray-500">Rekommenderat</span>
-                                    <p className="font-semibold text-green-400">{vb.suggested_bet}</p>
+                                    <span className="stat-label">Rekommenderat</span>
+                                    <p className="font-semibold text-scorelock-400">{vb.suggested_bet}</p>
                                 </div>
                                 <div>
-                                    <span className="text-gray-500">Kelly</span>
+                                    <span className="stat-label">Kelly</span>
                                     <p className="font-mono">{(vb.kelly_fraction * 100).toFixed(1)}%</p>
                                 </div>
                                 <div>
-                                    <span className="text-gray-500">Modell-sannolikhet</span>
+                                    <span className="stat-label">Modell-sannolikhet</span>
                                     <p className="font-mono">
                                         {vb.suggested_bet === "Home"
                                             ? formatProb(vb.prediction.home_win_prob)
@@ -87,7 +90,7 @@ export default async function ValueBetsPage() {
 
                             {/* Affiliate inline links */}
                             {affiliateLinks.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-gray-800/50">
+                                <div className="mt-3 pt-3 border-t border-white/[0.04]">
                                     <AffiliateCTA
                                         links={affiliateLinks}
                                         fixtureId={vb.fixture.id}

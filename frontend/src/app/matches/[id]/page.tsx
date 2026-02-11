@@ -65,16 +65,16 @@ export default async function MatchDetailPage({ params }: PageProps) {
     } catch { /* not critical */ }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Breadcrumbs */}
-            <nav className="text-sm text-gray-500 mb-6">
+            <nav className="text-sm text-gray-500 mb-8">
                 <Link href="/matches" className="hover:text-gray-300">Matcher</Link>
                 <span className="mx-2">›</span>
                 <span>{fixture.home_team.name} vs {fixture.away_team.name}</span>
             </nav>
 
             {/* Match header card */}
-            <div className="card mb-6">
+            <div className="card mb-8">
                 <div className="flex items-center justify-between mb-2">
                     <Link href={`/standings`} className="text-sm text-gray-500 hover:text-scorelock-400">
                         {fixture.league.name} · {fixture.round}
@@ -92,7 +92,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     />
                     <div className="text-center">
                         {fixture.home_goals !== null && fixture.away_goals !== null ? (
-                            <div className="text-4xl font-bold font-mono">
+                            <div className="text-4xl font-bold font-mono tabular-nums animate-score-pop">
                                 {fixture.home_goals} – {fixture.away_goals}
                             </div>
                         ) : (
@@ -114,7 +114,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     {/* Prediction */}
                     {fixture.prediction && (
                         <div className="card">
-                            <h2 className="text-lg font-semibold mb-4">🤖 ML-prediktion</h2>
+                            <h2 className="text-base font-semibold mb-4 text-white">🤖 ML-prediktion</h2>
                             <PredictionBar prediction={fixture.prediction} />
                             <p className="text-xs text-gray-600 mt-3">
                                 Modell: {fixture.prediction.model_version}
@@ -125,11 +125,11 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     {/* Odds */}
                     {fixture.odds.length > 0 && (
                         <div className="card">
-                            <h2 className="text-lg font-semibold mb-4">📊 Odds</h2>
+                            <h2 className="text-base font-semibold mb-4 text-white">📊 Odds</h2>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="text-gray-500 border-b border-gray-800">
+                                        <tr className="table-header">
                                             <th className="text-left py-2">Bookmaker</th>
                                             <th className="text-center py-2">Hemma</th>
                                             <th className="text-center py-2">Oavgjort</th>
@@ -140,7 +140,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
                                         {fixture.odds
                                             .filter((o) => o.market === "1X2")
                                             .map((o, i) => (
-                                                <tr key={i} className="border-b border-gray-800/50">
+                                                <tr key={i} className="table-row">
                                                     <td className="py-2">{o.bookmaker}</td>
                                                     <td className="text-center font-mono">{o.home_odds?.toFixed(2)}</td>
                                                     <td className="text-center font-mono">{o.draw_odds?.toFixed(2)}</td>
@@ -156,7 +156,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     {/* Related articles */}
                     {articles.length > 0 && (
                         <div>
-                            <h2 className="text-lg font-semibold mb-4">📝 Artiklar</h2>
+                            <h2 className="text-base font-semibold mb-4 text-white">📝 Artiklar</h2>
                             <div className="space-y-4">
                                 {articles.map((a) => (
                                     <ArticleCard key={a.id} article={a} />
@@ -220,7 +220,7 @@ function TeamDisplay({ name, logoUrl }: { name: string; logoUrl: string | null }
             {logoUrl ? (
                 <img src={logoUrl} alt={name} className="w-14 h-14 sm:w-16 sm:h-16 object-contain" />
             ) : (
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-800 rounded-full flex items-center justify-center text-2xl">⚽</div>
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/[0.04] rounded-full flex items-center justify-center text-2xl">⚽</div>
             )}
             <span className="text-sm font-medium text-center">{name}</span>
         </div>
@@ -232,13 +232,13 @@ function SentimentRow({ team, scores }: { team: string; scores: Sentiment[] }) {
     const latest = scores[0];
     const sentimentClass = latest.score > 0.2 ? "sentiment-positive" : latest.score < -0.2 ? "sentiment-negative" : "sentiment-neutral";
     return (
-        <div className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
+        <div className="flex items-center justify-between py-2.5 border-b border-white/[0.06] last:border-0">
             <span className="text-sm">{team}</span>
             <div className="flex items-center gap-2">
                 <span className={`text-sm font-mono font-semibold ${sentimentClass}`}>
                     {latest.score > 0 ? "+" : ""}{latest.score.toFixed(2)}
                 </span>
-                <div className="w-16 h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div className="w-16 h-2 bg-white/[0.04] rounded-full overflow-hidden">
                     <div
                         className={`h-full rounded-full ${latest.score > 0.2 ? "bg-green-500" : latest.score < -0.2 ? "bg-red-500" : "bg-gray-500"}`}
                         style={{ width: `${((latest.score + 1) / 2) * 100}%` }}

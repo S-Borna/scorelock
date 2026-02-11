@@ -21,16 +21,19 @@ export default async function PredictionsPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-3xl font-bold mb-2">🤖 Dagens prediktioner</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="container-main py-10">
+            <h1 className="text-display-md mb-2">Dagens prediktioner</h1>
+            <p className="text-gray-400 mb-8">
                 ML-genererade matchprediktioner med kalibrerade sannolikheter.
             </p>
 
             {predictions.length === 0 ? (
-                <div className="card text-center text-gray-400 py-12">
-                    Inga prediktioner för idag. Prediktioner genereras dagligen kl. 22:00 UTC
-                    för morgondagens matcher.
+                <div className="card text-center py-16">
+                    <div className="w-16 h-16 rounded-2xl bg-white/[0.03] flex items-center justify-center text-3xl mx-auto mb-4">🤖</div>
+                    <p className="text-gray-400 max-w-sm mx-auto">
+                        Inga prediktioner för idag. Prediktioner genereras dagligen kl. 22:00 UTC
+                        för morgondagens matcher.
+                    </p>
                 </div>
             ) : (
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -38,7 +41,7 @@ export default async function PredictionsPage() {
                         <div key={pred.fixture_id} className="card">
                             <Link
                                 href={`/matches/${pred.fixture_id}`}
-                                className="text-sm text-scorelock-400 hover:underline mb-3 block"
+                                className="text-sm text-scorelock-400 hover:text-scorelock-300 transition-colors mb-3 block"
                             >
                                 Visa match →
                             </Link>

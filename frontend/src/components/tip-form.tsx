@@ -60,9 +60,9 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
                     <button
                         key={o.value}
                         onClick={() => setSelected(o.value)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${selected === o.value
-                                ? "bg-scorelock-600 text-white ring-2 ring-scorelock-400"
-                                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                        className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all duration-200 ${selected === o.value
+                                ? "bg-scorelock-600 text-white shadow-glow-sm ring-1 ring-scorelock-400/30"
+                                : "bg-white/[0.04] text-gray-400 hover:bg-white/[0.07] border border-white/[0.06]"
                             }`}
                     >
                         {o.emoji} {o.label}
@@ -88,7 +88,7 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
                             max="15"
                             value={homeGoals}
                             onChange={(e) => setHomeGoals(e.target.value)}
-                            className="w-12 bg-gray-800 border border-gray-700 rounded text-center text-sm py-1 focus:border-scorelock-500 focus:outline-none"
+                            className="w-12 bg-white/[0.03] border border-white/[0.08] rounded-lg text-center text-sm py-1.5 focus:border-scorelock-500/40 focus:ring-1 focus:ring-scorelock-500/20 focus:outline-none transition-all"
                             placeholder="0"
                         />
                     </div>
@@ -100,7 +100,7 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
                             max="15"
                             value={awayGoals}
                             onChange={(e) => setAwayGoals(e.target.value)}
-                            className="w-12 bg-gray-800 border border-gray-700 rounded text-center text-sm py-1 focus:border-scorelock-500 focus:outline-none"
+                            className="w-12 bg-white/[0.03] border border-white/[0.08] rounded-lg text-center text-sm py-1.5 focus:border-scorelock-500/40 focus:ring-1 focus:ring-scorelock-500/20 focus:outline-none transition-all"
                             placeholder="0"
                         />
                         <span className="text-xs text-gray-500 truncate">{fixture.away_team.name}</span>
@@ -112,11 +112,11 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
             <button
                 onClick={handleSubmit}
                 disabled={!selected || submitting}
-                className={`w-full py-2 rounded-lg text-sm font-medium transition-all ${submitted
-                        ? "bg-green-700 text-white"
+                className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${submitted
+                        ? "bg-scorelock-600 text-white shadow-glow-sm"
                         : selected
-                            ? "bg-scorelock-600 hover:bg-scorelock-500 text-white"
-                            : "bg-gray-800 text-gray-600 cursor-not-allowed"
+                            ? "btn-primary"
+                            : "bg-white/[0.04] text-gray-600 cursor-not-allowed border border-white/[0.04]"
                     }`}
             >
                 {submitted ? "✓ Tips sparat!" : submitting ? "Sparar..." : existingTip ? "Uppdatera tips" : "Skicka tips"}

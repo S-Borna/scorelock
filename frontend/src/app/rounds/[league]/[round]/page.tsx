@@ -50,7 +50,7 @@ export default async function RoundPage({ params }: PageProps) {
     const upcoming = fixtures.filter((f) => f.status !== "finished");
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="container-main py-10">
             {/* Breadcrumbs */}
             <nav className="text-sm text-gray-500 mb-6">
                 <Link href="/matches" className="hover:text-gray-300">Matcher</Link>
@@ -60,10 +60,10 @@ export default async function RoundPage({ params }: PageProps) {
                 <span>Omgång {decodedRound}</span>
             </nav>
 
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-display-md mb-2">
                 📅 {leagueName} — Omgång {decodedRound}
             </h1>
-            <p className="text-gray-500 mb-8">
+            <p className="text-gray-400 mb-8">
                 {fixtures.length} {fixtures.length === 1 ? "match" : "matcher"} i denna omgång.
             </p>
 
@@ -71,10 +71,10 @@ export default async function RoundPage({ params }: PageProps) {
             {roundArticle && (
                 <Link
                     href={`/articles/${roundArticle.slug}`}
-                    className="card block mb-8 border-scorelock-800/50 hover:border-scorelock-600 transition-colors"
+                    className="card-interactive block mb-8 border-scorelock-500/15"
                 >
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs bg-scorelock-900/50 text-scorelock-400 px-2 py-0.5 rounded-full">
+                        <span className="badge bg-scorelock-500/10 text-scorelock-400 border-scorelock-500/20">
                             📰 AI-sammanfattning
                         </span>
                     </div>
@@ -86,15 +86,15 @@ export default async function RoundPage({ params }: PageProps) {
             )}
 
             {fixtures.length === 0 ? (
-                <div className="card text-center text-gray-400 py-12">
-                    Inga matcher hittades för denna omgång.
+                <div className="card text-center py-16">
+                    <p className="text-gray-400">Inga matcher hittades för denna omgång.</p>
                 </div>
             ) : (
                 <div className="space-y-8">
                     {/* Upcoming */}
                     {upcoming.length > 0 && (
                         <section>
-                            <h2 className="text-lg font-semibold mb-4 text-gray-400">
+                            <h2 className="text-base font-semibold mb-5 text-gray-400">
                                 ⏳ Kommande ({upcoming.length})
                             </h2>
                             <div className="grid gap-4 md:grid-cols-2">
@@ -108,7 +108,7 @@ export default async function RoundPage({ params }: PageProps) {
                     {/* Finished */}
                     {finished.length > 0 && (
                         <section>
-                            <h2 className="text-lg font-semibold mb-4 text-gray-400">
+                            <h2 className="text-base font-semibold mb-5 text-gray-400">
                                 ✅ Avslutade ({finished.length})
                             </h2>
                             <div className="grid gap-4 md:grid-cols-2">

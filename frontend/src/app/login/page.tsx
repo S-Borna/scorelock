@@ -44,8 +44,8 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4">
-            <div className="card max-w-md w-full p-8">
-                <h1 className="text-2xl font-bold text-center mb-6">Logga in</h1>
+            <div className="card max-w-md w-full p-8 shadow-elevated">
+                <h1 className="text-display-sm text-center mb-8">Logga in</h1>
 
                 {error && (
                     <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
@@ -64,7 +64,7 @@ export default function LoginPage() {
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
+                            className="input"
                             placeholder="you@example.com"
                         />
                     </div>
@@ -79,7 +79,7 @@ export default function LoginPage() {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-white placeholder-gray-500 focus:border-scorelock-500 focus:ring-1 focus:ring-scorelock-500 outline-none"
+                            className="input"
                             placeholder="••••••••"
                         />
                     </div>
@@ -87,7 +87,7 @@ export default function LoginPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-scorelock-600 hover:bg-scorelock-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition"
+                        className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? "Loggar in…" : "Logga in"}
                     </button>

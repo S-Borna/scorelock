@@ -4,59 +4,209 @@
 
 @layer base {
     :root {
-        --background: 3 7 18;
-        --foreground: 243 244 246;
+        --background: 11 15 26;
+        --foreground: 237 240 247;
+        --scorelock: 9 206 95;
+        --surface: 26 32 53;
+        --surface-bright: 45 55 82;
+        --border: 255 255 255;
+    }
+
+    * {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        background: rgb(var(--background));
+        color: rgb(var(--foreground));
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: rgba(var(--border), 0.08);
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(var(--border), 0.15);
+    }
+
+    ::selection {
+        background: rgba(var(--scorelock), 0.25);
+        color: white;
     }
 }
 
 @layer components {
+    /* ── Surface Cards ─────────────────────────────────── */
     .card {
-        @apply bg-gray-900 border border-gray-800 rounded-xl p-6;
+        @apply relative bg-surface-900/80 border border-white/[0.06] rounded-2xl p-6
+               shadow-card backdrop-blur-sm
+               transition-all duration-300 ease-out;
     }
 
+    .card-hover {
+        @apply card hover:border-scorelock-500/20 hover:shadow-card-hover
+               hover:-translate-y-0.5;
+    }
+
+    .card-interactive {
+        @apply card-hover cursor-pointer active:scale-[0.99];
+    }
+
+    .card-glow {
+        @apply card border-scorelock-500/15 shadow-glow-sm;
+    }
+
+    /* ── Glass surfaces ────────────────────────────────── */
+    .glass {
+        @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.06]
+               rounded-2xl shadow-inner-glow;
+    }
+
+    .glass-strong {
+        @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08]
+               rounded-2xl shadow-inner-glow;
+    }
+
+    /* ── Badges ────────────────────────────────────────── */
     .badge {
-        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+        @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg
+               text-xs font-medium tracking-wide;
     }
 
     .badge-live {
-        @apply badge bg-red-900/50 text-red-400 border border-red-800;
+        @apply badge bg-red-500/15 text-red-400 border border-red-500/20;
+    }
+
+    .badge-live::before {
+        content: "";
+        @apply w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse;
     }
 
     .badge-scheduled {
-        @apply badge bg-blue-900/50 text-blue-400 border border-blue-800;
+        @apply badge bg-accent-blue/10 text-blue-400 border border-blue-500/15;
     }
 
     .badge-finished {
-        @apply badge bg-gray-800 text-gray-400 border border-gray-700;
+        @apply badge bg-white/[0.04] text-gray-400 border border-white/[0.06];
     }
 
+    .badge-value {
+        @apply badge bg-scorelock-500/10 text-scorelock-400 border border-scorelock-500/20;
+    }
+
+    /* ── Probability Bars ──────────────────────────────── */
     .prob-bar {
-        @apply h-2 rounded-full transition-all duration-500;
+        @apply h-2.5 rounded-full transition-all duration-700 ease-out;
     }
 
-    /* Prose styling for Markdown article content */
+    .prob-bar-track {
+        @apply flex h-2.5 rounded-full overflow-hidden bg-white/[0.04]
+               backdrop-blur-sm border border-white/[0.03];
+    }
+
+    /* ── Data display ──────────────────────────────────── */
+    .stat-value {
+        @apply text-2xl font-bold tracking-tight font-mono tabular-nums;
+    }
+
+    .stat-label {
+        @apply text-xs font-medium uppercase tracking-wider text-gray-500;
+    }
+
+    /* ── Buttons ───────────────────────────────────────── */
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2
+               bg-scorelock-600 hover:bg-scorelock-500
+               text-white font-medium text-sm
+               px-5 py-2.5 rounded-xl
+               shadow-glow-sm hover:shadow-glow-md
+               transition-all duration-200 ease-out
+               active:scale-[0.97];
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center justify-center gap-2
+               bg-white/[0.05] hover:bg-white/[0.08]
+               border border-white/[0.08] hover:border-white/[0.12]
+               text-gray-200 font-medium text-sm
+               px-5 py-2.5 rounded-xl
+               transition-all duration-200 ease-out
+               active:scale-[0.97];
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2
+               text-gray-400 hover:text-white hover:bg-white/[0.05]
+               font-medium text-sm
+               px-4 py-2 rounded-xl
+               transition-all duration-200 ease-out;
+    }
+
+    /* ── Active nav link ───────────────────────────────── */
+    .nav-link {
+        @apply relative text-sm font-medium text-gray-400
+               hover:text-white transition-colors duration-200;
+    }
+
+    .nav-link-active {
+        @apply nav-link text-white;
+    }
+
+    .nav-link-active::after {
+        content: "";
+        @apply absolute -bottom-1 left-0 right-0 h-0.5
+               bg-scorelock-500 rounded-full;
+    }
+
+    /* ── Section headers ───────────────────────────────── */
+    .section-header {
+        @apply flex items-center justify-between mb-8;
+    }
+
+    .section-title {
+        @apply text-display-sm text-white;
+    }
+
+    .section-subtitle {
+        @apply text-sm text-gray-400 mt-1;
+    }
+
+    /* ── Prose styling for Markdown article content ───── */
     .prose-scorelock h1 {
-        @apply text-3xl font-bold mb-4 mt-8 text-gray-100;
+        @apply text-display-md mb-6 mt-10 text-white;
     }
 
     .prose-scorelock h2 {
-        @apply text-2xl font-semibold mb-3 mt-6 text-gray-100;
+        @apply text-display-sm mb-4 mt-8 text-white;
     }
 
     .prose-scorelock h3 {
-        @apply text-xl font-semibold mb-2 mt-5 text-gray-200;
+        @apply text-xl font-semibold mb-3 mt-6 text-gray-100;
     }
 
     .prose-scorelock p {
-        @apply mb-4 leading-relaxed text-gray-300;
+        @apply mb-5 leading-relaxed text-gray-300 text-[0.95rem];
     }
 
     .prose-scorelock ul {
-        @apply list-disc pl-6 mb-4 space-y-1 text-gray-300;
+        @apply list-disc pl-6 mb-5 space-y-1.5 text-gray-300;
     }
 
     .prose-scorelock ol {
-        @apply list-decimal pl-6 mb-4 space-y-1 text-gray-300;
+        @apply list-decimal pl-6 mb-5 space-y-1.5 text-gray-300;
     }
 
     .prose-scorelock li {
@@ -64,7 +214,7 @@
     }
 
     .prose-scorelock strong {
-        @apply text-gray-100 font-semibold;
+        @apply text-white font-semibold;
     }
 
     .prose-scorelock em {
@@ -72,20 +222,23 @@
     }
 
     .prose-scorelock blockquote {
-        @apply border-l-4 border-scorelock-600 pl-4 italic text-gray-400 my-4;
+        @apply border-l-2 border-scorelock-500/40 pl-5 italic text-gray-400 my-6
+               bg-white/[0.02] py-4 pr-5 rounded-r-xl;
     }
 
     .prose-scorelock hr {
-        @apply border-gray-800 my-6;
+        @apply border-white/[0.06] my-8;
     }
 
     .prose-scorelock a {
-        @apply text-scorelock-400 hover:underline;
+        @apply text-scorelock-400 hover:text-scorelock-300
+               underline underline-offset-2 decoration-scorelock-500/30
+               hover:decoration-scorelock-400/60 transition-colors;
     }
 
-    /* Sentiment gauge */
+    /* ── Sentiment ─────────────────────────────────────── */
     .sentiment-positive {
-        @apply text-green-400;
+        @apply text-scorelock-400;
     }
 
     .sentiment-neutral {
@@ -94,5 +247,90 @@
 
     .sentiment-negative {
         @apply text-red-400;
+    }
+
+    /* ── Skeleton animation ────────────────────────────── */
+    .skeleton {
+        @apply animate-pulse bg-white/[0.04] rounded-xl;
+    }
+
+    .skeleton-shimmer {
+        @apply relative overflow-hidden rounded-xl;
+        background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.02) 0%,
+            rgba(255, 255, 255, 0.06) 50%,
+            rgba(255, 255, 255, 0.02) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 2s linear infinite;
+    }
+
+    /* ── Divider ───────────────────────────────────────── */
+    .divider {
+        @apply h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent;
+    }
+
+    /* ── Input fields ──────────────────────────────────── */
+    .input {
+        @apply w-full bg-white/[0.03] border border-white/[0.08] rounded-xl
+               px-4 py-3 text-sm text-white placeholder-gray-500
+               focus:outline-none focus:border-scorelock-500/40 focus:ring-1 focus:ring-scorelock-500/20
+               transition-all duration-200;
+    }
+
+    /* ── Table ─────────────────────────────────────────── */
+    .table-header {
+        @apply text-xs font-medium uppercase tracking-wider text-gray-500 pb-3
+               border-b border-white/[0.06];
+    }
+
+    .table-row {
+        @apply border-b border-white/[0.04] hover:bg-white/[0.02]
+               transition-colors duration-150;
+    }
+}
+
+@layer utilities {
+    /* Text gradient for hero headers */
+    .text-gradient {
+        @apply bg-clip-text text-transparent
+               bg-gradient-to-r from-scorelock-400 via-scorelock-300 to-accent-cyan;
+    }
+
+    .text-gradient-warm {
+        @apply bg-clip-text text-transparent
+               bg-gradient-to-r from-accent-amber via-accent-rose to-accent-purple;
+    }
+
+    /* Glow effects behind elements */
+    .glow-green {
+        @apply relative;
+    }
+    .glow-green::before {
+        content: "";
+        @apply absolute -inset-1 bg-glow-green opacity-0 transition-opacity duration-500 rounded-3xl -z-10;
+    }
+    .glow-green:hover::before {
+        @apply opacity-100;
+    }
+
+    /* Container query helper */
+    .container-main {
+        @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+    }
+
+    /* Fade mask for overflow gradients */
+    .fade-right {
+        mask-image: linear-gradient(to right, black 80%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+    }
+
+    /* Animate on scroll helper */
+    .animate-on-scroll {
+        @apply opacity-0 translate-y-4 transition-all duration-700 ease-out;
+    }
+    .animate-on-scroll.visible {
+        @apply opacity-100 translate-y-0;
     }
 }

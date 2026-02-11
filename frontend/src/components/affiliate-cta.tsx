@@ -46,7 +46,7 @@ export function AffiliateCTA({ links, fixtureId, pageSource, variant = "card" }:
 
     if (variant === "banner") {
         return (
-            <div className="card border-scorelock-800/50 bg-gradient-to-r from-scorelock-950/50 to-gray-900">
+            <div className="card border-scorelock-500/10 bg-gradient-to-r from-scorelock-950/30 via-surface-900/80 to-surface-900/80">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
                         <p className="text-sm font-semibold text-scorelock-400">
@@ -64,7 +64,7 @@ export function AffiliateCTA({ links, fixtureId, pageSource, variant = "card" }:
                                 target="_blank"
                                 rel="noopener noreferrer nofollow sponsored"
                                 onClick={() => handleClick(link)}
-                                className="inline-flex items-center gap-1.5 bg-scorelock-700 hover:bg-scorelock-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                className="btn-primary text-xs px-3 py-1.5"
                             >
                                 {link.bookmaker_display} →
                             </a>
@@ -86,7 +86,7 @@ export function AffiliateCTA({ links, fixtureId, pageSource, variant = "card" }:
                         target="_blank"
                         rel="noopener noreferrer nofollow sponsored"
                         onClick={() => handleClick(link)}
-                        className="text-scorelock-400 hover:text-scorelock-300 underline decoration-dotted"
+                        className="text-scorelock-400 hover:text-scorelock-300 underline decoration-dotted underline-offset-2 transition-colors"
                     >
                         {link.bookmaker_display}
                     </a>
@@ -98,7 +98,7 @@ export function AffiliateCTA({ links, fixtureId, pageSource, variant = "card" }:
 
     // Default: card variant
     return (
-        <div className="card border-green-900/30">
+        <div className="card border-scorelock-500/10">
             <h3 className="text-sm font-semibold text-gray-400 mb-3">
                 🏆 Bästa odds hos licensierade spelbolag
             </h3>
@@ -110,12 +110,12 @@ export function AffiliateCTA({ links, fixtureId, pageSource, variant = "card" }:
                         target="_blank"
                         rel="noopener noreferrer nofollow sponsored"
                         onClick={() => handleClick(link)}
-                        className="flex items-center justify-between p-3 rounded-lg bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 hover:border-green-800/50 transition-all group"
+                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-scorelock-500/20 transition-all duration-200 group"
                     >
-                        <span className="font-medium text-sm group-hover:text-green-400 transition-colors">
+                        <span className="font-medium text-sm group-hover:text-scorelock-400 transition-colors">
                             {link.bookmaker_display}
                         </span>
-                        <span className="text-xs text-gray-500 group-hover:text-green-400 transition-colors">
+                        <span className="text-xs text-gray-500 group-hover:text-scorelock-400 transition-colors">
                             Besök →
                         </span>
                     </a>

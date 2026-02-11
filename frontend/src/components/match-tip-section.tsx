@@ -52,14 +52,14 @@ export function MatchTipSection({ fixture }: MatchTipSectionProps) {
     }
 
     return (
-        <div className="card">
+        <div className="card-glow">
             <h3 className="text-lg font-semibold mb-2">🎯 Tippa matchen</h3>
             <p className="text-xs text-gray-500 mb-3">
                 Tippa rätt och klättra på topplistan!
             </p>
             <TipForm fixture={fixture} onSubmit={handleSubmit} />
             {error && (
-                <p className="text-red-400 text-sm mt-2">{error}</p>
+                <p className="text-red-400 text-sm mt-3 bg-red-500/5 border border-red-500/10 rounded-lg px-3 py-2">{error}</p>
             )}
         </div>
     );

@@ -30,17 +30,17 @@ export function CookieConsent() {
     if (!visible) return null;
 
     return (
-        <div className="fixed bottom-0 inset-x-0 z-50 p-4">
-            <div className="max-w-3xl mx-auto bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-6 shadow-2xl">
+        <div className="fixed bottom-0 inset-x-0 z-50 p-4 animate-fade-up">
+            <div className="max-w-3xl mx-auto glass-strong rounded-2xl p-5 sm:p-6 shadow-elevated">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <div className="flex-1 min-w-0">
                         <p className="text-sm text-gray-300 leading-relaxed">
-                            🍪 Vi använder cookies för att förbättra din upplevelse. Vi lagrar{" "}
+                            Vi använder cookies för att förbättra din upplevelse. Vi lagrar{" "}
                             <strong className="text-white">ingen</strong> persondata i cookies
                             — bara nödvändiga session-cookies.{" "}
                             <Link
                                 href="/privacy"
-                                className="text-scorelock-400 hover:underline"
+                                className="text-scorelock-400 hover:text-scorelock-300 underline underline-offset-2 decoration-scorelock-500/30 transition-colors"
                             >
                                 Läs mer →
                             </Link>
@@ -49,13 +49,13 @@ export function CookieConsent() {
                     <div className="flex gap-2 shrink-0">
                         <button
                             onClick={decline}
-                            className="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 rounded-lg transition-colors"
+                            className="btn-ghost text-sm"
                         >
                             Avböj
                         </button>
                         <button
                             onClick={accept}
-                            className="px-4 py-2 text-sm font-medium text-white bg-scorelock-600 hover:bg-scorelock-500 rounded-lg transition-colors"
+                            className="btn-primary text-sm"
                         >
                             Acceptera
                         </button>

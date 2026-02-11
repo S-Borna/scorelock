@@ -51,15 +51,16 @@ export default async function SentimentPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 className="text-3xl font-bold mb-2">💬 Sentimentanalys</h1>
-            <p className="text-gray-500 mb-8">
+        <div className="container-main py-10">
+            <h1 className="text-display-md mb-2">Sentimentanalys</h1>
+            <p className="text-gray-400 mb-8">
                 AI-driven analys av nyheter och sociala medier. Visar lagets buzz och stämning inför matcher.
             </p>
 
             {leagueData.length === 0 ? (
-                <div className="card text-center text-gray-400 py-12">
-                    Ingen sentimentdata tillgänglig just nu.
+                <div className="card text-center py-16">
+                    <div className="w-16 h-16 rounded-2xl bg-white/[0.03] flex items-center justify-center text-3xl mx-auto mb-4">💬</div>
+                    <p className="text-gray-400">Ingen sentimentdata tillgänglig just nu.</p>
                 </div>
             ) : (
                 <div className="space-y-10">
@@ -69,7 +70,7 @@ export default async function SentimentPage() {
                                 {league.logo_url && (
                                     <img src={league.logo_url} alt={league.name} className="w-6 h-6" />
                                 )}
-                                <h2 className="text-xl font-semibold">{league.name}</h2>
+                                <h2 className="text-display-sm">{league.name}</h2>
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -82,7 +83,7 @@ export default async function SentimentPage() {
                 </div>
             )}
 
-            <div className="mt-10 card bg-gray-900/50">
+            <div className="mt-10 card bg-white/[0.01]">
                 <h3 className="text-sm font-semibold text-gray-400 mb-2">Så fungerar det</h3>
                 <p className="text-sm text-gray-500">
                     Sentimentanalys drivs av AI som dagligen analyserar nyhetsartiklar och sociala medier
@@ -102,12 +103,12 @@ function SentimentCard({ team, sentiment }: { team: Team; sentiment: Sentiment |
     const label = score > 0.2 ? "Positivt" : score < -0.2 ? "Negativt" : "Neutralt";
 
     return (
-        <div className="card hover:border-gray-700 transition-colors">
+        <div className="card-hover">
             <div className="flex items-center gap-3 mb-3">
                 {team.logo_url ? (
                     <img src={team.logo_url} alt={team.name} className="w-8 h-8 object-contain" />
                 ) : (
-                    <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-sm">⚽</div>
+                    <div className="w-8 h-8 bg-white/[0.04] rounded-full flex items-center justify-center text-sm">⚽</div>
                 )}
                 <div>
                     <span className="font-medium text-sm">{team.name}</span>
@@ -128,7 +129,7 @@ function SentimentCard({ team, sentiment }: { team: Team; sentiment: Sentiment |
                                 {score > 0 ? "+" : ""}{score.toFixed(2)}
                             </span>
                         </div>
-                        <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="w-full h-2 bg-white/[0.04] rounded-full overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all ${bgClass}`}
                                 style={{ width: `${((score + 1) / 2) * 100}%` }}
@@ -141,7 +142,7 @@ function SentimentCard({ team, sentiment }: { team: Team; sentiment: Sentiment |
                             <span>Buzz</span>
                             <span className="font-mono">{buzz.toFixed(1)}</span>
                         </div>
-                        <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="w-full h-2 bg-white/[0.04] rounded-full overflow-hidden">
                             <div
                                 className="h-full rounded-full bg-scorelock-500 transition-all"
                                 style={{ width: `${Math.min(buzz * 10, 100)}%` }}

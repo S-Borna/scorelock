@@ -23,12 +23,12 @@ export default async function LeaderboardPage() {
     } catch { /* not critical */ }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="flex items-center justify-between mb-2">
-                <h1 className="text-3xl font-bold">🏆 Tippningsligan</h1>
+                <h1 className="text-display-md">Tippningsligan</h1>
                 <Link
                     href="/leaderboard/ai-vs-me"
-                    className="text-sm text-scorelock-400 hover:underline"
+                    className="btn-ghost text-scorelock-400 text-sm"
                 >
                     🤖 AI vs Du →
                 </Link>
@@ -39,7 +39,7 @@ export default async function LeaderboardPage() {
 
             {/* Weekly top tipper */}
             {weeklyTop && (
-                <div className="card border-yellow-900/50 bg-yellow-950/20 mb-8">
+                <div className="card border-accent-amber/10 bg-gradient-to-r from-amber-950/20 via-surface-900/80 to-surface-900/80 mb-8">
                     <div className="flex items-center gap-3">
                         <span className="text-3xl">👑</span>
                         <div>
@@ -59,7 +59,7 @@ export default async function LeaderboardPage() {
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="text-gray-500 border-b border-gray-800">
+                                <tr className="text-gray-500 border-b border-white/[0.06] text-xs uppercase tracking-wider">
                                     <th className="text-left py-3 px-4 w-12">#</th>
                                     <th className="text-left py-3 px-4">Spelare</th>
                                     <th className="text-center py-3 px-4">Poäng</th>
@@ -73,7 +73,7 @@ export default async function LeaderboardPage() {
                                 {leaderboard.map((entry, i) => (
                                     <tr
                                         key={entry.user_id}
-                                        className={`border-b border-gray-800/50 ${i < 3 ? "bg-gray-800/30" : ""}`}
+                                        className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${i < 3 ? "bg-white/[0.02]" : ""}`}
                                     >
                                         <td className="py-3 px-4 font-bold text-gray-500">
                                             {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
@@ -105,17 +105,17 @@ export default async function LeaderboardPage() {
                     </div>
                 </div>
             ) : (
-                <div className="card text-center py-12">
-                    <p className="text-4xl mb-4">⚽</p>
-                    <p className="text-gray-400 text-lg mb-2">Inga tips ännu!</p>
-                    <p className="text-gray-600 text-sm">
+                <div className="card text-center py-16">
+                    <div className="w-16 h-16 rounded-2xl bg-white/[0.03] flex items-center justify-center text-3xl mx-auto mb-4">⚽</div>
+                    <p className="text-gray-300 text-lg mb-2 font-semibold">Inga tips ännu!</p>
+                    <p className="text-gray-500 text-sm max-w-sm mx-auto">
                         Gå till en matchsida och tippa utgången för att komma med på topplistan.
                     </p>
                 </div>
             )}
 
             {/* How it works */}
-            <div className="mt-8 card">
+            <div className="mt-8 card bg-white/[0.01]">
                 <h2 className="text-lg font-semibold mb-4">📖 Så fungerar det</h2>
                 <div className="grid sm:grid-cols-3 gap-4 text-sm text-gray-400">
                     <div>
