@@ -34,6 +34,28 @@ def run_async(coro):
         loop.close()
 
 
+def _detect_season(current_year: int, league_name: str) -> list[int]:
+    """Return season candidates to try, best-guess first.
+
+    API-Football uses the START year of the season as the season parameter.
+    European leagues: Aug 2024 → May 2025 = season 2024.
+    Allsvenskan: calendar year.
+
+    We try multiple seasons so we always find data even if the system clock
+    is ahead of the real-world calendar.
+    """
+    if league_name == "allsvenskan":
+        return [current_year, current_year - 1]
+
+    month = date.today().month
+    if month >= 8:
+        # Aug-Dec: new season just started → try current_year first
+        return [current_year, current_year - 1, current_year - 2]
+    else:
+        # Jan-Jul: mid-season → try year-1 first (most likely)
+        return [current_year - 1, current_year - 2, current_year]
+
+
 @celery_app.task(name="app.services.tasks.fetch_daily_fixtures")
 def fetch_daily_fixtures():
     """Fetch upcoming fixtures — API-Football primary (100 req/day), football-data.org fallback.
@@ -67,7 +89,7 @@ def fetch_daily_fixtures():
                         name=league_name,
                         country=league_name,
                         logo_url=None,
-                        league_type="cup" if "league" not in league_name and league_name in (
+                        league_type="cup" if league_name in (
                             "champions_league", "europa_league", "conference_league"
                         ) else "league",
                         current_season=current_year,
@@ -78,26 +100,34 @@ def fetch_daily_fixtures():
                     failed_leagues.append(league_name)
                     continue
 
-                # Season logic: Allsvenskan = calendar year, others = year-1
-                season = current_year if league_name == "allsvenskan" else current_year - 1
+                # Smart season detection: try multiple seasons
+                season_candidates = _detect_season(current_year, league_name)
 
-                try:
-                    await quota.record_call("api_football")
-                    fixtures = await api_football.get_fixtures_by_league(api_id, season)
-                    if fixtures:
-                        count = await upsert_fixtures_batch(session, fixtures, league)
-                        total += count
-                        logger.info(
-                            "fixtures_synced",
-                            source="api_football",
-                            league=league_name,
-                            count=count,
-                            total_returned=len(fixtures),
-                        )
-                    else:
-                        logger.warning("fixtures_empty", source="api_football", league=league_name, season=season)
-                except Exception as exc:
-                    logger.error("fixture_fetch_failed", source="api_football", league=league_name, error=str(exc))
+                fetched = False
+                for season in season_candidates:
+                    try:
+                        await quota.record_call("api_football")
+                        fixtures = await api_football.get_fixtures_by_league(api_id, season)
+                        if fixtures:
+                            count = await upsert_fixtures_batch(session, fixtures, league)
+                            total += count
+                            logger.info(
+                                "fixtures_synced",
+                                source="api_football",
+                                league=league_name,
+                                season=season,
+                                count=count,
+                                total_returned=len(fixtures),
+                            )
+                            fetched = True
+                            break  # Found data, skip other seasons
+                        else:
+                            logger.info("fixtures_empty_trying_next", league=league_name, season=season)
+                    except Exception as exc:
+                        logger.error("fixture_fetch_failed", source="api_football", league=league_name, season=season, error=str(exc))
+
+                if not fetched:
+                    logger.warning("fixtures_all_seasons_empty", league=league_name, tried=season_candidates)
                     failed_leagues.append(league_name)
 
             # ── 2. football-data.org fallback for failed leagues ──
@@ -543,22 +573,28 @@ def update_standings():
                     failed_leagues.append(league_name)
                     continue
 
-                season = current_year if league_name == "allsvenskan" else current_year - 1
+                season_candidates = _detect_season(current_year, league_name)
+                fetched = False
 
-                try:
-                    await quota.record_call("api_football")
-                    standings = await api_football.get_standings(api_id, season)
-                except Exception as exc:
-                    logger.error("standings_fetch_failed", source="api_football", league=league_name, error=str(exc))
+                for season in season_candidates:
+                    try:
+                        await quota.record_call("api_football")
+                        standings = await api_football.get_standings(api_id, season)
+                    except Exception as exc:
+                        logger.error("standings_fetch_failed", source="api_football", league=league_name, season=season, error=str(exc))
+                        continue
+
+                    if standings:
+                        for entry in standings:
+                            result = await upsert_standing(session, entry, league, season)
+                            if result:
+                                total += 1
+                        logger.info("standings_synced", source="api_football", league=league_name, season=season, teams=len(standings))
+                        fetched = True
+                        break  # Found data, skip other seasons
+
+                if not fetched:
                     failed_leagues.append(league_name)
-                    continue
-
-                for entry in standings:
-                    result = await upsert_standing(session, entry, league, season)
-                    if result:
-                        total += 1
-
-                logger.info("standings_synced", source="api_football", league=league_name, teams=len(standings))
 
             # ── 2. football-data.org fallback for failed leagues ──
             if failed_leagues:
