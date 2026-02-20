@@ -140,7 +140,13 @@ export function Footer() {
                 {/* Bottom section */}
                 <div className="divider mb-6" />
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
-                    <p>{t("footer.copyright")}</p>
+                    <div className="flex items-center gap-3">
+                        <p>{t("footer.copyright")}</p>
+                        <a href="https://globaldex.ai/domain/scorelock.saidborna.com" target="_blank" rel="noopener noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="https://globaldex.ai/api/v1/badge?domain=scorelock.saidborna.com" alt="GlobalDex Score" height={32} width={210} className="h-[24px] w-auto" />
+                        </a>
+                    </div>
                     <p>
                         {t("footer.responsible")} ·{" "}
                         <Link href="/privacy" className="hover:text-gray-400 transition-colors">{t("footer.privacy")}</Link>{" · "}
