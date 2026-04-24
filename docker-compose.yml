@@ -61,8 +61,8 @@ services:
   # ── Frontend (Next.js) ────────────────────────────────────
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://backend:8000
     container_name: scorelock-frontend

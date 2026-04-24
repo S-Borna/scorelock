@@ -1,5 +1,6 @@
 "use client";
 
+import { setAccessToken } from "@/lib/auth-token";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -32,7 +33,7 @@ export default function LoginPage() {
             }
 
             const data = await res.json();
-            localStorage.setItem("access_token", data.access_token);
+            setAccessToken(data.access_token);
             router.push("/");
             router.refresh();
         } catch (err: unknown) {

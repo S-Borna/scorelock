@@ -1,7 +1,8 @@
 "use client";
 
 import { ShareCard } from "@/components/share-card";
-import { fetchApi } from "@/lib/api";
+import { fetchApiAuth } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-token";
 import type { AIvsUserStats } from "@/lib/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -12,16 +13,14 @@ export default function AIvsMePage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const token = localStorage.getItem("scorelock_token");
+        const token = getAccessToken();
         if (!token) {
             setError("login");
             setLoading(false);
             return;
         }
 
-        fetchApi<AIvsUserStats>("/api/v1/tips/ai-vs-me", {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        fetchApiAuth<AIvsUserStats>("/api/v1/tips/ai-vs-me", token)
             .then(setStats)
             .catch(() => setError("fetch"))
             .finally(() => setLoading(false));

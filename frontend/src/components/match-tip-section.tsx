@@ -1,6 +1,7 @@
 "use client";
 
 import { TipForm } from "@/components/tip-form";
+import { getAccessToken } from "@/lib/auth-token";
 import type { Fixture } from "@/lib/types";
 import { useState } from "react";
 
@@ -22,7 +23,7 @@ export function MatchTipSection({ fixture }: MatchTipSectionProps) {
         predicted_away_goals: number | null;
     }) {
         setError(null);
-        const token = typeof window !== "undefined" ? localStorage.getItem("scorelock_token") : null;
+        const token = getAccessToken();
 
         if (!token) {
             setError("Du måste vara inloggad för att tippa. Logga in först!");

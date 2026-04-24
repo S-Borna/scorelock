@@ -34,13 +34,17 @@ logs-worker: ## Tail Celery worker logs
 shell: ## Open a shell in the backend container
 	docker compose exec backend bash
 
-test: ## Run backend tests
+dev-install: ## Install dev tools (ruff, pytest) in running backend+worker (ephemeral, not persisted to image)
+	docker compose exec backend pip install --quiet ruff pytest "pytest-asyncio>=0.24,<2" httpx
+	docker compose exec celery-worker pip install --quiet ruff pytest "pytest-asyncio>=0.24,<2" httpx
+
+test: ## Run backend tests (requires `make dev-install` once per container start)
 	docker compose exec backend python -m pytest tests/ -v
 
-lint: ## Lint backend code
+lint: ## Lint backend code (requires `make dev-install` once per container start)
 	docker compose exec backend ruff check .
 
-format: ## Format backend code
+format: ## Format backend code (requires `make dev-install` once per container start)
 	docker compose exec backend ruff format .
 
 # ── Database ───────────────────────────────────────────────
