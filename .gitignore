@@ -67,3 +67,15 @@ Thumbs.db
 
 # ── Railway config-as-code ──
 # Keep railway*.json tracked — they define per-service build/deploy settings
+
+# Competitor research raw artifacts
+competitor-ref/**/Screenshots/
+competitor-ref/**/screenshots/
+competitor-ref/**/HAR/
+competitor-ref/**/har/
+competitor-ref/**/*.har
+competitor-ref/**/*.png
+competitor-ref/**/*.jpg
+competitor-ref/**/*.jpeg
+competitor-ref/**/*.webp
+competitor-ref/**/.DS_Store
