@@ -7,7 +7,7 @@ import { MatchTipSection } from "@/components/match-tip-section";
 import { LiveMatchHeader, LiveMatchStats } from "@/components/live-match-header";
 import { BroadcastCard } from "@/components/broadcast-card";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, FixtureDetail, Sentiment } from "@/lib/types";
+import type { Article, ArticleList, Broadcast, FixtureDetail, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -64,6 +64,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
     let affiliateLinks: AffiliateLink[] = [];
     try {
         affiliateLinks = await fetchApi<AffiliateLink[]>("/api/v1/affiliate/links?country=SE");
+    } catch { /* not critical */ }
+
+    // Fetch broadcasts (SE)
+    let broadcasts: Broadcast[] = [];
+    try {
+        broadcasts = await fetchApi<Broadcast[]>(`/api/v1/fixtures/${fixture.id}/broadcasts?country=SE`);
     } catch { /* not critical */ }
 
     return (
@@ -124,8 +130,8 @@ export default async function MatchDetailPage({ params }: PageProps) {
                         </div>
                     )}
 
-                    {/* Where to watch (client-side fetch — country=SE) */}
-                    <BroadcastCard fixtureId={fixture.id} />
+                    {/* Where to watch (SE) */}
+                    <BroadcastCard broadcasts={broadcasts} />
 
                     {/* Related articles */}
                     {articles.length > 0 && (

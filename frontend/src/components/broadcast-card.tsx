@@ -1,33 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
-import { fetchApi } from "@/lib/api";
 import type { Broadcast } from "@/lib/types";
 
-export function BroadcastCard({ fixtureId }: { fixtureId: number }) {
+export function BroadcastCard({ broadcasts }: { broadcasts: Broadcast[] }) {
     const { t } = useLocale();
-    const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
-    const [loaded, setLoaded] = useState(false);
 
-    useEffect(() => {
-        let cancelled = false;
-        fetchApi<Broadcast[]>(`/api/v1/fixtures/${fixtureId}/broadcasts?country=SE`)
-            .then((data) => {
-                if (!cancelled) {
-                    setBroadcasts(data);
-                    setLoaded(true);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setLoaded(true);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [fixtureId]);
-
-    if (!loaded || broadcasts.length === 0) return null;
+    if (broadcasts.length === 0) return null;
 
     return (
         <div className="card">

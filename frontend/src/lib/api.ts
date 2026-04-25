@@ -5,7 +5,13 @@
 
 import { getMockData } from "./mock-data";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// SSR (inside frontend container) reaches backend via docker-network hostname.
+// Browser (on user's host) reaches backend via mapped localhost port.
+// Both can be overridden via env vars in prod.
+const API_BASE =
+    typeof window === "undefined"
+        ? process.env.INTERNAL_API_URL || "http://backend:8000"
+        : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export class ApiError extends Error {
     constructor(
