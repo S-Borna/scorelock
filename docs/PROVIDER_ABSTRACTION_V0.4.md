@@ -69,12 +69,12 @@ Cited files (read in this version, not modified):
 - **Current responsibility**: `pydantic-settings` `Settings` class grouping 30+ env vars: app/CORS/DB/Redis/Celery/Auth/External APIs (API-Football, football-data, Odds API)/Stripe/Anthropic/Sentry/Twitter/Discord/Telegram/OneSignal. `@lru_cache` on `get_settings()`.
 - **Coupling risk**: (1) Three provider keys exist as first-class fields (`api_football_key`, `football_data_key`, `the_odds_api_key`) — adding SportMonks / broadcast provider / weather provider requires touching this file. Acceptable cost of explicit config. (2) `secret_key: str = "change-me"` default is a standing security concern (flagged in prior intake). Not fixed here (out of scope), tracked.
 - **Reusable parts**: The `pydantic-settings` pattern is sound. Extend with new provider key fields as providers land in v0.5d.
-- **Must not change yet**: Everything. New provider fields added in v0.5a when the first new provider onboards.
+- **Must not change yet**: Everything. v0.5a did **not** modify `config.py`. New provider key fields land in v0.5d when paid provider adapters onboard, consistent with the **Reusable parts** note above and §Migration Strategy v0.5d.
 
 ### `.env.example` (committed)
 
 - **Current responsibility**: Template listing 36 env-var assignments — re-verified in v0.4 via `grep -cE "^[A-Z0-9_]+=" .env.example` = 36. Known gap: backend code references Twitter/Telegram/Discord/OneSignal + RAILWAY/CLOUDFLARE/SENTRY-extra vars via `config.py` — of those, Twitter/Telegram/Discord/OneSignal are absent from `.env.example`, while Cloudflare/Railway/Sentry-extras are present in `.env.example` but not in `config.py` (asymmetric drift, not fixed here).
-- **Coupling risk**: Docs drift. Fixed by v0.5a extending `.env.example` alongside `config.py`.
+- **Coupling risk**: Docs drift. v0.5a did **not** extend `.env.example`; the asymmetric-drift cleanup is sequenced with the v0.5d `config.py` additions when paid provider adapters onboard.
 - **Reusable parts**: Structure.
 - **Must not change yet**: Everything.
 
@@ -497,7 +497,7 @@ Downside accepted: one additional join at read time in some queries. Mitigated b
 
 ### Replay / debug strategy
 
-- Re-running normalization against stored payloads: `python -m app.providers._normalize --from-payload <payload_id>` (to be implemented in v0.5a). Idempotent; overwrites canonical row if output differs.
+- Re-running normalization against stored payloads: a replay-normalize CLI (target invocation: `python -m app.providers.normalization --from-payload <payload_id>`) is planned for v0.5d alongside the concrete provider adapters. Idempotent; overwrites canonical row if output differs. Not present in v0.5a.
 - Cross-provider diff: given a fixture canonical_id, list all payloads across providers, print normalized diff. For debugging conflicts.
 - Schema-drift detection: when `ProviderPayloadError` fires during normalization, the offending payload is retained with a flag; daily report lists new drift cases for review.
 
@@ -513,7 +513,7 @@ Downside accepted: one additional join at read time in some queries. Mitigated b
 
 ### Redis counters
 
-`core/quota_manager.py` already exists (verified in `football_data.py` and `odds_api.py` usage). Extended in v0.5a to include per-provider metadata:
+`core/quota_manager.py` already exists (verified in `football_data.py` and `odds_api.py` usage). v0.5a did **not** modify `core/quota_manager.py`; it added a placeholder `QuotaBucket` dataclass and `DEFAULT_SOFT_CAP_PCT` constant in `backend/app/providers/rate_limit.py` only, with no Redis or env-var dependency at import time. The richer descriptor below is the v0.5d target shape, populated when adapters land:
 
 ```python
 class QuotaBucket:
@@ -536,7 +536,7 @@ Redis keys: `quota:{provider}:{window}:{bucket_start_ts}`. Incremented atomicall
 | The Odds API | 500 req/mo | $30 30k/mo · $99 1M/mo with in-play |
 | Open-Meteo | 10 000 req/day | Free tier sufficient |
 
-Values confirmed at v0.5a when the provider key is actually provisioned. The quota manager consumes these from config, not from hardcoded constants.
+Values to be confirmed at v0.5d when paid provider keys are provisioned. The quota manager will consume these from config, not from hardcoded constants. v0.5a only declared the descriptor placeholder; no provider was provisioned and no values were committed.
 
 ### Per-operation cost weight
 
@@ -554,7 +554,7 @@ Not every operation is a single HTTP call. Default weight = 1. Overrides:
 
 ### Backoff
 
-- Exponential, jittered: base 0.5s, factor 2, max 8s, max attempts 5. Aligns with existing `@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=15))` in current clients; v0.5a upgrades these to a shared retry policy in `providers/_retry.py`.
+- Exponential, jittered: base 0.5s, factor 2, max 8s, max attempts 5. Aligns with existing `@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=15))` in current clients. v0.5a defined the shared `RetryPolicy` dataclass and `DEFAULT_RETRY_POLICY` constant in `backend/app/providers/retry.py` (data only; existing clients keep their own `tenacity` decorators unchanged). Rewiring the existing clients to consume the shared policy lands in v0.5d.
 - Non-retryable errors (`ProviderAuthError`, `ProviderPayloadError`, `ProviderQuotaExhausted`) bypass retry.
 
 ### Fail-open vs fail-closed
@@ -567,7 +567,7 @@ Not every operation is a single HTTP call. Default weight = 1. Overrides:
 
 ### Observability metrics
 
-Prometheus counters/histograms (to be added in v0.5a):
+Prometheus counters/histograms (planned for v0.5d when adapters and registry wiring land; **not** added in v0.5a):
 
 - `provider_requests_total{provider,operation,status}` — counter.
 - `provider_request_duration_seconds{provider,operation}` — histogram.
@@ -595,7 +595,7 @@ Sequenced after v0.4 (design). Each version is small, shippable, and reversible.
 
 ### v0.5a — Abstraction skeleton, no runtime behavior change
 
-- **Goal**: Create `backend/app/providers/` with `base.py` (Protocol definitions, error classes), `_registry.py` (empty registry + `get_provider(op, scope)` helper), `_normalize.py` (stub), `_retry.py` (shared `tenacity`-based retry policy), `_rate_limit.py` (thin wrapper around existing `core/quota_manager.py`). No concrete providers wired yet. Zero runtime change.
+- **Goal**: Create `backend/app/providers/` with `base.py` (Protocols + `Operation`/`OddsMarket`/`ProviderStatus` enums + `Scope`/`DateRange`/`ProviderHealth`/`LiveEventEnvelope` dataclasses), `errors.py` (`ProviderError` + 6 subclasses), `registry.py` (empty `ProviderRegistry` + `get_provider_registry()` singleton accessor), `normalization.py` (18 `Normalized*` dataclass placeholders), `retry.py` (`RetryPolicy` dataclass + `DEFAULT_RETRY_POLICY` constant; data only, no callers), `rate_limit.py` (placeholder `QuotaBucket` + `DEFAULT_SOFT_CAP_PCT`; **not** wired to `core/quota_manager.py` in v0.5a). No concrete providers wired yet. Zero runtime change.
 - **Files likely touched**: new files under `backend/app/providers/`. No `config.py` change in v0.5a. The abstraction skeleton must be importable but unused by runtime code.
 - **Migration required**: no.
 - **Risk**: low — imports only, no callers yet.
