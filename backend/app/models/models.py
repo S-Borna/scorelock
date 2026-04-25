@@ -6,16 +6,19 @@ from sqlalchemy import (
     Integer,
     Float,
     Boolean,
+    Date,
     DateTime,
     Text,
     ForeignKey,
     UniqueConstraint,
     Index,
     Enum as SAEnum,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 import enum
+from datetime import date
 
 from app.core.database import Base
 
@@ -435,4 +438,63 @@ class UserPrediction(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "fixture_id", name="uq_user_fixture_prediction"),
         Index("ix_user_pred_user_created", "user_id", "created_at"),
+    )
+
+
+# ── Reference Data (v0.6a1) ────────────────────────────────
+
+
+class Sport(Base):
+    """Top-level sport lookup. Football-only at launch; multi-sport extensibility per provider abstraction."""
+
+    __tablename__ = "sports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(100))
+    icon_ref: Mapped[str | None] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Country(Base):
+    """ISO 3166-1 country lookup. Used by competitions, teams, players, referees, venues, broadcasts."""
+
+    __tablename__ = "countries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    iso_2: Mapped[str] = mapped_column(String(2), unique=True, index=True)
+    iso_3: Mapped[str] = mapped_column(String(3), unique=True)
+    display_name: Mapped[str] = mapped_column(String(100))
+    display_name_sv: Mapped[str | None] = mapped_column(String(100))
+    flag_ref: Mapped[str | None] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Season(Base):
+    """Season identity per league. Replaces denormalized season INT column on fixtures/standings.
+
+    FK points at `leagues.id` for now. The `leagues` table is the canonical lookup
+    through v0.6f; the rename to `competitions` is deferred to v0.7+ per
+    docs/METADATA_SCHEMA_V0.5C.md.
+    """
+
+    __tablename__ = "seasons"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), index=True)
+    year_start: Mapped[int] = mapped_column(Integer)
+    label: Mapped[str] = mapped_column(String(20))
+    start_date: Mapped[date | None] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=False)
+    external_ids: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("league_id", "year_start", name="uq_season_league_year"),
+        Index("ix_season_current", "league_id", "is_current"),
     )
