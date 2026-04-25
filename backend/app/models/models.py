@@ -498,3 +498,95 @@ class Season(Base):
         UniqueConstraint("league_id", "year_start", name="uq_season_league_year"),
         Index("ix_season_current", "league_id", "is_current"),
     )
+
+
+# ── Provider Identity / Audit (v0.6a2) ─────────────────────
+
+
+class ProviderPayload(Base):
+    """Immutable raw provider response store.
+
+    Source-of-truth for replay-normalization, conflict debugging, legal evidence.
+    Regular Postgres table in v0.6; hypertable promotion deferred to v0.7+ per
+    docs/METADATA_SCHEMA_V0.5C.md.
+    """
+
+    __tablename__ = "provider_payloads"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider: Mapped[str] = mapped_column(String(50), index=True)
+    operation: Mapped[str] = mapped_column(String(50), index=True)
+    entity_type: Mapped[str] = mapped_column(String(20), index=True)
+    external_id: Mapped[str | None] = mapped_column(String(255), index=True)
+    canonical_table: Mapped[str | None] = mapped_column(String(50))
+    canonical_id: Mapped[int | None] = mapped_column(Integer)
+    payload: Mapped[dict] = mapped_column(JSONB)
+    payload_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    retained_until: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    is_schema_drift: Mapped[bool] = mapped_column(Boolean, default=False)
+    error_summary: Mapped[str | None] = mapped_column(Text)
+
+
+class ProviderEntityMapping(Base):
+    """Provider external-ID ↔ canonical internal-ID mapping.
+
+    Truth source for provider identity. One row per (provider, entity_type, external_id)
+    triple. Reverse lookup via (canonical_table, canonical_id).
+    """
+
+    __tablename__ = "provider_entity_mappings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider: Mapped[str] = mapped_column(String(50), index=True)
+    entity_type: Mapped[str] = mapped_column(String(20), index=True)
+    external_id: Mapped[str] = mapped_column(String(255))
+    canonical_table: Mapped[str] = mapped_column(String(50))
+    canonical_id: Mapped[int] = mapped_column(Integer)
+    confidence: Mapped[float | None] = mapped_column(Float)
+    source: Mapped[str | None] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "entity_type",
+            "external_id",
+            name="uq_provider_entity_external",
+        ),
+        Index("ix_pem_canonical", "canonical_table", "canonical_id"),
+        Index("ix_pem_provider_entity", "provider", "entity_type"),
+    )
+
+
+class ProviderConflict(Base):
+    """Provider field-divergence log.
+
+    Written when two providers report conflicting values for the same canonical
+    entity field. Surfaced in admin UI for resolution.
+    """
+
+    __tablename__ = "provider_conflicts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider: Mapped[str] = mapped_column(String(50), index=True)
+    entity_type: Mapped[str] = mapped_column(String(20), index=True)
+    external_id: Mapped[str | None] = mapped_column(String(255))
+    canonical_table: Mapped[str | None] = mapped_column(String(50))
+    canonical_id: Mapped[int | None] = mapped_column(Integer)
+    field_name: Mapped[str] = mapped_column(String(100))
+    existing_value: Mapped[dict | None] = mapped_column(JSONB)
+    incoming_value: Mapped[dict | None] = mapped_column(JSONB)
+    severity: Mapped[str] = mapped_column(String(20), default="medium")
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    detected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime)
+    resolution_notes: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        Index("ix_pc_status_severity", "status", "severity"),
+        Index("ix_pc_canonical", "canonical_table", "canonical_id"),
+    )
