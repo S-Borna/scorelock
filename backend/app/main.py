@@ -1,6 +1,5 @@
 """ScoreLock Football Analytics — FastAPI Application."""
 
-import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +9,7 @@ import structlog
 import sentry_sdk
 
 from app.core.config import get_settings
-from app.core.database import engine, Base
+from app.core.database import engine
 from app.core.rate_limit import RateLimitMiddleware
 from app.api.routes import router
 from app.api.auth import router as auth_router
@@ -34,28 +33,10 @@ if settings.sentry_dsn:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown events."""
-    # ── Startup ────────────────────────────────────────
+    """Startup and shutdown events. Schema is owned by Alembic."""
     logger.info("scorelock_starting", environment=settings.environment)
-
-    # Best-effort table creation (Alembic is the source of truth in prod).
-    # Wrapped in try/except + asyncio.timeout so a slow / unreachable DB
-    # never blocks uvicorn from binding its port — the /health endpoint
-    # must always respond for Railway healthchecks.
-    try:
-        async with asyncio.timeout(15):
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-        logger.info("scorelock_tables_ok")
-    except TimeoutError:
-        logger.error("startup_create_tables_failed", error="timeout after 15s")
-    except Exception as exc:
-        logger.error("startup_create_tables_failed", error=repr(exc))
-
     logger.info("scorelock_ready")
     yield
-
-    # ── Shutdown ───────────────────────────────────────
     logger.info("scorelock_shutting_down")
     await engine.dispose()
 
