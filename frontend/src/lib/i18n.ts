@@ -92,6 +92,10 @@ const translations: Record<Locale, Record<string, string>> = {
         // ── Metadata ──
         "meta.title": "ScoreLock — AI-driven fotbollsanalys",
         "meta.description": "AI-genererade förhandsanalyser, matchreferat, value bets och prediktioner för fotboll. Driven av maskininlärning.",
+
+        // ── Broadcast (Phase 1: Where to Watch) ──
+        "broadcast.title": "Var kan jag titta?",
+        "broadcast.watch": "Titta nu",
     },
     en: {
         // ── Nav ──
@@ -175,6 +179,10 @@ const translations: Record<Locale, Record<string, string>> = {
         // ── Metadata ──
         "meta.title": "ScoreLock — AI-powered football analytics",
         "meta.description": "AI-generated match previews, reports, value bets and predictions for football. Powered by machine learning.",
+
+        // ── Broadcast (Phase 1: Where to Watch) ──
+        "broadcast.title": "Where to watch",
+        "broadcast.watch": "Watch now",
     },
 };
 

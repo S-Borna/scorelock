@@ -303,5 +303,19 @@ class PredictionCardRequest(BaseModel):
     fixture_id: int
 
 
+# ── Broadcasts (Phase 1: Where to Watch) ──────────────────
+
+
+class BroadcastResponse(BaseModel):
+    id: int
+    provider_type: str
+    channel_name: str
+    watch_url: str | None
+    language_iso_2: str | None
+    country_iso_2: str
+
+    model_config = {"from_attributes": True}
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

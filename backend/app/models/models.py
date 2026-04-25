@@ -590,3 +590,35 @@ class ProviderConflict(Base):
         Index("ix_pc_status_severity", "status", "severity"),
         Index("ix_pc_canonical", "canonical_table", "canonical_id"),
     )
+
+
+# ── Broadcasts (Phase 1: Where to Watch) ───────────────────
+
+
+class FixtureBroadcast(Base):
+    """TV / streaming / radio broadcast info per (fixture, country).
+
+    `country_iso_2` is a string (not FK to countries) for Phase 1 simplicity.
+    `affiliate_link_id` deferred — TV affiliates not modeled yet.
+    """
+
+    __tablename__ = "fixture_broadcasts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    country_iso_2: Mapped[str] = mapped_column(String(2), index=True)
+    provider_type: Mapped[str] = mapped_column(String(20))
+    channel_name: Mapped[str] = mapped_column(String(150))
+    watch_url: Mapped[str | None] = mapped_column(String(1000))
+    language_iso_2: Mapped[str | None] = mapped_column(String(2))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index(
+            "ix_fixture_broadcasts_fixture_country",
+            "fixture_id",
+            "country_iso_2",
+        ),
+    )

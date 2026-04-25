@@ -184,3 +184,15 @@ export interface WeeklyTopTipper {
     tips_this_week: number;
     accuracy_this_week: number;
 }
+
+
+// ── Broadcasts (Phase 1: Where to Watch) ─────────────────
+
+export interface Broadcast {
+    id: number;
+    provider_type: "TV" | "STREAMING" | "RADIO";
+    channel_name: string;
+    watch_url: string | null;
+    language_iso_2: string | null;
+    country_iso_2: string;
+}

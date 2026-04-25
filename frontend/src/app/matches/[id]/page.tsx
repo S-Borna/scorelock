@@ -5,6 +5,7 @@ import type { AffiliateLink } from "@/components/affiliate-cta";
 import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
 import { MatchTipSection } from "@/components/match-tip-section";
 import { LiveMatchHeader, LiveMatchStats } from "@/components/live-match-header";
+import { BroadcastCard } from "@/components/broadcast-card";
 import { fetchApi } from "@/lib/api";
 import type { Article, ArticleList, FixtureDetail, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
@@ -122,6 +123,9 @@ export default async function MatchDetailPage({ params }: PageProps) {
                             </div>
                         </div>
                     )}
+
+                    {/* Where to watch (client-side fetch — country=SE) */}
+                    <BroadcastCard fixtureId={fixture.id} />
 
                     {/* Related articles */}
                     {articles.length > 0 && (

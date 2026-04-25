@@ -6,7 +6,7 @@ All routes query the database via the db_service layer.
 import asyncio
 from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -33,9 +33,10 @@ from app.schemas.schemas import (
     LeaderboardEntry,
     AIvsUserStats,
     WeeklyTopTipper,
+    BroadcastResponse,
 )
 from app.services import db_service
-from app.models.models import User, ArticleType
+from app.models.models import User, ArticleType, FixtureBroadcast
 
 router = APIRouter()
 
@@ -145,6 +146,25 @@ async def get_fixture_detail(fixture_id: int, db: AsyncSession = Depends(get_db)
         else None,
         odds=[OddsResponse.model_validate(o) for o in fixture.odds],
     )
+
+
+@router.get(
+    "/fixtures/{fixture_id}/broadcasts",
+    response_model=list[BroadcastResponse],
+)
+async def get_fixture_broadcasts(
+    fixture_id: int,
+    country: str = "SE",
+    db: AsyncSession = Depends(get_db),
+):
+    """Return TV / streaming broadcasts for a fixture in the given country."""
+    result = await db.execute(
+        select(FixtureBroadcast)
+        .where(FixtureBroadcast.fixture_id == fixture_id)
+        .where(FixtureBroadcast.country_iso_2 == country.upper())
+        .order_by(FixtureBroadcast.provider_type, FixtureBroadcast.channel_name)
+    )
+    return result.scalars().all()
 
 
 # ── Predictions ────────────────────────────────────────────
