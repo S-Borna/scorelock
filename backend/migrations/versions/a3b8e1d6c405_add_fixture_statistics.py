@@ -95,7 +95,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_fixture_statistics_fixture_id", table_name="fixture_statistics"
-    )
+    op.drop_index("ix_fixture_statistics_fixture_id", table_name="fixture_statistics")
     op.drop_table("fixture_statistics")

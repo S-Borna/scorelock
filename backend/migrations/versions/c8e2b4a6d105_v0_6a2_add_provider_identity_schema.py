@@ -34,9 +34,7 @@ def upgrade() -> None:
         sa.Column("external_id", sa.String(255), nullable=True),
         sa.Column("canonical_table", sa.String(50), nullable=True),
         sa.Column("canonical_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False
-        ),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("payload_hash", sa.String(64), nullable=True),
         sa.Column("fetched_at", sa.DateTime(), nullable=False),
         sa.Column("retained_until", sa.DateTime(), nullable=True),
@@ -48,9 +46,7 @@ def upgrade() -> None:
         ),
         sa.Column("error_summary", sa.Text(), nullable=True),
     )
-    op.create_index(
-        "ix_provider_payloads_provider", "provider_payloads", ["provider"]
-    )
+    op.create_index("ix_provider_payloads_provider", "provider_payloads", ["provider"])
     op.create_index(
         "ix_provider_payloads_operation", "provider_payloads", ["operation"]
     )
@@ -179,15 +175,11 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_pc_canonical", table_name="provider_conflicts")
     op.drop_index("ix_pc_status_severity", table_name="provider_conflicts")
-    op.drop_index(
-        "ix_provider_conflicts_entity_type", table_name="provider_conflicts"
-    )
+    op.drop_index("ix_provider_conflicts_entity_type", table_name="provider_conflicts")
     op.drop_index("ix_provider_conflicts_provider", table_name="provider_conflicts")
     op.drop_table("provider_conflicts")
 
-    op.drop_index(
-        "ix_pem_provider_entity", table_name="provider_entity_mappings"
-    )
+    op.drop_index("ix_pem_provider_entity", table_name="provider_entity_mappings")
     op.drop_index("ix_pem_canonical", table_name="provider_entity_mappings")
     op.drop_index(
         "ix_provider_entity_mappings_entity_type",
@@ -199,23 +191,11 @@ def downgrade() -> None:
     )
     op.drop_table("provider_entity_mappings")
 
-    op.drop_index(
-        "ix_provider_payloads_retained_until", table_name="provider_payloads"
-    )
-    op.drop_index(
-        "ix_provider_payloads_fetched_at", table_name="provider_payloads"
-    )
-    op.drop_index(
-        "ix_provider_payloads_payload_hash", table_name="provider_payloads"
-    )
-    op.drop_index(
-        "ix_provider_payloads_external_id", table_name="provider_payloads"
-    )
-    op.drop_index(
-        "ix_provider_payloads_entity_type", table_name="provider_payloads"
-    )
-    op.drop_index(
-        "ix_provider_payloads_operation", table_name="provider_payloads"
-    )
+    op.drop_index("ix_provider_payloads_retained_until", table_name="provider_payloads")
+    op.drop_index("ix_provider_payloads_fetched_at", table_name="provider_payloads")
+    op.drop_index("ix_provider_payloads_payload_hash", table_name="provider_payloads")
+    op.drop_index("ix_provider_payloads_external_id", table_name="provider_payloads")
+    op.drop_index("ix_provider_payloads_entity_type", table_name="provider_payloads")
+    op.drop_index("ix_provider_payloads_operation", table_name="provider_payloads")
     op.drop_index("ix_provider_payloads_provider", table_name="provider_payloads")
     op.drop_table("provider_payloads")

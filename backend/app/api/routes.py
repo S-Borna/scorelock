@@ -188,15 +188,27 @@ async def get_fixture_statistics(
     db: AsyncSession = Depends(get_db),
 ):
     """Return per-team final-state statistics for a fixture (home + away)."""
-    fx_row = (await db.execute(
-        select(Fixture.home_team_id, Fixture.away_team_id).where(Fixture.id == fixture_id)
-    )).first()
+    fx_row = (
+        await db.execute(
+            select(Fixture.home_team_id, Fixture.away_team_id).where(
+                Fixture.id == fixture_id
+            )
+        )
+    ).first()
     if fx_row is None:
         raise HTTPException(status_code=404, detail="Fixture not found")
     home_team_id, away_team_id = fx_row
-    rows = (await db.execute(
-        select(FixtureStatistics).where(FixtureStatistics.fixture_id == fixture_id)
-    )).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(FixtureStatistics).where(
+                    FixtureStatistics.fixture_id == fixture_id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     by_team = {r.team_id: r for r in rows}
     return FixtureStatisticsBundle(
         home=(
@@ -246,7 +258,10 @@ async def get_fixture_events(
         .order_by(FixtureEvent.minute, FixtureEvent.stoppage)
     )
     result = await db.execute(stmt)
-    return [FixtureEventResponse.model_validate(row, from_attributes=True) for row in result.mappings()]
+    return [
+        FixtureEventResponse.model_validate(row, from_attributes=True)
+        for row in result.mappings()
+    ]
 
 
 # ── Predictions ────────────────────────────────────────────

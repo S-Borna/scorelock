@@ -96,7 +96,5 @@ def downgrade() -> None:
     op.drop_index(
         "ix_fixture_broadcasts_country_iso_2", table_name="fixture_broadcasts"
     )
-    op.drop_index(
-        "ix_fixture_broadcasts_fixture_id", table_name="fixture_broadcasts"
-    )
+    op.drop_index("ix_fixture_broadcasts_fixture_id", table_name="fixture_broadcasts")
     op.drop_table("fixture_broadcasts")

@@ -672,12 +672,16 @@ class FixtureEvent(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "fixture_id", "provider", "external_id",
+            "fixture_id",
+            "provider",
+            "external_id",
             name="uq_fixture_event_provider_external",
         ),
         Index(
             "ix_fixture_events_fixture_minute",
-            "fixture_id", "minute", "stoppage",
+            "fixture_id",
+            "minute",
+            "stoppage",
         ),
     )
 
@@ -722,7 +726,9 @@ class FixtureStatistics(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "fixture_id", "team_id", "provider",
+            "fixture_id",
+            "team_id",
+            "provider",
             name="uq_fixture_stats_team_provider",
         ),
     )

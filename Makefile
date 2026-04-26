@@ -41,11 +41,13 @@ dev-install: ## Install dev tools (ruff, pytest) in running backend+worker (ephe
 test: ## Run backend tests (requires `make dev-install` once per container start)
 	docker compose exec backend python -m pytest tests/ -v
 
-lint: ## Lint backend code (requires `make dev-install` once per container start)
+lint: ## Lint backend code — matches CI (check + style verification, requires `make dev-install`)
 	docker compose exec backend ruff check .
+	docker compose exec backend ruff format --check .
 
-format: ## Format backend code (requires `make dev-install` once per container start)
+format: ## Apply ruff style to backend code (requires `make dev-install`)
 	docker compose exec backend ruff format .
+	docker compose exec backend ruff check --fix .
 
 # ── Database ───────────────────────────────────────────────
 

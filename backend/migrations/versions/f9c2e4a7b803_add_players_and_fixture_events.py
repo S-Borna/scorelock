@@ -104,12 +104,8 @@ def upgrade() -> None:
             name="uq_fixture_event_provider_external",
         ),
     )
-    op.create_index(
-        "ix_fixture_events_fixture_id", "fixture_events", ["fixture_id"]
-    )
-    op.create_index(
-        "ix_fixture_events_event_type", "fixture_events", ["event_type"]
-    )
+    op.create_index("ix_fixture_events_fixture_id", "fixture_events", ["fixture_id"])
+    op.create_index("ix_fixture_events_event_type", "fixture_events", ["event_type"])
     op.create_index(
         "ix_fixture_events_fixture_minute",
         "fixture_events",
@@ -219,9 +215,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_fixture_events_fixture_minute", table_name="fixture_events"
-    )
+    op.drop_index("ix_fixture_events_fixture_minute", table_name="fixture_events")
     op.drop_index("ix_fixture_events_event_type", table_name="fixture_events")
     op.drop_index("ix_fixture_events_fixture_id", table_name="fixture_events")
     op.drop_table("fixture_events")
