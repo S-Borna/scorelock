@@ -114,8 +114,13 @@ def upgrade() -> None:
 
     # Seed: Manchester City 2-1 Arsenal (fixture_id=328, FINISHED, 2026-04-19).
     # 22 starting players + 6 bench players + 10 events. Plausible 2025/26 roster.
+    # Wrapped in IF EXISTS guard so CI / fresh-DB envs without fixture 328 cleanly no-op.
     op.execute(
         """
+        DO $$
+        BEGIN
+        IF EXISTS (SELECT 1 FROM fixtures WHERE id = 328) THEN
+
         INSERT INTO players (canonical_name, display_name, position_code, current_team_id, external_ids, created_at, updated_at)
         SELECT name, display, pos, (SELECT id FROM teams WHERE teams.name=team_name), '{}'::jsonb, now(), now()
         FROM (VALUES
@@ -149,13 +154,20 @@ def upgrade() -> None:
             -- Arsenal bench (subs only)
             ('Gabriel Martinelli',  'Martinelli', 'FWD', 'Arsenal FC'),
             ('Gabriel Jesus',       'Jesus',      'FWD', 'Arsenal FC')
-        ) AS seed(name, display, pos, team_name)
+        ) AS seed(name, display, pos, team_name);
+
+        END IF;
+        END$$;
         """
     )
 
     # Events for fixture 328 — Manchester City 2-1 Arsenal
     op.execute(
         """
+        DO $$
+        BEGIN
+        IF EXISTS (SELECT 1 FROM fixtures WHERE id = 328) THEN
+
         INSERT INTO fixture_events
             (fixture_id, minute, stoppage, event_type, team_id, primary_player_id, secondary_player_id, player_in_id, player_out_id, description, provider, external_id, created_at)
         VALUES
@@ -209,7 +221,10 @@ def upgrade() -> None:
                 NULL, NULL,
                 (SELECT id FROM players WHERE canonical_name='Joško Gvardiol'),
                 (SELECT id FROM players WHERE canonical_name='Jérémy Doku'),
-                NULL, 'manual_seed', 'mc-ars-10', now())
+                NULL, 'manual_seed', 'mc-ars-10', now());
+
+        END IF;
+        END$$;
         """
     )
 

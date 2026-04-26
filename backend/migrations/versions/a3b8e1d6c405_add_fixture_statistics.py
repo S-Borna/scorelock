@@ -73,8 +73,13 @@ def upgrade() -> None:
 
     # Seed: Manchester City 2-1 Arsenal (fixture 328) — final-state stats per team.
     # Plausible numbers for City home win. NOTE: fictional, not actual match data.
+    # Wrapped in IF EXISTS guard so CI / fresh-DB envs without fixture 328 cleanly no-op.
     op.execute(
         """
+        DO $$
+        BEGIN
+        IF EXISTS (SELECT 1 FROM fixtures WHERE id = 328) THEN
+
         INSERT INTO fixture_statistics
             (fixture_id, team_id, possession_pct, shots_total, shots_on_target,
              shots_off_target, shots_blocked, corners, fouls, yellow_cards_count,
@@ -89,7 +94,10 @@ def upgrade() -> None:
             (328, (SELECT id FROM teams WHERE name='Arsenal FC'),
              42.0, 11, 4, 4, 3, 4, 12, 2, 0, 3, 1.20,
              441, 376, 85.3, 19, 12, 11, 22,
-             'manual_seed', NULL, now(), now())
+             'manual_seed', NULL, now(), now());
+
+        END IF;
+        END$$;
         """
     )
 
