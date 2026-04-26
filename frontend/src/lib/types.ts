@@ -385,3 +385,35 @@ export interface FantasyTeam {
     squad_value: number;
     players: FantasyTeamPlayerEntry[];
 }
+
+
+// ── AI coach (T8) ────────────────────────────────────────
+
+export type AIRecommendationKind =
+    | "transfer_in"
+    | "transfer_out"
+    | "captain"
+    | "formation";
+
+export interface FantasyAIRecommendation {
+    id: number;
+    kind: AIRecommendationKind;
+    payload: {
+        player_in_id?: number | null;
+        player_out_id?: number | null;
+        captain_player_id?: number | null;
+        formation?: string | null;
+        expected_point_diff?: number | null;
+    };
+    reasoning_text: string;
+    confidence_score: number | null;
+    model_version: string;
+    cached_until: string | null;
+    generated_at: string;
+}
+
+export interface FantasyAIRecommendationsBundle {
+    team_id: number;
+    recommendations: FantasyAIRecommendation[];
+    cached: boolean;
+}

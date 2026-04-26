@@ -68,6 +68,13 @@ class FantasyValueTrend(str, enum.Enum):
     STABLE = "stable"
 
 
+class AIRecommendationKind(str, enum.Enum):
+    TRANSFER_IN = "transfer_in"
+    TRANSFER_OUT = "transfer_out"
+    CAPTAIN = "captain"
+    FORMATION = "formation"
+
+
 # ── Users & Auth ───────────────────────────────────────────
 
 
@@ -897,6 +904,37 @@ class FantasyTeamPlayer(Base):
 
     __table_args__ = (
         UniqueConstraint("team_id", "player_id", name="uq_fantasy_team_player"),
+    )
+
+
+class FantasyAIRecommendation(Base):
+    """AI coach recommendation for a fantasy team — transfer / captain / formation rec."""
+
+    __tablename__ = "fantasy_ai_recommendations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(
+        ForeignKey("fantasy_teams.id", ondelete="CASCADE"), index=True
+    )
+    gameweek_id: Mapped[int | None] = mapped_column(
+        ForeignKey("fantasy_gameweeks.id"), index=True
+    )
+    kind: Mapped[AIRecommendationKind] = mapped_column(
+        SAEnum(
+            AIRecommendationKind,
+            name="airecommendationkind",
+            values_callable=lambda c: [e.value for e in c],
+        ),
+        index=True,
+    )
+    payload: Mapped[dict] = mapped_column(JSONB)
+    reasoning_text: Mapped[str] = mapped_column(Text)
+    confidence_score: Mapped[float | None] = mapped_column(Float)
+    model_version: Mapped[str] = mapped_column(String(50))
+    cached_until: Mapped[datetime | None] = mapped_column(DateTime)
+    was_acted_upon: Mapped[bool | None] = mapped_column(Boolean)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
     )
 
 

@@ -544,5 +544,27 @@ class FantasyTransferResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Fantasy AI coach (T8) ─────────────────────────────────
+
+
+class FantasyAIRecommendationResponse(BaseModel):
+    id: int
+    kind: str
+    payload: dict
+    reasoning_text: str
+    confidence_score: float | None
+    model_version: str
+    cached_until: datetime | None
+    generated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FantasyAIRecommendationsBundle(BaseModel):
+    team_id: int
+    recommendations: list[FantasyAIRecommendationResponse]
+    cached: bool
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState, use } from "react";
 import { useLocale } from "@/components/locale-provider";
+import { AICoachCard } from "@/components/ai-coach-card";
 import { TeamPitchView } from "@/components/team-pitch-view";
 import { getAccessToken } from "@/lib/auth-token";
-import type { FantasyTeam } from "@/lib/types";
+import type { FantasyAIRecommendationsBundle, FantasyTeam } from "@/lib/types";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -21,6 +22,7 @@ export default function MyTeamPage({ params }: PageProps) {
     const { id } = use(params);
     const seasonId = Number(id);
     const [team, setTeam] = useState<FantasyTeam | null>(null);
+    const [aiBundle, setAiBundle] = useState<FantasyAIRecommendationsBundle | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [authMissing, setAuthMissing] = useState(false);
@@ -49,6 +51,14 @@ export default function MyTeamPage({ params }: PageProps) {
                 }
                 const data = (await res.json()) as FantasyTeam;
                 setTeam(data);
+                try {
+                    const aiRes = await fetch(
+                        `${API_BASE}/api/v1/fantasy/teams/${data.id}/ai/recommendations`,
+                    );
+                    if (aiRes.ok) {
+                        setAiBundle(await aiRes.json());
+                    }
+                } catch { /* ai not critical */ }
             } catch (e) {
                 setError(
                     e instanceof Error ? e.message : "Kunde inte ladda lag",
@@ -156,6 +166,12 @@ export default function MyTeamPage({ params }: PageProps) {
             </header>
 
             <TeamPitchView team={team} />
+
+            {aiBundle && (
+                <div className="mt-6">
+                    <AICoachCard teamId={team.id} initialBundle={aiBundle} />
+                </div>
+            )}
 
             <div className="mt-6 flex gap-3 flex-wrap">
                 <Link

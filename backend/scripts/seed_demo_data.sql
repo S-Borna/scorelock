@@ -16,6 +16,7 @@
 --   * Intelligence: hand-written Swedish narrative for pre/in/post-match (no API call)
 --   * Fantasy: 1 demo-season + 1 gameweek + pricing for 26 players (T1 foundation)
 --   * Fantasy team: default 15-player team for admin user (T2 demo squad)
+--   * AI coach: 3 hand-written demo recommendations (T8 — no API call needed)
 
 -- ── Broadcasts ────────────────────────────────────────────────────────────
 
@@ -505,5 +506,58 @@ BEGIN
 
     -- Selected_by_pct: bump for the demo team's owned players (showcases ownership)
     -- Skipped — pricing.selected_by_pct already seeded per-player above.
+
+    -- ── AI coach recommendations (T8) ────────────────────────
+    -- Hand-written demo recs so the UI has content without burning API tokens.
+    -- cached_until set 7 days out so they always render as fresh.
+
+    DECLARE
+        v_haaland_id INT;
+        v_saka_id INT;
+        v_walker_id INT;
+        v_white_id INT;
+        v_kdb_id INT;
+    BEGIN
+        SELECT id INTO v_haaland_id FROM players WHERE canonical_name = 'Erling Haaland';
+        SELECT id INTO v_saka_id FROM players WHERE canonical_name = 'Bukayo Saka';
+        SELECT id INTO v_walker_id FROM players WHERE canonical_name = 'Kyle Walker';
+        SELECT id INTO v_white_id FROM players WHERE canonical_name = 'Ben White';
+        SELECT id INTO v_kdb_id FROM players WHERE canonical_name = 'Kevin De Bruyne';
+
+        INSERT INTO fantasy_ai_recommendations
+            (team_id, gameweek_id, kind, payload, reasoning_text,
+             confidence_score, model_version, cached_until,
+             was_acted_upon, generated_at)
+        VALUES
+            (v_team_id, NULL, 'transfer_in',
+             jsonb_build_object(
+                 'player_in_id', v_kdb_id,
+                 'player_out_id', NULL,
+                 'expected_point_diff', 6.4
+             ),
+             'Kevin De Bruyne är ägd av 41% och har snitt 8.2 poäng senaste fem omgångarna. Du har inte honom — han är troligaste differential vid stark City-form. Spara fri transfer ett varv till om budget kräver, men prioritera honom framför Foden om byte.',
+             0.78, 'manual_seed',
+             now() + INTERVAL '7 days', NULL, now()),
+
+            (v_team_id, NULL, 'captain',
+             jsonb_build_object(
+                 'captain_player_id', v_haaland_id,
+                 'expected_point_diff', 4.1
+             ),
+             'Behåll Haaland som kapten. Han har 62% ägarskap och får alltid hörnor i straffområdet. Stones som vice-kapten är defensivt val — överväg att flytta vice till Saka för bredare upside.',
+             0.91, 'manual_seed',
+             now() + INTERVAL '7 days', NULL, now()),
+
+            (v_team_id, NULL, 'transfer_out',
+             jsonb_build_object(
+                 'player_in_id', v_white_id,
+                 'player_out_id', v_walker_id,
+                 'expected_point_diff', 2.8
+             ),
+             'Walker är 32 år och rotateras allt oftare av Pep — riskerar minutsbortfall mot stora matcher. Ben White är samma pris men startar varje match för Arsenal och ger samma defensiva poäng plus uppåtsidan på offensiva bidrag (Saka-assists).',
+             0.65, 'manual_seed',
+             now() + INTERVAL '7 days', NULL, now())
+        ON CONFLICT DO NOTHING;
+    END;
 
 END$$;

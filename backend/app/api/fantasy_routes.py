@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import (
+    FantasyAIRecommendation,
     FantasyGameweek,
     FantasyPlayerPricing,
     FantasySeason,
@@ -23,6 +24,8 @@ from app.models.models import (
     User,
 )
 from app.schemas.schemas import (
+    FantasyAIRecommendationResponse,
+    FantasyAIRecommendationsBundle,
     FantasyGameweekResponse,
     FantasyPlayerMarketBundle,
     FantasyPlayerMarketResponse,
@@ -518,3 +521,73 @@ async def make_transfer(
     except team_service.TeamValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return FantasyTransferResponse.model_validate(transfer)
+
+
+# ── AI coach (T8) ─────────────────────────────────────────
+
+
+@router.get(
+    "/teams/{team_id}/ai/recommendations",
+    response_model=FantasyAIRecommendationsBundle,
+)
+async def list_ai_recommendations(
+    team_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return cached AI coach recs for a team (no Claude call)."""
+    rows = (
+        (
+            await db.execute(
+                select(FantasyAIRecommendation)
+                .where(FantasyAIRecommendation.team_id == team_id)
+                .order_by(FantasyAIRecommendation.generated_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return FantasyAIRecommendationsBundle(
+        team_id=team_id,
+        recommendations=[
+            FantasyAIRecommendationResponse.model_validate(r) for r in rows
+        ],
+        cached=True,
+    )
+
+
+@router.post(
+    "/teams/{team_id}/ai/recommendations",
+    response_model=FantasyAIRecommendationsBundle,
+)
+async def generate_ai_recommendations(
+    team_id: int,
+    force: bool = Query(False, description="Bypass cache and call Claude"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate (or fetch cached) AI coach recs via Sonnet 4.6."""
+    team = (
+        await db.execute(select(FantasyTeam).where(FantasyTeam.id == team_id))
+    ).scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your team")
+
+    from app.services.fantasy_coach import get_fantasy_coach
+
+    coach = get_fantasy_coach()
+    try:
+        rows = await coach.get_or_generate(db, team, force_regenerate=force)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return FantasyAIRecommendationsBundle(
+        team_id=team_id,
+        recommendations=[
+            FantasyAIRecommendationResponse.model_validate(r) for r in rows
+        ],
+        cached=not force,
+    )
