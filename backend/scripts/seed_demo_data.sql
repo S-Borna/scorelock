@@ -20,6 +20,8 @@
 --   * Match info: 8 venues + 8 referees + fixture 328 → Etihad + Anthony Taylor (Phase 2)
 --   * Bookmakers + odds-snapshots: 4 SE-bookies, 20 snapshots over 72h pre-match (Phase 9)
 --   * Value-bet ledger: pending pred för fixture 328 + 4 historiska wins/losses
+--   * Commentary: 10 svensk-eng commentary-events för fixture 328 (Phase 10)
+--   * Momentum: 12 timepoints över 90 min för fixture 328 (Phase 10)
 
 -- ── Broadcasts ────────────────────────────────────────────────────────────
 
@@ -756,4 +758,90 @@ BEGIN
         (v_finished_fixture_ids[4], 0.25, 0.31, 0.44, 0.66,
          0.55, 2.4, false, false, true,
          9.1, 'v20260210-0320', 'H', false, now() - INTERVAL '35 days');
+END$$;
+
+-- ── Commentary + Momentum för fixture 328 (Phase 10) ──────────────────
+
+INSERT INTO fixture_commentary
+    (fixture_id, minute, stoppage, comment_type, text_sv, text_en, is_translated, provider, external_id, created_at)
+VALUES
+    (328,  1, NULL, 'period_start',
+     'Avspark på Etihad. City i 4-3-3 med Rodri som ankare, Arsenal speglar formationen.',
+     'Kick-off at the Etihad. City in 4-3-3 with Rodri anchoring; Arsenal mirror the shape.',
+     false, 'manual_seed', 'mc-ars-c1', now()),
+    (328, 12, NULL, 'card',
+     'Rodri tar ett gult kort för en taktisk fällning på Saka i mittfältet.',
+     'Rodri picks up a yellow for a tactical foul on Saka in midfield.',
+     false, 'manual_seed', 'mc-ars-c2', now()),
+    (328, 17, NULL, 'goal',
+     'Mål! Haaland nickar in en hörna assisterad av Foden. 1-0 City.',
+     'Goal! Haaland heads in from a Foden corner. 1-0 City.',
+     false, 'manual_seed', 'mc-ars-c3', now()),
+    (328, 24, NULL, 'card',
+     'Saka får gult för dissent efter ett offsidebeslut han inte håller med om.',
+     'Saka booked for dissent after an offside call he disagrees with.',
+     false, 'manual_seed', 'mc-ars-c4', now()),
+    (328, 45,    2, 'period_end',
+     'Halvtid. City äger boll och ser farligare ut, men Arsenal har inte lämnat lika många chanser som xG antyder.',
+     'Half-time. City have the ball and look the more dangerous side, but Arsenal have not given up as many chances as the xG implies.',
+     false, 'manual_seed', 'mc-ars-c5', now()),
+    (328, 53, NULL, 'goal',
+     'Mål! De Bruyne kurvar in en boll från utsidan av straffområdet. Rice tappade bort sig — 2-0 City.',
+     'Goal! De Bruyne curls one in from the edge of the box. Rice lost his man — 2-0 City.',
+     false, 'manual_seed', 'mc-ars-c6', now()),
+    (328, 58, NULL, 'substitution',
+     'Arteta agerar tidigt: Trossard ersätter Martinelli. Söker fart in på vänsterkanten.',
+     'Arteta moves early: Trossard on for Martinelli. Looking for pace down the left.',
+     false, 'manual_seed', 'mc-ars-c7', now()),
+    (328, 71, NULL, 'goal',
+     'Mål! Saka går inåt och rullar in en låg vänsterfot. 2-1 — matchen lever igen.',
+     'Goal! Saka cuts inside and rolls a low left foot finish. 2-1 — game on.',
+     false, 'manual_seed', 'mc-ars-c8', now()),
+    (328, 75, NULL, 'substitution',
+     'Pep svarar defensivt: Kovačić in för en sliten De Bruyne. City vill kontrollera, inte attackera.',
+     'Pep responds defensively: Kovačić on for a tired De Bruyne. City want control, not attack.',
+     false, 'manual_seed', 'mc-ars-c9', now()),
+    (328, 90,    3, 'period_end',
+     'Slutsignalen. 2-1 till City. Underliggande siffror (xG 1,85 mot 1,20) gör det rättvist.',
+     'Final whistle. 2-1 City. Underlying numbers (xG 1.85 vs 1.20) say deserved.',
+     false, 'manual_seed', 'mc-ars-c10', now())
+ON CONFLICT (fixture_id, provider, external_id) DO NOTHING;
+
+DO $$
+DECLARE
+    v_kickoff TIMESTAMP;
+BEGIN
+    SELECT kickoff INTO v_kickoff FROM fixtures WHERE id = 328;
+    IF v_kickoff IS NULL THEN
+        RAISE NOTICE 'Skipping momentum seed: fixture 328 not found';
+        RETURN;
+    END IF;
+    IF EXISTS (SELECT 1 FROM fixture_momentum WHERE fixture_id = 328) THEN
+        RAISE NOTICE 'Momentum already seeded for fixture 328';
+        RETURN;
+    END IF;
+
+    INSERT INTO fixture_momentum
+        (fixture_id, observed_at, match_minute, match_stoppage,
+         home_momentum_pct, away_momentum_pct, source, provider,
+         derivation_window_seconds, created_at)
+    SELECT 328,
+           v_kickoff + (seed.minute || ' minutes')::INTERVAL,
+           seed.minute, NULL,
+           seed.home_pct, seed.away_pct,
+           'derived', 'manual_seed', 60, now()
+    FROM (VALUES
+        ( 5, 52.0, 48.0),
+        (12, 58.0, 42.0),
+        (18, 70.0, 30.0),  -- after Haaland goal
+        (25, 56.0, 44.0),
+        (32, 50.0, 50.0),
+        (40, 52.0, 48.0),
+        (45, 50.0, 50.0),  -- HT
+        (53, 67.0, 33.0),  -- after KDB goal
+        (62, 54.0, 46.0),
+        (71, 38.0, 62.0),  -- after Saka goal
+        (80, 50.0, 50.0),
+        (90, 52.0, 48.0)
+    ) AS seed(minute, home_pct, away_pct);
 END$$;

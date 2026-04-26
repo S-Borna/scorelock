@@ -49,6 +49,13 @@ from app.schemas.schemas import (
     OddsSnapshotsBundle,
     ValueBetLedgerEntry,
     ValueBetLedgerResponse,
+    CommentaryEntryResponse,
+    CommentaryFeedResponse,
+    MomentumPointResponse,
+    MomentumSeriesResponse,
+    MOTMVoteRequest,
+    MOTMTallyEntry,
+    MOTMTallyResponse,
 )
 from app.services import db_service
 from app.models.models import (
@@ -56,8 +63,10 @@ from app.models.models import (
     ArticleType,
     Bookmaker,
     FixtureBroadcast,
+    FixtureCommentary,
     FixtureEvent,
     FixtureMatchInfo,
+    FixtureMomentum,
     FixtureStatistics,
     FixtureLineup,
     FixtureLineupPlayer,
@@ -70,6 +79,7 @@ from app.models.models import (
     Prediction,
     Referee,
     Team,
+    UserMOTMVote,
     Venue,
 )
 from sqlalchemy.orm import aliased
@@ -464,6 +474,171 @@ async def get_fixture_match_info(
 
 
 @router.get(
+    "/fixtures/{fixture_id}/commentary",
+    response_model=CommentaryFeedResponse,
+)
+async def get_fixture_commentary(
+    fixture_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return chronological commentary feed for a fixture."""
+    rows = (
+        (
+            await db.execute(
+                select(FixtureCommentary)
+                .where(FixtureCommentary.fixture_id == fixture_id)
+                .order_by(FixtureCommentary.minute, FixtureCommentary.stoppage)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return CommentaryFeedResponse(
+        fixture_id=fixture_id,
+        entries=[CommentaryEntryResponse.model_validate(r) for r in rows],
+    )
+
+
+@router.get(
+    "/fixtures/{fixture_id}/momentum",
+    response_model=MomentumSeriesResponse,
+)
+async def get_fixture_momentum(
+    fixture_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return momentum time-series (home/away pressure %) for a fixture."""
+    rows = (
+        (
+            await db.execute(
+                select(FixtureMomentum)
+                .where(FixtureMomentum.fixture_id == fixture_id)
+                .order_by(FixtureMomentum.match_minute, FixtureMomentum.match_stoppage)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return MomentumSeriesResponse(
+        fixture_id=fixture_id,
+        points=[MomentumPointResponse.model_validate(r) for r in rows],
+    )
+
+
+@router.get(
+    "/fixtures/{fixture_id}/motm-tally",
+    response_model=MOTMTallyResponse,
+)
+async def get_motm_tally(
+    fixture_id: int,
+    user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return Man of the Match vote tally + the current user's vote (if any)."""
+    from sqlalchemy import func
+
+    rows = (
+        await db.execute(
+            select(
+                UserMOTMVote.voted_player_id,
+                Player.display_name,
+                Team.name.label("team_name"),
+                func.count(UserMOTMVote.id).label("vote_count"),
+            )
+            .join(Player, Player.id == UserMOTMVote.voted_player_id)
+            .outerjoin(Team, Team.id == Player.current_team_id)
+            .where(UserMOTMVote.fixture_id == fixture_id)
+            .group_by(UserMOTMVote.voted_player_id, Player.display_name, Team.name)
+            .order_by(func.count(UserMOTMVote.id).desc())
+        )
+    ).all()
+    total = sum(r.vote_count for r in rows)
+    tally = [
+        MOTMTallyEntry(
+            player_id=r.voted_player_id,
+            display_name=r.display_name,
+            team_name=r.team_name,
+            vote_count=r.vote_count,
+            vote_share_percent=round((r.vote_count / total * 100), 1) if total else 0.0,
+        )
+        for r in rows
+    ]
+
+    user_vote_id: int | None = None
+    if user:
+        user_vote = (
+            await db.execute(
+                select(UserMOTMVote.voted_player_id).where(
+                    UserMOTMVote.user_id == user.id,
+                    UserMOTMVote.fixture_id == fixture_id,
+                )
+            )
+        ).scalar_one_or_none()
+        user_vote_id = user_vote
+
+    return MOTMTallyResponse(
+        fixture_id=fixture_id,
+        total_votes=total,
+        user_voted_player_id=user_vote_id,
+        tally=tally,
+    )
+
+
+@router.post(
+    "/fixtures/{fixture_id}/motm-vote",
+    response_model=MOTMTallyResponse,
+)
+async def cast_motm_vote(
+    fixture_id: int,
+    body: MOTMVoteRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cast (or update) Man of the Match vote. One vote per user per fixture."""
+    fixture = (
+        await db.execute(select(Fixture).where(Fixture.id == fixture_id))
+    ).scalar_one_or_none()
+    if not fixture:
+        raise HTTPException(status_code=404, detail="Fixture not found")
+
+    player = (
+        await db.execute(select(Player).where(Player.id == body.voted_player_id))
+    ).scalar_one_or_none()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    existing = (
+        await db.execute(
+            select(UserMOTMVote).where(
+                UserMOTMVote.user_id == user.id,
+                UserMOTMVote.fixture_id == fixture_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        if existing.is_locked:
+            raise HTTPException(
+                status_code=400,
+                detail="Vote is locked (poll closed)",
+            )
+        existing.voted_player_id = body.voted_player_id
+        existing.voted_at = datetime.utcnow()
+    else:
+        db.add(
+            UserMOTMVote(
+                user_id=user.id,
+                fixture_id=fixture_id,
+                voted_player_id=body.voted_player_id,
+            )
+        )
+
+    await db.commit()
+
+    return await get_motm_tally(fixture_id, user, db)
+
+
+@router.get(
     "/fixtures/{fixture_id}/intelligence",
     response_model=MatchIntelligenceBundle,
 )
@@ -600,6 +775,7 @@ async def get_fixture_lineups(
         await db.execute(
             select(
                 FixtureLineupPlayer.lineup_id,
+                FixtureLineupPlayer.player_id,
                 FixtureLineupPlayer.shirt_number,
                 FixtureLineupPlayer.position_label,
                 FixtureLineupPlayer.grid_x,
@@ -619,6 +795,7 @@ async def get_fixture_lineups(
     for row in rows:
         players_by_lineup[row.lineup_id].append(
             LineupPlayerResponse(
+                player_id=row.player_id,
                 display_name=row.display_name,
                 shirt_number=row.shirt_number,
                 position_label=row.position_label,

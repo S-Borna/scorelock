@@ -371,6 +371,7 @@ class FixtureStatisticsBundle(BaseModel):
 
 
 class LineupPlayerResponse(BaseModel):
+    player_id: int
     display_name: str
     shirt_number: int | None
     position_label: str | None
@@ -659,6 +660,61 @@ class ValueBetLedgerResponse(BaseModel):
     win_rate_percent: float
     avg_edge_percent: float | None
     entries: list[ValueBetLedgerEntry]
+
+
+# ── Commentary + Momentum + MOTM-poll (Phase 10) ──────────
+
+
+class CommentaryEntryResponse(BaseModel):
+    id: int
+    minute: int
+    stoppage: int | None
+    comment_type: str
+    text_sv: str | None
+    text_en: str | None
+    is_translated: bool
+
+    model_config = {"from_attributes": True}
+
+
+class CommentaryFeedResponse(BaseModel):
+    fixture_id: int
+    entries: list[CommentaryEntryResponse]
+
+
+class MomentumPointResponse(BaseModel):
+    id: int
+    observed_at: datetime
+    match_minute: int
+    match_stoppage: int | None
+    home_momentum_pct: float
+    away_momentum_pct: float
+
+    model_config = {"from_attributes": True}
+
+
+class MomentumSeriesResponse(BaseModel):
+    fixture_id: int
+    points: list[MomentumPointResponse]
+
+
+class MOTMVoteRequest(BaseModel):
+    voted_player_id: int
+
+
+class MOTMTallyEntry(BaseModel):
+    player_id: int
+    display_name: str
+    team_name: str | None
+    vote_count: int
+    vote_share_percent: float
+
+
+class MOTMTallyResponse(BaseModel):
+    fixture_id: int
+    total_votes: int
+    user_voted_player_id: int | None
+    tally: list[MOTMTallyEntry]
 
 
 # Rebuild models for forward references

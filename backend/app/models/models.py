@@ -618,6 +618,96 @@ class ProviderConflict(Base):
     )
 
 
+# ── Commentary + Momentum + MOTM-poll (Phase 10) ──────────
+
+
+class FixtureCommentary(Base):
+    """Live commentary feed for a fixture. Bilingual (sv + en)."""
+
+    __tablename__ = "fixture_commentary"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    minute: Mapped[int] = mapped_column(Integer)
+    stoppage: Mapped[int | None] = mapped_column(Integer)
+    comment_type: Mapped[str] = mapped_column(String(30))
+    text_en: Mapped[str | None] = mapped_column(Text)
+    text_sv: Mapped[str | None] = mapped_column(Text)
+    is_translated: Mapped[bool] = mapped_column(Boolean, default=False)
+    provider: Mapped[str] = mapped_column(String(50))
+    external_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "fixture_id",
+            "provider",
+            "external_id",
+            name="uq_commentary_provider_external",
+        ),
+        Index(
+            "ix_commentary_fixture_minute",
+            "fixture_id",
+            "minute",
+            "stoppage",
+        ),
+    )
+
+
+class FixtureMomentum(Base):
+    """Time-series of pressure / momentum per fixture.
+
+    `home_momentum_pct + away_momentum_pct` should sum to ~100. Source can be
+    provider-supplied or derived from event-stream + xG.
+    """
+
+    __tablename__ = "fixture_momentum"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    observed_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    match_minute: Mapped[int] = mapped_column(Integer)
+    match_stoppage: Mapped[int | None] = mapped_column(Integer)
+    home_momentum_pct: Mapped[float] = mapped_column(Float)
+    away_momentum_pct: Mapped[float] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(20))
+    provider: Mapped[str] = mapped_column(String(50))
+    derivation_window_seconds: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index(
+            "ix_momentum_fixture_minute",
+            "fixture_id",
+            "match_minute",
+            "match_stoppage",
+        ),
+    )
+
+
+class UserMOTMVote(Base):
+    """User's Man of the Match vote per fixture. One vote per user per fixture."""
+
+    __tablename__ = "user_motm_votes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    voted_player_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
+    voted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_locked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "fixture_id", name="uq_motm_vote_user_fixture"),
+    )
+
+
 # ── Bookmakers + Odds-snapshots (Phase 9: value-bet ledger) ─
 
 

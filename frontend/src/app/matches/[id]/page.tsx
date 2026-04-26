@@ -12,8 +12,11 @@ import { LineupsPitch } from "@/components/lineups-pitch";
 import { IntelligenceCard } from "@/components/intelligence-card";
 import { MatchInfoStrip } from "@/components/match-info-strip";
 import { OddsSparkline } from "@/components/odds-sparkline";
+import { CommentaryFeedCard } from "@/components/commentary-feed";
+import { MomentumGraph } from "@/components/momentum-graph";
+import { MOTMPoll } from "@/components/motm-poll";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MatchInfo, MatchIntelligenceBundle, OddsSnapshotsBundle, Sentiment } from "@/lib/types";
+import type { Article, ArticleList, Broadcast, CommentaryFeed, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MOTMTally, MatchInfo, MatchIntelligenceBundle, MomentumSeries, OddsSnapshotsBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -108,6 +111,33 @@ export default async function MatchDetailPage({ params }: PageProps) {
         oddsBundle = await fetchApi<OddsSnapshotsBundle>(`/api/v1/fixtures/${fixture.id}/odds/snapshots?market=h2h&since_hours=240`);
     } catch { /* not critical */ }
 
+    // Fetch commentary, momentum, MOTM tally (Phase 10)
+    let commentary: CommentaryFeed = { fixture_id: fixture.id, entries: [] };
+    try {
+        commentary = await fetchApi<CommentaryFeed>(`/api/v1/fixtures/${fixture.id}/commentary`);
+    } catch { /* not critical */ }
+    let momentum: MomentumSeries = { fixture_id: fixture.id, points: [] };
+    try {
+        momentum = await fetchApi<MomentumSeries>(`/api/v1/fixtures/${fixture.id}/momentum`);
+    } catch { /* not critical */ }
+    let motm: MOTMTally = { fixture_id: fixture.id, total_votes: 0, user_voted_player_id: null, tally: [] };
+    try {
+        motm = await fetchApi<MOTMTally>(`/api/v1/fixtures/${fixture.id}/motm-tally`);
+    } catch { /* not critical */ }
+
+    const motmCandidates = [
+        ...(lineups.home?.starters ?? []).map((p) => ({
+            player_id: p.player_id,
+            display_name: p.display_name,
+            team_label: fixture.home_team.short_name ?? fixture.home_team.name.slice(0, 3).toUpperCase(),
+        })),
+        ...(lineups.away?.starters ?? []).map((p) => ({
+            player_id: p.player_id,
+            display_name: p.display_name,
+            team_label: fixture.away_team.short_name ?? fixture.away_team.name.slice(0, 3).toUpperCase(),
+        })),
+    ];
+
     // Fetch AI intelligence
     let intelligence: MatchIntelligenceBundle = { pre_match: null, in_match: null, post_match: null };
     try {
@@ -147,6 +177,18 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     <StatsPanel stats={statistics} />
                     {/* Odds movement sparkline */}
                     <OddsSparkline bundle={oddsBundle} />
+                    {/* Momentum graph */}
+                    <MomentumGraph series={momentum} />
+                    {/* Live commentary */}
+                    <CommentaryFeedCard feed={commentary} locale="sv" />
+                    {/* MOTM poll */}
+                    {motmCandidates.length > 0 && (
+                        <MOTMPoll
+                            fixtureId={fixture.id}
+                            candidates={motmCandidates}
+                            initialTally={motm}
+                        />
+                    )}
                     {/* Prediction */}
                     {fixture.prediction && (
                         <div className="card">

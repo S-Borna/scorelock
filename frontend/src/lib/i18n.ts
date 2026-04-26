@@ -93,6 +93,21 @@ const translations: Record<Locale, Record<string, string>> = {
         "meta.title": "ScoreLock — AI-driven fotbollsanalys",
         "meta.description": "AI-genererade förhandsanalyser, matchreferat, value bets och prediktioner för fotboll. Driven av maskininlärning.",
 
+        // ── Commentary + Momentum + MOTM (Phase 10) ──
+        "commentary.title": "Live-kommentarer",
+        "commentary.empty": "Inga kommentarer registrerade",
+        "momentum.title": "Momentum",
+        "momentum.subtitle": "Hemma- vs bortalagets press över tid",
+        "momentum.empty": "Ingen momentum-data registrerad",
+        "motm.title": "Matchens spelare",
+        "motm.subtitle": "Rösta på din kandidat — låst när matchen slutar",
+        "motm.your_vote": "Din röst",
+        "motm.cast_vote": "Lägg röst",
+        "motm.update_vote": "Byt röst",
+        "motm.must_login": "Logga in för att rösta",
+        "motm.total_votes": "röster totalt",
+        "motm.empty": "Inga röster ännu",
+
         // ── Odds-rörelse + value-bet ledger (Phase 9) ──
         "odds.movement_title": "Oddsrörelse",
         "odds.movement_subtitle": "Bästa pris över bookmakers, senaste 72h",
@@ -323,6 +338,21 @@ const translations: Record<Locale, Record<string, string>> = {
         // ── Metadata ──
         "meta.title": "ScoreLock — AI-powered football analytics",
         "meta.description": "AI-generated match previews, reports, value bets and predictions for football. Powered by machine learning.",
+
+        // ── Commentary + Momentum + MOTM (Phase 10) ──
+        "commentary.title": "Live commentary",
+        "commentary.empty": "No commentary recorded",
+        "momentum.title": "Momentum",
+        "momentum.subtitle": "Home vs away pressure over time",
+        "momentum.empty": "No momentum data recorded",
+        "motm.title": "Man of the Match",
+        "motm.subtitle": "Vote for your pick — locked at full-time",
+        "motm.your_vote": "Your vote",
+        "motm.cast_vote": "Cast vote",
+        "motm.update_vote": "Change vote",
+        "motm.must_login": "Sign in to vote",
+        "motm.total_votes": "total votes",
+        "motm.empty": "No votes yet",
 
         // ── Odds movement + value-bet ledger (Phase 9) ──
         "odds.movement_title": "Odds movement",

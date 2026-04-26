@@ -186,6 +186,63 @@ export interface WeeklyTopTipper {
 }
 
 
+// ── Commentary + Momentum + MOTM-poll (Phase 10) ─────────
+
+export type CommentaryType =
+    | "period_start"
+    | "period_end"
+    | "goal"
+    | "card"
+    | "substitution"
+    | "big_chance"
+    | "var"
+    | "general";
+
+export interface CommentaryEntry {
+    id: number;
+    minute: number;
+    stoppage: number | null;
+    comment_type: CommentaryType | string;
+    text_sv: string | null;
+    text_en: string | null;
+    is_translated: boolean;
+}
+
+export interface CommentaryFeed {
+    fixture_id: number;
+    entries: CommentaryEntry[];
+}
+
+export interface MomentumPoint {
+    id: number;
+    observed_at: string;
+    match_minute: number;
+    match_stoppage: number | null;
+    home_momentum_pct: number;
+    away_momentum_pct: number;
+}
+
+export interface MomentumSeries {
+    fixture_id: number;
+    points: MomentumPoint[];
+}
+
+export interface MOTMTallyEntry {
+    player_id: number;
+    display_name: string;
+    team_name: string | null;
+    vote_count: number;
+    vote_share_percent: number;
+}
+
+export interface MOTMTally {
+    fixture_id: number;
+    total_votes: number;
+    user_voted_player_id: number | null;
+    tally: MOTMTallyEntry[];
+}
+
+
 // ── Odds snapshots + value-bet ledger (Phase 9) ──────────
 
 export interface OddsSnapshot {
@@ -335,6 +392,7 @@ export interface FixtureStatisticsBundle {
 // ── Fixture Lineups (Phase 4: Lineups + Pitch View) ──────
 
 export interface LineupPlayer {
+    player_id: number;
     display_name: string;
     shirt_number: number | null;
     position_label: string | null;
