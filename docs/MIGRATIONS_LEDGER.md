@@ -14,6 +14,7 @@ Status values: YES / NO / UNKNOWN. UNKNOWN is valid — honesty over false certa
 | c8e2b4a6d105 | v0.5b (formerly "v0.6a2") add provider identity: provider_payloads, provider_entity_mappings, provider_conflicts | YES | YES | NO | YES | NEVER | Local-only. `provider_entity_mappings` still empty — backfill from existing `api_football_id` columns deferred. Downgrade tested clean. |
 | e4d7c2a8b510 | v0.5c add fixture_broadcasts + 10 SE broadcast seed | YES | YES | NO | YES | NEVER | Local-only. Allsvenskan seed branch produced 0 rows (no Allsvenskan fixtures locally). Downgrade tested clean. |
 | f9c2e4a7b803 | v0.5c add players + fixture_events + Man City 2-1 Arsenal seed (fixture 328) | YES | YES | NO | YES | NEVER | Local-only. 26 players (City + Arsenal rosters) + 10 events (3 goals, 3 yellows, 4 subs). Downgrade tested clean. |
+| a3b8e1d6c405 | v0.5c add fixture_statistics + Man City 2-1 Arsenal seed (fixture 328) | YES | YES | NO | YES | NEVER | Local-only. 2 rows (City home + Arsenal away) with possession/shots/xG/passes/tackles. Downgrade tested clean. |
 
 ## Notes
 

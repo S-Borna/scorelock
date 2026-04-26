@@ -680,3 +680,49 @@ class FixtureEvent(Base):
             "fixture_id", "minute", "stoppage",
         ),
     )
+
+
+# ── Fixture Statistics (Phase 3: Stats Panel) ──────────────
+
+
+class FixtureStatistics(Base):
+    """Aggregated match statistics per (fixture, team). One row per team per fixture per provider."""
+
+    __tablename__ = "fixture_statistics"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    possession_pct: Mapped[float | None] = mapped_column(Float)
+    shots_total: Mapped[int | None] = mapped_column(Integer)
+    shots_on_target: Mapped[int | None] = mapped_column(Integer)
+    shots_off_target: Mapped[int | None] = mapped_column(Integer)
+    shots_blocked: Mapped[int | None] = mapped_column(Integer)
+    corners: Mapped[int | None] = mapped_column(Integer)
+    fouls: Mapped[int | None] = mapped_column(Integer)
+    yellow_cards_count: Mapped[int | None] = mapped_column(Integer)
+    red_cards_count: Mapped[int | None] = mapped_column(Integer)
+    offsides: Mapped[int | None] = mapped_column(Integer)
+    xg: Mapped[float | None] = mapped_column(Float)
+    passes_total: Mapped[int | None] = mapped_column(Integer)
+    passes_accurate: Mapped[int | None] = mapped_column(Integer)
+    pass_accuracy_pct: Mapped[float | None] = mapped_column(Float)
+    tackles: Mapped[int | None] = mapped_column(Integer)
+    interceptions: Mapped[int | None] = mapped_column(Integer)
+    blocks: Mapped[int | None] = mapped_column(Integer)
+    clearances: Mapped[int | None] = mapped_column(Integer)
+    provider: Mapped[str] = mapped_column(String(50))
+    as_of_minute: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "fixture_id", "team_id", "provider",
+            name="uq_fixture_stats_team_provider",
+        ),
+    )

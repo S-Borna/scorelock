@@ -103,6 +103,19 @@ const translations: Record<Locale, Record<string, string>> = {
         "event.sub_in": "in",
         "event.sub_out": "ut",
         "event.empty": "Inga händelser registrerade",
+
+        // ── Stats panel (Phase 3) ──
+        "stats.title": "Statistik",
+        "stats.possession": "Bollinnehav",
+        "stats.shots_total": "Skott",
+        "stats.shots_on_target": "På mål",
+        "stats.corners": "Hörnor",
+        "stats.fouls": "Frisparkar",
+        "stats.offsides": "Offside",
+        "stats.xg": "xG",
+        "stats.passes": "Passningar",
+        "stats.pass_accuracy": "Passprecision",
+        "stats.tackles": "Tacklingar",
     },
     en: {
         // ── Nav ──
@@ -197,6 +210,19 @@ const translations: Record<Locale, Record<string, string>> = {
         "event.sub_in": "in",
         "event.sub_out": "out",
         "event.empty": "No events recorded",
+
+        // ── Stats panel (Phase 3) ──
+        "stats.title": "Statistics",
+        "stats.possession": "Possession",
+        "stats.shots_total": "Shots",
+        "stats.shots_on_target": "On target",
+        "stats.corners": "Corners",
+        "stats.fouls": "Fouls",
+        "stats.offsides": "Offsides",
+        "stats.xg": "xG",
+        "stats.passes": "Passes",
+        "stats.pass_accuracy": "Pass accuracy",
+        "stats.tackles": "Tackles",
     },
 };
 

@@ -335,5 +335,37 @@ class FixtureEventResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Fixture Statistics (Phase 3: Stats Panel) ─────────────
+
+
+class FixtureStatisticsResponse(BaseModel):
+    team_id: int
+    possession_pct: float | None
+    shots_total: int | None
+    shots_on_target: int | None
+    shots_off_target: int | None
+    shots_blocked: int | None
+    corners: int | None
+    fouls: int | None
+    yellow_cards_count: int | None
+    red_cards_count: int | None
+    offsides: int | None
+    xg: float | None
+    passes_total: int | None
+    passes_accurate: int | None
+    pass_accuracy_pct: float | None
+    tackles: int | None
+    interceptions: int | None
+    blocks: int | None
+    clearances: int | None
+
+    model_config = {"from_attributes": True}
+
+
+class FixtureStatisticsBundle(BaseModel):
+    home: FixtureStatisticsResponse | None
+    away: FixtureStatisticsResponse | None
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

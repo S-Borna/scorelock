@@ -7,8 +7,9 @@ import { MatchTipSection } from "@/components/match-tip-section";
 import { LiveMatchHeader, LiveMatchStats } from "@/components/live-match-header";
 import { BroadcastCard } from "@/components/broadcast-card";
 import { EventTimeline } from "@/components/event-timeline";
+import { StatsPanel } from "@/components/stats-panel";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, Sentiment } from "@/lib/types";
+import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureStatisticsBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -79,6 +80,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
         events = await fetchApi<FixtureEvent[]>(`/api/v1/fixtures/${fixture.id}/events`);
     } catch { /* not critical */ }
 
+    // Fetch statistics
+    let statistics: FixtureStatisticsBundle = { home: null, away: null };
+    try {
+        statistics = await fetchApi<FixtureStatisticsBundle>(`/api/v1/fixtures/${fixture.id}/statistics`);
+    } catch { /* not critical */ }
+
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Breadcrumbs */}
@@ -97,6 +104,8 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     <LiveMatchStats fixtureId={fixture.id} />
                     {/* Event timeline */}
                     <EventTimeline events={events} homeTeamId={fixture.home_team.id} />
+                    {/* Stats panel */}
+                    <StatsPanel stats={statistics} />
                     {/* Prediction */}
                     {fixture.prediction && (
                         <div className="card">

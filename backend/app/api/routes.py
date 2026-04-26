@@ -35,9 +35,19 @@ from app.schemas.schemas import (
     WeeklyTopTipper,
     BroadcastResponse,
     FixtureEventResponse,
+    FixtureStatisticsResponse,
+    FixtureStatisticsBundle,
 )
 from app.services import db_service
-from app.models.models import User, ArticleType, FixtureBroadcast, FixtureEvent, Player
+from app.models.models import (
+    User,
+    ArticleType,
+    FixtureBroadcast,
+    FixtureEvent,
+    FixtureStatistics,
+    Fixture,
+    Player,
+)
 from sqlalchemy.orm import aliased
 
 router = APIRouter()
@@ -167,6 +177,39 @@ async def get_fixture_broadcasts(
         .order_by(FixtureBroadcast.provider_type, FixtureBroadcast.channel_name)
     )
     return result.scalars().all()
+
+
+@router.get(
+    "/fixtures/{fixture_id}/statistics",
+    response_model=FixtureStatisticsBundle,
+)
+async def get_fixture_statistics(
+    fixture_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return per-team final-state statistics for a fixture (home + away)."""
+    fx_row = (await db.execute(
+        select(Fixture.home_team_id, Fixture.away_team_id).where(Fixture.id == fixture_id)
+    )).first()
+    if fx_row is None:
+        raise HTTPException(status_code=404, detail="Fixture not found")
+    home_team_id, away_team_id = fx_row
+    rows = (await db.execute(
+        select(FixtureStatistics).where(FixtureStatistics.fixture_id == fixture_id)
+    )).scalars().all()
+    by_team = {r.team_id: r for r in rows}
+    return FixtureStatisticsBundle(
+        home=(
+            FixtureStatisticsResponse.model_validate(by_team[home_team_id])
+            if home_team_id in by_team
+            else None
+        ),
+        away=(
+            FixtureStatisticsResponse.model_validate(by_team[away_team_id])
+            if away_team_id in by_team
+            else None
+        ),
+    )
 
 
 @router.get(

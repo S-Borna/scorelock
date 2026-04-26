@@ -220,3 +220,33 @@ export interface FixtureEvent {
     player_out_name: string | null;
     description: string | null;
 }
+
+
+// ── Fixture Statistics (Phase 3: Stats Panel) ────────────
+
+export interface FixtureStatistics {
+    team_id: number;
+    possession_pct: number | null;
+    shots_total: number | null;
+    shots_on_target: number | null;
+    shots_off_target: number | null;
+    shots_blocked: number | null;
+    corners: number | null;
+    fouls: number | null;
+    yellow_cards_count: number | null;
+    red_cards_count: number | null;
+    offsides: number | null;
+    xg: number | null;
+    passes_total: number | null;
+    passes_accurate: number | null;
+    pass_accuracy_pct: number | null;
+    tackles: number | null;
+    interceptions: number | null;
+    blocks: number | null;
+    clearances: number | null;
+}
+
+export interface FixtureStatisticsBundle {
+    home: FixtureStatistics | null;
+    away: FixtureStatistics | null;
+}
