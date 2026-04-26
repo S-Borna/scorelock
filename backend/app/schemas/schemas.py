@@ -599,5 +599,67 @@ class MatchInfoResponse(BaseModel):
     referee: RefereeResponse | None
 
 
+# ── Bookmakers + odds-snapshots + value-bet ledger (Phase 9) ─
+
+
+class BookmakerResponse(BaseModel):
+    id: int
+    code: str
+    display_name: str
+    logo_ref: str | None
+    license_country_id: str | None
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
+class OddsSnapshotResponse(BaseModel):
+    id: int
+    bookmaker_code: str
+    bookmaker_display: str
+    market_code: str
+    taken_at: datetime
+    is_in_play: bool
+    is_suspended: bool
+    market_line: float | None
+    outcomes: dict
+
+
+class OddsSnapshotsBundle(BaseModel):
+    fixture_id: int
+    market_code: str
+    snapshots: list[OddsSnapshotResponse]
+
+
+class ValueBetLedgerEntry(BaseModel):
+    prediction_id: int
+    fixture_id: int
+    home_team_name: str
+    away_team_name: str
+    league_name: str | None
+    kickoff: datetime
+    market: str
+    suggested_bet: str
+    model_probability: float
+    best_odds: float | None
+    best_bookmaker: str | None
+    edge_percent: float | None
+    status: str
+    actual_result: str | None
+    was_correct: bool | None
+    model_version: str
+    created_at: datetime
+
+
+class ValueBetLedgerResponse(BaseModel):
+    total: int
+    win_count: int
+    loss_count: int
+    pending_count: int
+    win_rate_percent: float
+    avg_edge_percent: float | None
+    entries: list[ValueBetLedgerEntry]
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

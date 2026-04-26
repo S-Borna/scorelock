@@ -45,11 +45,16 @@ from app.schemas.schemas import (
     VenueResponse,
     RefereeResponse,
     MatchInfoResponse,
+    OddsSnapshotResponse,
+    OddsSnapshotsBundle,
+    ValueBetLedgerEntry,
+    ValueBetLedgerResponse,
 )
 from app.services import db_service
 from app.models.models import (
     User,
     ArticleType,
+    Bookmaker,
     FixtureBroadcast,
     FixtureEvent,
     FixtureMatchInfo,
@@ -58,9 +63,13 @@ from app.models.models import (
     FixtureLineupPlayer,
     Fixture,
     IntelligenceKind,
+    League,
     MatchIntelligence,
+    OddsSnapshot,
     Player,
+    Prediction,
     Referee,
+    Team,
     Venue,
 )
 from sqlalchemy.orm import aliased
@@ -236,6 +245,183 @@ async def get_fixture_statistics(
             if away_team_id in by_team
             else None
         ),
+    )
+
+
+@router.get(
+    "/fixtures/{fixture_id}/odds/snapshots",
+    response_model=OddsSnapshotsBundle,
+)
+async def get_fixture_odds_snapshots(
+    fixture_id: int,
+    market: str = Query("h2h", description="Market code (h2h, totals, btts)"),
+    since_hours: int = Query(48, ge=1, le=720, description="Lookback window"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return chronological odds snapshots for a fixture+market for sparkline rendering."""
+    cutoff = datetime.utcnow() - __import__("datetime").timedelta(hours=since_hours)
+    rows = (
+        await db.execute(
+            select(
+                OddsSnapshot.id,
+                OddsSnapshot.market_code,
+                OddsSnapshot.taken_at,
+                OddsSnapshot.is_in_play,
+                OddsSnapshot.is_suspended,
+                OddsSnapshot.market_line,
+                OddsSnapshot.outcomes,
+                Bookmaker.code.label("bookmaker_code"),
+                Bookmaker.display_name.label("bookmaker_display"),
+            )
+            .join(Bookmaker, Bookmaker.id == OddsSnapshot.bookmaker_id)
+            .where(OddsSnapshot.fixture_id == fixture_id)
+            .where(OddsSnapshot.market_code == market.lower())
+            .where(OddsSnapshot.taken_at >= cutoff)
+            .order_by(OddsSnapshot.taken_at)
+        )
+    ).all()
+    return OddsSnapshotsBundle(
+        fixture_id=fixture_id,
+        market_code=market.lower(),
+        snapshots=[
+            OddsSnapshotResponse(
+                id=row.id,
+                bookmaker_code=row.bookmaker_code,
+                bookmaker_display=row.bookmaker_display,
+                market_code=row.market_code,
+                taken_at=row.taken_at,
+                is_in_play=row.is_in_play,
+                is_suspended=row.is_suspended,
+                market_line=row.market_line,
+                outcomes=row.outcomes,
+            )
+            for row in rows
+        ],
+    )
+
+
+@router.get(
+    "/value-bets/ledger",
+    response_model=ValueBetLedgerResponse,
+)
+async def get_value_bet_ledger(
+    status: str = Query(
+        "all",
+        description="Filter: all, win, loss, pending",
+    ),
+    limit: int = Query(100, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all value-bet-flagged predictions with outcomes (USP #3: transparent ledger)."""
+    base = (
+        select(
+            Prediction.id.label("prediction_id"),
+            Prediction.fixture_id,
+            Prediction.home_win_prob,
+            Prediction.draw_prob,
+            Prediction.away_win_prob,
+            Prediction.is_value_home,
+            Prediction.is_value_draw,
+            Prediction.is_value_away,
+            Prediction.value_edge,
+            Prediction.actual_result,
+            Prediction.was_correct,
+            Prediction.model_version,
+            Prediction.created_at,
+            Fixture.kickoff,
+            Fixture.status.label("fixture_status"),
+            Team.name.label("home_team_name"),
+            League.name.label("league_name"),
+        )
+        .select_from(Prediction)
+        .join(Fixture, Fixture.id == Prediction.fixture_id)
+        .outerjoin(Team, Team.id == Fixture.home_team_id)
+        .outerjoin(League, League.id == Fixture.league_id)
+        .where(
+            (Prediction.is_value_home.is_(True))
+            | (Prediction.is_value_draw.is_(True))
+            | (Prediction.is_value_away.is_(True))
+        )
+        .order_by(Prediction.created_at.desc())
+        .limit(limit)
+    )
+    rows = (await db.execute(base)).all()
+
+    away_team_query = (
+        await db.execute(
+            select(Fixture.id, Team.name)
+            .join(Team, Team.id == Fixture.away_team_id)
+            .where(Fixture.id.in_([r.fixture_id for r in rows]) if rows else False)
+        )
+    ).all()
+    away_by_fixture = {r.id: r.name for r in away_team_query}
+
+    entries: list[ValueBetLedgerEntry] = []
+    win = loss = pending = 0
+    edges: list[float] = []
+
+    for row in rows:
+        if row.is_value_home:
+            suggested = "Home"
+            model_prob = row.home_win_prob
+        elif row.is_value_draw:
+            suggested = "Draw"
+            model_prob = row.draw_prob
+        else:
+            suggested = "Away"
+            model_prob = row.away_win_prob
+
+        if row.was_correct is True:
+            entry_status = "win"
+            win += 1
+        elif row.was_correct is False:
+            entry_status = "loss"
+            loss += 1
+        else:
+            entry_status = "pending"
+            pending += 1
+
+        if row.value_edge is not None:
+            edges.append(float(row.value_edge))
+
+        entries.append(
+            ValueBetLedgerEntry(
+                prediction_id=row.prediction_id,
+                fixture_id=row.fixture_id,
+                home_team_name=row.home_team_name or "?",
+                away_team_name=away_by_fixture.get(row.fixture_id, "?"),
+                league_name=row.league_name,
+                kickoff=row.kickoff,
+                market="1X2",
+                suggested_bet=suggested,
+                model_probability=float(model_prob),
+                best_odds=None,
+                best_bookmaker=None,
+                edge_percent=float(row.value_edge) if row.value_edge else None,
+                status=entry_status,
+                actual_result=row.actual_result,
+                was_correct=row.was_correct,
+                model_version=row.model_version,
+                created_at=row.created_at,
+            )
+        )
+
+    if status != "all":
+        entries = [e for e in entries if e.status == status]
+
+    total = win + loss + pending
+    settled = win + loss
+    win_rate = (win / settled * 100) if settled > 0 else 0.0
+    avg_edge = (sum(edges) / len(edges)) if edges else None
+
+    return ValueBetLedgerResponse(
+        total=total,
+        win_count=win,
+        loss_count=loss,
+        pending_count=pending,
+        win_rate_percent=round(win_rate, 2),
+        avg_edge_percent=round(avg_edge, 2) if avg_edge is not None else None,
+        entries=entries,
     )
 
 

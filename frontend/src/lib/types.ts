@@ -186,6 +186,57 @@ export interface WeeklyTopTipper {
 }
 
 
+// ── Odds snapshots + value-bet ledger (Phase 9) ──────────
+
+export interface OddsSnapshot {
+    id: number;
+    bookmaker_code: string;
+    bookmaker_display: string;
+    market_code: string;
+    taken_at: string;
+    is_in_play: boolean;
+    is_suspended: boolean;
+    market_line: number | null;
+    outcomes: Record<string, number>;
+}
+
+export interface OddsSnapshotsBundle {
+    fixture_id: number;
+    market_code: string;
+    snapshots: OddsSnapshot[];
+}
+
+export interface ValueBetLedgerEntry {
+    prediction_id: number;
+    fixture_id: number;
+    home_team_name: string;
+    away_team_name: string;
+    league_name: string | null;
+    kickoff: string;
+    market: string;
+    suggested_bet: string;
+    model_probability: number;
+    best_odds: number | null;
+    best_bookmaker: string | null;
+    edge_percent: number | null;
+    status: "win" | "loss" | "pending";
+    actual_result: string | null;
+    was_correct: boolean | null;
+    model_version: string;
+    created_at: string;
+}
+
+export interface ValueBetLedger {
+    total: number;
+    win_count: number;
+    loss_count: number;
+    pending_count: number;
+    win_rate_percent: number;
+    avg_edge_percent: number | null;
+    entries: ValueBetLedgerEntry[];
+}
+
+
 // ── Match info (Phase 2: venue + referee) ────────────────
 
 export interface Venue {

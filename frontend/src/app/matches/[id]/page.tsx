@@ -11,8 +11,9 @@ import { StatsPanel } from "@/components/stats-panel";
 import { LineupsPitch } from "@/components/lineups-pitch";
 import { IntelligenceCard } from "@/components/intelligence-card";
 import { MatchInfoStrip } from "@/components/match-info-strip";
+import { OddsSparkline } from "@/components/odds-sparkline";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MatchInfo, MatchIntelligenceBundle, Sentiment } from "@/lib/types";
+import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MatchInfo, MatchIntelligenceBundle, OddsSnapshotsBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -101,6 +102,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
         matchInfo = await fetchApi<MatchInfo>(`/api/v1/fixtures/${fixture.id}/match-info`);
     } catch { /* not critical */ }
 
+    // Fetch odds snapshots (movement sparkline)
+    let oddsBundle: OddsSnapshotsBundle = { fixture_id: fixture.id, market_code: "h2h", snapshots: [] };
+    try {
+        oddsBundle = await fetchApi<OddsSnapshotsBundle>(`/api/v1/fixtures/${fixture.id}/odds/snapshots?market=h2h&since_hours=240`);
+    } catch { /* not critical */ }
+
     // Fetch AI intelligence
     let intelligence: MatchIntelligenceBundle = { pre_match: null, in_match: null, post_match: null };
     try {
@@ -138,6 +145,8 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     />
                     {/* Stats panel */}
                     <StatsPanel stats={statistics} />
+                    {/* Odds movement sparkline */}
+                    <OddsSparkline bundle={oddsBundle} />
                     {/* Prediction */}
                     {fixture.prediction && (
                         <div className="card">

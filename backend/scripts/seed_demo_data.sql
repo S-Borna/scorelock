@@ -18,6 +18,8 @@
 --   * Fantasy team: default 15-player team for admin user (T2 demo squad)
 --   * AI coach: 3 hand-written demo recommendations (T8 — no API call needed)
 --   * Match info: 8 venues + 8 referees + fixture 328 → Etihad + Anthony Taylor (Phase 2)
+--   * Bookmakers + odds-snapshots: 4 SE-bookies, 20 snapshots over 72h pre-match (Phase 9)
+--   * Value-bet ledger: pending pred för fixture 328 + 4 historiska wins/losses
 
 -- ── Broadcasts ────────────────────────────────────────────────────────────
 
@@ -618,4 +620,140 @@ BEGIN
                 referee_id = EXCLUDED.referee_id,
                 updated_at = now();
     END IF;
+END$$;
+
+-- ── Bookmakers + odds-snapshots + value-bet ledger (Phase 9) ─────────────
+
+INSERT INTO bookmakers (code, display_name, license_country_id, is_active, external_ids, created_at)
+SELECT name, display, 'SE', true, '{}'::jsonb, now()
+FROM (VALUES
+    ('bet365',   'Bet365'),
+    ('unibet',   'Unibet'),
+    ('betsson',  'Betsson'),
+    ('leovegas', 'LeoVegas')
+) AS seed(name, display)
+WHERE NOT EXISTS (SELECT 1 FROM bookmakers WHERE code = seed.name);
+
+-- Odds snapshots for fixture 328: 5 timepoints × 4 bookmakers = 20 H2H snapshots
+DO $$
+DECLARE
+    v_kickoff TIMESTAMP;
+    v_fixture_exists BOOL;
+BEGIN
+    SELECT kickoff INTO v_kickoff FROM fixtures WHERE id = 328;
+    v_fixture_exists := v_kickoff IS NOT NULL;
+    IF NOT v_fixture_exists THEN
+        RAISE NOTICE 'Skipping odds-snapshots seed: fixture 328 not found';
+        RETURN;
+    END IF;
+
+    -- Idempotency: skip if any snapshot already exists for fixture 328 H2H
+    IF EXISTS (
+        SELECT 1 FROM odds_snapshots
+        WHERE fixture_id = 328 AND market_code = 'h2h'
+    ) THEN
+        RAISE NOTICE 'Odds snapshots already seeded for fixture 328';
+        RETURN;
+    END IF;
+
+    INSERT INTO odds_snapshots
+        (fixture_id, bookmaker_id, market_code, taken_at, is_in_play,
+         is_suspended, region, outcomes, provider, external_id, created_at)
+    SELECT 328, b.id, 'h2h',
+           v_kickoff - (seed.offset_hours || ' hours')::INTERVAL,
+           false, false, 'eu', seed.outcomes::jsonb,
+           'manual_seed', NULL, now()
+    FROM (VALUES
+        ('bet365',   '72', '{"home": 1.65, "draw": 4.20, "away": 5.00}'),
+        ('bet365',   '48', '{"home": 1.70, "draw": 4.10, "away": 4.80}'),
+        ('bet365',   '24', '{"home": 1.75, "draw": 4.00, "away": 4.50}'),
+        ('bet365',    '3', '{"home": 1.85, "draw": 3.90, "away": 4.30}'),
+        ('bet365',  '0.5', '{"home": 1.83, "draw": 3.95, "away": 4.40}'),
+        ('unibet',   '72', '{"home": 1.67, "draw": 4.15, "away": 4.95}'),
+        ('unibet',   '48', '{"home": 1.72, "draw": 4.05, "away": 4.75}'),
+        ('unibet',   '24', '{"home": 1.77, "draw": 3.95, "away": 4.45}'),
+        ('unibet',    '3', '{"home": 1.86, "draw": 3.85, "away": 4.25}'),
+        ('unibet',  '0.5', '{"home": 1.84, "draw": 3.90, "away": 4.35}'),
+        ('betsson',  '72', '{"home": 1.66, "draw": 4.18, "away": 4.97}'),
+        ('betsson',  '48', '{"home": 1.71, "draw": 4.08, "away": 4.77}'),
+        ('betsson',  '24', '{"home": 1.76, "draw": 3.98, "away": 4.47}'),
+        ('betsson',   '3', '{"home": 1.85, "draw": 3.88, "away": 4.27}'),
+        ('betsson', '0.5', '{"home": 1.84, "draw": 3.93, "away": 4.37}'),
+        ('leovegas', '72', '{"home": 1.68, "draw": 4.10, "away": 4.90}'),
+        ('leovegas', '48', '{"home": 1.73, "draw": 4.00, "away": 4.70}'),
+        ('leovegas', '24', '{"home": 1.78, "draw": 3.90, "away": 4.40}'),
+        ('leovegas',  '3', '{"home": 1.87, "draw": 3.80, "away": 4.20}'),
+        ('leovegas','0.5', '{"home": 1.85, "draw": 3.85, "away": 4.30}')
+    ) AS seed(book_code, offset_hours, outcomes)
+    JOIN bookmakers b ON b.code = seed.book_code;
+END$$;
+
+-- Value-bet ledger: pending prediction for fixture 328 + 4 historical (2W/2L)
+DO $$
+DECLARE
+    v_fixture_328_exists BOOL;
+    v_finished_fixture_ids INT[];
+BEGIN
+    SELECT EXISTS(SELECT 1 FROM fixtures WHERE id = 328) INTO v_fixture_328_exists;
+    IF NOT v_fixture_328_exists THEN
+        RETURN;
+    END IF;
+
+    -- Pending prediction for fixture 328 (only insert if no prediction exists for it)
+    INSERT INTO predictions
+        (fixture_id, home_win_prob, draw_prob, away_win_prob, confidence,
+         over_25_prob, expected_goals, is_value_home, is_value_draw, is_value_away,
+         value_edge, model_version, actual_result, was_correct, created_at)
+    SELECT 328, 0.62, 0.21, 0.17, 0.74,
+           0.65, 2.7, true, false, false,
+           8.5, 'v20260210-0320', NULL, NULL, now()
+    WHERE NOT EXISTS (SELECT 1 FROM predictions WHERE fixture_id = 328);
+
+    -- 4 historical value-bet preds — pick 4 finished fixtures from any league
+    SELECT array_agg(id) INTO v_finished_fixture_ids
+    FROM (
+        SELECT id FROM fixtures
+        WHERE status = 'FINISHED'
+            AND home_goals IS NOT NULL
+            AND away_goals IS NOT NULL
+            AND id != 328
+        ORDER BY kickoff DESC
+        LIMIT 4
+    ) AS finished;
+
+    IF v_finished_fixture_ids IS NULL OR array_length(v_finished_fixture_ids, 1) < 4 THEN
+        RAISE NOTICE 'Skipping historical ledger seed: not enough finished fixtures';
+        RETURN;
+    END IF;
+
+    -- Skip if value-bet predictions already seeded
+    IF EXISTS (
+        SELECT 1 FROM predictions
+        WHERE fixture_id = ANY(v_finished_fixture_ids)
+            AND (is_value_home = true OR is_value_draw = true OR is_value_away = true)
+    ) THEN
+        RETURN;
+    END IF;
+
+    INSERT INTO predictions
+        (fixture_id, home_win_prob, draw_prob, away_win_prob, confidence,
+         over_25_prob, expected_goals, is_value_home, is_value_draw, is_value_away,
+         value_edge, model_version, actual_result, was_correct, created_at)
+    VALUES
+        -- Win 1
+        (v_finished_fixture_ids[1], 0.55, 0.25, 0.20, 0.71,
+         0.58, 2.5, true, false, false,
+         7.2, 'v20260210-0320', 'H', true, now() - INTERVAL '14 days'),
+        -- Win 2
+        (v_finished_fixture_ids[2], 0.30, 0.27, 0.43, 0.68,
+         0.62, 2.6, false, false, true,
+         11.4, 'v20260210-0320', 'A', true, now() - INTERVAL '21 days'),
+        -- Loss 1
+        (v_finished_fixture_ids[3], 0.48, 0.30, 0.22, 0.65,
+         0.51, 2.3, true, false, false,
+         5.8, 'v20260210-0320', 'D', false, now() - INTERVAL '28 days'),
+        -- Loss 2
+        (v_finished_fixture_ids[4], 0.25, 0.31, 0.44, 0.66,
+         0.55, 2.4, false, false, true,
+         9.1, 'v20260210-0320', 'H', false, now() - INTERVAL '35 days');
 END$$;

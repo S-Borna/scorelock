@@ -618,6 +618,71 @@ class ProviderConflict(Base):
     )
 
 
+# ── Bookmakers + Odds-snapshots (Phase 9: value-bet ledger) ─
+
+
+class Bookmaker(Base):
+    """Sportsbook source for odds. Our model compares against these."""
+
+    __tablename__ = "bookmakers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(100))
+    logo_ref: Mapped[str | None] = mapped_column(String(500))
+    license_country_id: Mapped[str | None] = mapped_column(String(2))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    external_ids: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class OddsSnapshot(Base):
+    """One snapshot of a bookmaker's odds for a (fixture, market) at a point in time.
+
+    Regular table for now. Hypertable promotion (TimescaleDB) deferred to v0.7+
+    once Railway-prod TimescaleDB-extension is verified.
+
+    `outcomes` JSONB shape per market:
+      H2H: {home: 1.85, draw: 3.40, away: 4.50}
+      TOTALS: {over: 1.95, under: 1.85, line: 2.5}
+      BTTS: {yes: 1.75, no: 2.10}
+    """
+
+    __tablename__ = "odds_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    bookmaker_id: Mapped[int] = mapped_column(ForeignKey("bookmakers.id"))
+    market_code: Mapped[str] = mapped_column(String(20), index=True)
+    taken_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    is_in_play: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_suspended: Mapped[bool] = mapped_column(Boolean, default=False)
+    market_line: Mapped[float | None] = mapped_column(Float)
+    region: Mapped[str | None] = mapped_column(String(10))
+    outcomes: Mapped[dict] = mapped_column(JSONB)
+    provider: Mapped[str] = mapped_column(String(50))
+    external_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index(
+            "ix_odds_snapshots_fixture_taken",
+            "fixture_id",
+            "taken_at",
+        ),
+        Index(
+            "ix_odds_snapshots_fixture_market_taken",
+            "fixture_id",
+            "market_code",
+            "taken_at",
+        ),
+    )
+
+
 # ── Venue + Referee (Phase 2: Match info-rad) ──────────────
 
 
