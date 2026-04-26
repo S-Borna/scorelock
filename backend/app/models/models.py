@@ -49,6 +49,12 @@ class ArticleType(str, enum.Enum):
     NEWS_REWRITE = "news_rewrite"
 
 
+class IntelligenceKind(str, enum.Enum):
+    PRE_MATCH = "pre_match"
+    IN_MATCH = "in_match"
+    POST_MATCH = "post_match"
+
+
 # ── Users & Auth ───────────────────────────────────────────
 
 
@@ -683,6 +689,53 @@ class FixtureEvent(Base):
             "minute",
             "stoppage",
         ),
+    )
+
+
+# ── Match Intelligence (Phase 5: AI narrative cards) ───────
+
+
+class MatchIntelligence(Base):
+    """AI-generated narrative analysis per (fixture, kind, language).
+
+    Three kinds: pre-match (day before), in-match (live during,
+    pinned to as_of_minute), post-match (within 24h after final whistle).
+    Idempotent insert — UNIQUE(fixture_id, kind, language).
+    """
+
+    __tablename__ = "match_intelligence"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    kind: Mapped[IntelligenceKind] = mapped_column(
+        SAEnum(
+            IntelligenceKind,
+            name="intelligencekind",
+            values_callable=lambda enum_cls: [e.value for e in enum_cls],
+        ),
+        index=True,
+    )
+    language: Mapped[str] = mapped_column(String(5), default="sv")
+    summary: Mapped[str] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)
+    model_version: Mapped[str] = mapped_column(String(50))
+    provider: Mapped[str] = mapped_column(String(50))
+    as_of_minute: Mapped[int | None] = mapped_column(Integer)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "fixture_id",
+            "kind",
+            "language",
+            name="uq_match_intelligence_kind_lang",
+        ),
+        Index("ix_match_intel_fixture_kind", "fixture_id", "kind"),
     )
 
 

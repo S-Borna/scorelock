@@ -40,6 +40,8 @@ from app.schemas.schemas import (
     LineupPlayerResponse,
     LineupResponse,
     FixtureLineupsBundle,
+    MatchIntelligenceResponse,
+    MatchIntelligenceBundle,
 )
 from app.services import db_service
 from app.models.models import (
@@ -51,6 +53,8 @@ from app.models.models import (
     FixtureLineup,
     FixtureLineupPlayer,
     Fixture,
+    IntelligenceKind,
+    MatchIntelligence,
     Player,
 )
 from sqlalchemy.orm import aliased
@@ -226,6 +230,106 @@ async def get_fixture_statistics(
             if away_team_id in by_team
             else None
         ),
+    )
+
+
+@router.get(
+    "/fixtures/{fixture_id}/intelligence",
+    response_model=MatchIntelligenceBundle,
+)
+async def get_fixture_intelligence(
+    fixture_id: int,
+    language: str = "sv",
+    db: AsyncSession = Depends(get_db),
+):
+    """Return AI narrative cards for a fixture (pre/in/post-match) in the given language."""
+    rows = (
+        (
+            await db.execute(
+                select(MatchIntelligence)
+                .where(MatchIntelligence.fixture_id == fixture_id)
+                .where(MatchIntelligence.language == language)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_kind: dict[str, MatchIntelligence] = {row.kind.value: row for row in rows}
+
+    def to_response(kind_value: str) -> MatchIntelligenceResponse | None:
+        row = by_kind.get(kind_value)
+        if row is None:
+            return None
+        return MatchIntelligenceResponse(
+            kind=row.kind.value,
+            language=row.language,
+            summary=row.summary,
+            body=row.body,
+            model_version=row.model_version,
+            provider=row.provider,
+            as_of_minute=row.as_of_minute,
+            generated_at=row.generated_at,
+        )
+
+    return MatchIntelligenceBundle(
+        pre_match=to_response("pre_match"),
+        in_match=to_response("in_match"),
+        post_match=to_response("post_match"),
+    )
+
+
+@router.post(
+    "/admin/intelligence/generate/{fixture_id}/{kind}",
+    response_model=MatchIntelligenceResponse,
+)
+async def trigger_intelligence_generation(
+    fixture_id: int,
+    kind: str,
+    language: str = "sv",
+    force: bool = False,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually generate AI intelligence for a fixture (admin only).
+
+    `kind` must be one of: pre_match, in_match, post_match.
+    `force=true` regenerates even if a row already exists.
+    """
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        kind_enum = IntelligenceKind(kind)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid kind. Choose from: {[k.value for k in IntelligenceKind]}",
+        )
+
+    from app.services.intelligence import get_intelligence_generator
+
+    generator = get_intelligence_generator()
+    try:
+        row = await generator.generate(
+            db,
+            fixture_id=fixture_id,
+            kind=kind_enum,
+            language=language,
+            force_regenerate=force,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+    return MatchIntelligenceResponse(
+        kind=row.kind.value,
+        language=row.language,
+        summary=row.summary,
+        body=row.body,
+        model_version=row.model_version,
+        provider=row.provider,
+        as_of_minute=row.as_of_minute,
+        generated_at=row.generated_at,
     )
 
 

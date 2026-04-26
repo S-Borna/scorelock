@@ -13,6 +13,7 @@
 --   * Events: 10 events for fixture 328 (3 goals, 3 yellows, 4 subs)
 --   * Statistics: 2 rows (City home + Arsenal away) for fixture 328
 --   * Lineups: 2 starting elevens + benches with 4-3-3 formations and pitch coords
+--   * Intelligence: hand-written Swedish narrative for pre/in/post-match (no API call)
 
 -- ── Broadcasts ────────────────────────────────────────────────────────────
 
@@ -234,6 +235,43 @@ BEGIN
     JOIN players p
         ON p.canonical_name = seed.name AND p.current_team_id = v_city_id
     ON CONFLICT (lineup_id, player_id) DO NOTHING;
+
+    -- ── Match Intelligence (Phase 5) ──────────────────────────
+    -- Hand-written Swedish narrative for fixture 328 demo. Idempotent via
+    -- UNIQUE (fixture_id, kind, language). No Anthropic API call needed for
+    -- the seeded fixture.
+
+    INSERT INTO match_intelligence
+        (fixture_id, kind, language, summary, body, model_version, provider,
+         as_of_minute, generated_at, updated_at)
+    VALUES
+        (328, 'pre_match', 'sv',
+         'City söker tabelltätningen mot ett Arsenal som måste vinna för att hänga med.',
+         'Det här är en match om mer än tre poäng. City sitter två poäng bakom Arsenal i tabellen och har två segrar i rad — ett resultat skulle stänga gapet och pressa Arteta sista månaderna före vintern.
+
+City går på 4-3-3 med Rodri som ankare och De Bruyne i framåtriktad mittroll, vilket pekar mot att Pep tror på dominans i mittfältet. Arsenal ställer upp likadant men med Rice som enda sittande mittfältare — risken är att hans yta blir för stor när Foden och Doku rör sig mellan linjerna.
+
+Form säger City. Arsenal har inte vunnit på fyra matcher mot topp-fyra i år. Saka är den ena reella vinsten Arsenal måste få ut — träffas han av Aké på vänsterkanten är matchen avgjord taktiskt redan i 30:e minuten.',
+         'manual_seed', 'manual', NULL, now(), now()),
+
+        (328, 'in_match', 'sv',
+         'City äger boll och xG efter De Bruyne-mål och Saka-reduktion — Arsenal saknar en plan B.',
+         'I 75:e minuten är ställningen 2-1 till City och bilden är ganska tydlig. De Bruynes mål i 53:e gav City kontroll och Saka tog tillbaka något i 71:a, men det skedde mer på enskild kvalitet än på ett momentum-skifte.
+
+Statistiken under matchen visar Citys övertag: 58% bollinnehav, 14 skott mot 11, xG 1,85 mot 1,20. Det är inte en knapp ledning som sviktar — det är en ledning som matchar matchbilden.
+
+Arteta gjorde sitt drag tidigt med Trossard in för Martinelli i 58:e, men det har inte ändrat Arsenals struktur. Pep svarade i 75:e med Kovačić in för en trött De Bruyne — defensivt skift, inte offensivt. City tror att jobbet är gjort.',
+         'manual_seed', 'manual', 75, now(), now()),
+
+        (328, 'post_match', 'sv',
+         'City vinner förtjänt 2-1. Resultatet matchar xG, Arsenal saknade verktyg.',
+         'Slutresultat 2-1 till City och underliggande siffror gör det rättvist. xG 1,85 mot 1,20 — inte överraskning, inte tur.
+
+Haalands huvudmål från hörna i 17:e satte tonen. När Arsenal försökte trycka tillbaka kontrollerade Citys mittfält tempot, och De Bruynes 2-0 i 53:e var en av kvällens få situationer där Rice lämnade för stort utrymme. Sakas reducering i 71:a kom från ett individuellt sprintdrag som Walker inte hann med — men det räckte inte för att Arsenal skulle ha en realistisk slutspurt.
+
+Två saker att ta med: Stones var matchens bäste försvarare, kapten in i kamerorna och bakåtspelet höll. Och Pep visade igen att hans roterings-strategi mellan Foden och Doku på kanterna är svår att läsa — Arsenal ställde aldrig om i tid.',
+         'manual_seed', 'manual', NULL, now(), now())
+    ON CONFLICT (fixture_id, kind, language) DO NOTHING;
 
     -- Arsenal — 4-3-3 (Ødegaard captain)
     INSERT INTO fixture_lineup_players

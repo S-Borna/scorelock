@@ -276,3 +276,25 @@ export interface FixtureLineupsBundle {
     home: Lineup | null;
     away: Lineup | null;
 }
+
+
+// ── Match Intelligence (Phase 5: AI narrative cards) ─────
+
+export type IntelligenceKind = "pre_match" | "in_match" | "post_match";
+
+export interface MatchIntelligence {
+    kind: IntelligenceKind;
+    language: string;
+    summary: string;
+    body: string;
+    model_version: string;
+    provider: string;
+    as_of_minute: number | null;
+    generated_at: string;
+}
+
+export interface MatchIntelligenceBundle {
+    pre_match: MatchIntelligence | null;
+    in_match: MatchIntelligence | null;
+    post_match: MatchIntelligence | null;
+}

@@ -9,8 +9,9 @@ import { BroadcastCard } from "@/components/broadcast-card";
 import { EventTimeline } from "@/components/event-timeline";
 import { StatsPanel } from "@/components/stats-panel";
 import { LineupsPitch } from "@/components/lineups-pitch";
+import { IntelligenceCard } from "@/components/intelligence-card";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, Sentiment } from "@/lib/types";
+import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MatchIntelligenceBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -93,6 +94,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
         lineups = await fetchApi<FixtureLineupsBundle>(`/api/v1/fixtures/${fixture.id}/lineups`);
     } catch { /* not critical */ }
 
+    // Fetch AI intelligence
+    let intelligence: MatchIntelligenceBundle = { pre_match: null, in_match: null, post_match: null };
+    try {
+        intelligence = await fetchApi<MatchIntelligenceBundle>(`/api/v1/fixtures/${fixture.id}/intelligence?language=sv`);
+    } catch { /* not critical */ }
+
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Breadcrumbs */}
@@ -109,6 +116,8 @@ export default async function MatchDetailPage({ params }: PageProps) {
                 <div className="lg:col-span-2 space-y-6">
                     {/* Live match stats (auto-refreshing) */}
                     <LiveMatchStats fixtureId={fixture.id} />
+                    {/* AI narrative cards (pre/in/post-match) */}
+                    <IntelligenceCard bundle={intelligence} />
                     {/* Event timeline */}
                     <EventTimeline events={events} homeTeamId={fixture.home_team.id} />
                     {/* Lineups + pitch view */}

@@ -395,5 +395,27 @@ class FixtureLineupsBundle(BaseModel):
     away: LineupResponse | None
 
 
+# ── Match Intelligence (Phase 5: AI narrative cards) ──────
+
+
+class MatchIntelligenceResponse(BaseModel):
+    kind: str
+    language: str
+    summary: str
+    body: str
+    model_version: str
+    provider: str
+    as_of_minute: int | None
+    generated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class MatchIntelligenceBundle(BaseModel):
+    pre_match: MatchIntelligenceResponse | None
+    in_match: MatchIntelligenceResponse | None
+    post_match: MatchIntelligenceResponse | None
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

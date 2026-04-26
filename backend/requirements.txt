@@ -36,8 +36,8 @@ stripe==11.4.1
 # ── Monitoring ─────────────────────────────────────────────
 prometheus-fastapi-instrumentator==7.0.2
 
-# ── LLM (sentiment analysis) ──────────────────────────────
-anthropic==0.43.0
+# ── LLM (sentiment + match intelligence) ──────────────────
+anthropic>=0.55.0,<2.0
 
 # ── Error Monitoring ───────────────────────────────────────
 sentry-sdk[fastapi]==2.19.2

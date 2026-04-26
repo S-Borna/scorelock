@@ -124,6 +124,15 @@ const translations: Record<Locale, Record<string, string>> = {
         "lineup.substitutes": "Avbytare",
         "lineup.captain_short": "K",
         "lineup.empty": "Inga uppställningar registrerade",
+
+        // ── Match intelligence (Phase 5) ──
+        "intelligence.title": "AI-analys",
+        "intelligence.pre_match": "Inför matchen",
+        "intelligence.in_match": "Under matchen",
+        "intelligence.post_match": "Efter matchen",
+        "intelligence.minute_short": "min",
+        "intelligence.model_label": "Modell",
+        "intelligence.empty": "Ingen AI-analys publicerad ännu",
     },
     en: {
         // ── Nav ──
@@ -239,6 +248,15 @@ const translations: Record<Locale, Record<string, string>> = {
         "lineup.substitutes": "Substitutes",
         "lineup.captain_short": "C",
         "lineup.empty": "No lineups registered",
+
+        // ── Match intelligence (Phase 5) ──
+        "intelligence.title": "AI analysis",
+        "intelligence.pre_match": "Pre-match",
+        "intelligence.in_match": "Live",
+        "intelligence.post_match": "Post-match",
+        "intelligence.minute_short": "min",
+        "intelligence.model_label": "Model",
+        "intelligence.empty": "No AI analysis published yet",
     },
 };
 
