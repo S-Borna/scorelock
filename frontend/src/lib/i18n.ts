@@ -116,6 +116,14 @@ const translations: Record<Locale, Record<string, string>> = {
         "stats.passes": "Passningar",
         "stats.pass_accuracy": "Passprecision",
         "stats.tackles": "Tacklingar",
+
+        // ── Lineups + pitch (Phase 4) ──
+        "lineup.title": "Startelvor",
+        "lineup.formation": "Formation",
+        "lineup.coach": "Tränare",
+        "lineup.substitutes": "Avbytare",
+        "lineup.captain_short": "K",
+        "lineup.empty": "Inga uppställningar registrerade",
     },
     en: {
         // ── Nav ──
@@ -223,6 +231,14 @@ const translations: Record<Locale, Record<string, string>> = {
         "stats.passes": "Passes",
         "stats.pass_accuracy": "Pass accuracy",
         "stats.tackles": "Tackles",
+
+        // ── Lineups + pitch (Phase 4) ──
+        "lineup.title": "Lineups",
+        "lineup.formation": "Formation",
+        "lineup.coach": "Coach",
+        "lineup.substitutes": "Substitutes",
+        "lineup.captain_short": "C",
+        "lineup.empty": "No lineups registered",
     },
 };
 

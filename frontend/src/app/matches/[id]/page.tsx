@@ -8,8 +8,9 @@ import { LiveMatchHeader, LiveMatchStats } from "@/components/live-match-header"
 import { BroadcastCard } from "@/components/broadcast-card";
 import { EventTimeline } from "@/components/event-timeline";
 import { StatsPanel } from "@/components/stats-panel";
+import { LineupsPitch } from "@/components/lineups-pitch";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureStatisticsBundle, Sentiment } from "@/lib/types";
+import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -86,6 +87,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
         statistics = await fetchApi<FixtureStatisticsBundle>(`/api/v1/fixtures/${fixture.id}/statistics`);
     } catch { /* not critical */ }
 
+    // Fetch lineups
+    let lineups: FixtureLineupsBundle = { home: null, away: null };
+    try {
+        lineups = await fetchApi<FixtureLineupsBundle>(`/api/v1/fixtures/${fixture.id}/lineups`);
+    } catch { /* not critical */ }
+
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Breadcrumbs */}
@@ -104,6 +111,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
                     <LiveMatchStats fixtureId={fixture.id} />
                     {/* Event timeline */}
                     <EventTimeline events={events} homeTeamId={fixture.home_team.id} />
+                    {/* Lineups + pitch view */}
+                    <LineupsPitch
+                        lineups={lineups}
+                        homeTeamName={fixture.home_team.name}
+                        awayTeamName={fixture.away_team.name}
+                    />
                     {/* Stats panel */}
                     <StatsPanel stats={statistics} />
                     {/* Prediction */}

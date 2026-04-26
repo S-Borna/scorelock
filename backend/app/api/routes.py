@@ -37,6 +37,9 @@ from app.schemas.schemas import (
     FixtureEventResponse,
     FixtureStatisticsResponse,
     FixtureStatisticsBundle,
+    LineupPlayerResponse,
+    LineupResponse,
+    FixtureLineupsBundle,
 )
 from app.services import db_service
 from app.models.models import (
@@ -45,6 +48,8 @@ from app.models.models import (
     FixtureBroadcast,
     FixtureEvent,
     FixtureStatistics,
+    FixtureLineup,
+    FixtureLineupPlayer,
     Fixture,
     Player,
 )
@@ -222,6 +227,94 @@ async def get_fixture_statistics(
             else None
         ),
     )
+
+
+@router.get(
+    "/fixtures/{fixture_id}/lineups",
+    response_model=FixtureLineupsBundle,
+)
+async def get_fixture_lineups(
+    fixture_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return per-team lineups (starters + bench) with formation + pitch coords."""
+    fx_row = (
+        await db.execute(
+            select(Fixture.home_team_id, Fixture.away_team_id).where(
+                Fixture.id == fixture_id
+            )
+        )
+    ).first()
+    if fx_row is None:
+        raise HTTPException(status_code=404, detail="Fixture not found")
+    home_team_id, away_team_id = fx_row
+
+    lineups = (
+        (
+            await db.execute(
+                select(FixtureLineup).where(FixtureLineup.fixture_id == fixture_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not lineups:
+        return FixtureLineupsBundle(home=None, away=None)
+
+    lineup_ids = [lu.id for lu in lineups]
+    rows = (
+        await db.execute(
+            select(
+                FixtureLineupPlayer.lineup_id,
+                FixtureLineupPlayer.shirt_number,
+                FixtureLineupPlayer.position_label,
+                FixtureLineupPlayer.grid_x,
+                FixtureLineupPlayer.grid_y,
+                FixtureLineupPlayer.is_starting,
+                FixtureLineupPlayer.is_captain,
+                Player.display_name,
+            )
+            .join(Player, FixtureLineupPlayer.player_id == Player.id)
+            .where(FixtureLineupPlayer.lineup_id.in_(lineup_ids))
+        )
+    ).all()
+
+    players_by_lineup: dict[int, list[LineupPlayerResponse]] = {
+        lu.id: [] for lu in lineups
+    }
+    for row in rows:
+        players_by_lineup[row.lineup_id].append(
+            LineupPlayerResponse(
+                display_name=row.display_name,
+                shirt_number=row.shirt_number,
+                position_label=row.position_label,
+                grid_x=row.grid_x,
+                grid_y=row.grid_y,
+                is_starting=row.is_starting,
+                is_captain=row.is_captain,
+            )
+        )
+
+    def build(team_id: int) -> LineupResponse | None:
+        for lu in lineups:
+            if lu.team_id == team_id:
+                roster = players_by_lineup.get(lu.id, [])
+                starters = [p for p in roster if p.is_starting]
+                substitutes = [p for p in roster if not p.is_starting]
+                starters.sort(
+                    key=lambda p: (p.grid_y or 0, p.grid_x or 0, p.shirt_number or 0)
+                )
+                substitutes.sort(key=lambda p: p.shirt_number or 999)
+                return LineupResponse(
+                    team_id=lu.team_id,
+                    formation=lu.formation,
+                    coach_name=lu.coach_name,
+                    starters=starters,
+                    substitutes=substitutes,
+                )
+        return None
+
+    return FixtureLineupsBundle(home=build(home_team_id), away=build(away_team_id))
 
 
 @router.get(

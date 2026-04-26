@@ -250,3 +250,29 @@ export interface FixtureStatisticsBundle {
     home: FixtureStatistics | null;
     away: FixtureStatistics | null;
 }
+
+
+// ── Fixture Lineups (Phase 4: Lineups + Pitch View) ──────
+
+export interface LineupPlayer {
+    display_name: string;
+    shirt_number: number | null;
+    position_label: string | null;
+    grid_x: number | null;
+    grid_y: number | null;
+    is_starting: boolean;
+    is_captain: boolean;
+}
+
+export interface Lineup {
+    team_id: number;
+    formation: string | null;
+    coach_name: string | null;
+    starters: LineupPlayer[];
+    substitutes: LineupPlayer[];
+}
+
+export interface FixtureLineupsBundle {
+    home: Lineup | null;
+    away: Lineup | null;
+}

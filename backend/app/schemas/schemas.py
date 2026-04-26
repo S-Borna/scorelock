@@ -367,5 +367,33 @@ class FixtureStatisticsBundle(BaseModel):
     away: FixtureStatisticsResponse | None
 
 
+# ── Fixture Lineups (Phase 4: Lineups + Pitch View) ───────
+
+
+class LineupPlayerResponse(BaseModel):
+    display_name: str
+    shirt_number: int | None
+    position_label: str | None
+    grid_x: int | None
+    grid_y: int | None
+    is_starting: bool
+    is_captain: bool
+
+    model_config = {"from_attributes": True}
+
+
+class LineupResponse(BaseModel):
+    team_id: int
+    formation: str | None
+    coach_name: str | None
+    starters: list[LineupPlayerResponse]
+    substitutes: list[LineupPlayerResponse]
+
+
+class FixtureLineupsBundle(BaseModel):
+    home: LineupResponse | None
+    away: LineupResponse | None
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

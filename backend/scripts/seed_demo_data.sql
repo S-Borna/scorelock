@@ -12,6 +12,7 @@
 --   * Players: 22 starting + 4 bench for Manchester City + Arsenal
 --   * Events: 10 events for fixture 328 (3 goals, 3 yellows, 4 subs)
 --   * Statistics: 2 rows (City home + Arsenal away) for fixture 328
+--   * Lineups: 2 starting elevens + benches with 4-3-3 formations and pitch coords
 
 -- ── Broadcasts ────────────────────────────────────────────────────────────
 
@@ -62,6 +63,8 @@ DECLARE
     v_arsenal_id INT;
     v_home_id INT;
     v_away_id INT;
+    v_city_lineup_id INT;
+    v_arsenal_lineup_id INT;
 BEGIN
     -- Resolve teams
     SELECT id INTO v_city_id FROM teams WHERE name = 'Manchester City FC';
@@ -182,5 +185,79 @@ BEGIN
          441, 376, 85.3, 19, 12, 11, 22,
          'manual_seed', NULL, now(), now())
     ON CONFLICT (fixture_id, team_id, provider) DO NOTHING;
+
+    -- ── Lineups (Phase 4) ─────────────────────────────────────
+    -- Idempotent: ON CONFLICT updates formation/coach so the lineup id is always
+    -- returned; players-insert below uses ON CONFLICT (lineup_id, player_id).
+
+    INSERT INTO fixture_lineups
+        (fixture_id, team_id, formation, coach_name, provider, created_at, updated_at)
+    VALUES
+        (328, v_city_id, '4-3-3', 'Pep Guardiola', 'manual_seed', now(), now())
+    ON CONFLICT (fixture_id, team_id, provider) DO UPDATE
+        SET formation = EXCLUDED.formation,
+            coach_name = EXCLUDED.coach_name,
+            updated_at = now()
+    RETURNING id INTO v_city_lineup_id;
+
+    INSERT INTO fixture_lineups
+        (fixture_id, team_id, formation, coach_name, provider, created_at, updated_at)
+    VALUES
+        (328, v_arsenal_id, '4-3-3', 'Mikel Arteta', 'manual_seed', now(), now())
+    ON CONFLICT (fixture_id, team_id, provider) DO UPDATE
+        SET formation = EXCLUDED.formation,
+            coach_name = EXCLUDED.coach_name,
+            updated_at = now()
+    RETURNING id INTO v_arsenal_lineup_id;
+
+    -- Manchester City — 4-3-3 (Stones captain)
+    INSERT INTO fixture_lineup_players
+        (lineup_id, player_id, shirt_number, position_label, grid_x, grid_y,
+         is_starting, is_captain, created_at)
+    SELECT v_city_lineup_id, p.id, seed.shirt, seed.pos,
+           seed.gx, seed.gy, seed.starter, seed.captain, now()
+    FROM (VALUES
+        ('Ederson Moraes',  1,  'GK',  50,  5, true,  false),
+        ('Kyle Walker',     2,  'RB',  90, 25, true,  false),
+        ('Rúben Dias',      3,  'LCB', 35, 25, true,  false),
+        ('John Stones',     5,  'RCB', 65, 25, true,  true),
+        ('Nathan Aké',      6,  'LB',  10, 25, true,  false),
+        ('Rodri Hernández', 16, 'DM',  50, 45, true,  false),
+        ('Kevin De Bruyne', 17, 'LCM', 25, 55, true,  false),
+        ('Bernardo Silva',  20, 'RCM', 75, 55, true,  false),
+        ('Jérémy Doku',     11, 'LW',  15, 80, true,  false),
+        ('Erling Haaland',  9,  'ST',  50, 88, true,  false),
+        ('Phil Foden',      47, 'RW',  85, 80, true,  false),
+        ('Mateo Kovačić',   8,  'MID', NULL, NULL, false, false),
+        ('Joško Gvardiol',  24, 'DEF', NULL, NULL, false, false)
+    ) AS seed(name, shirt, pos, gx, gy, starter, captain)
+    JOIN players p
+        ON p.canonical_name = seed.name AND p.current_team_id = v_city_id
+    ON CONFLICT (lineup_id, player_id) DO NOTHING;
+
+    -- Arsenal — 4-3-3 (Ødegaard captain)
+    INSERT INTO fixture_lineup_players
+        (lineup_id, player_id, shirt_number, position_label, grid_x, grid_y,
+         is_starting, is_captain, created_at)
+    SELECT v_arsenal_lineup_id, p.id, seed.shirt, seed.pos,
+           seed.gx, seed.gy, seed.starter, seed.captain, now()
+    FROM (VALUES
+        ('David Raya',          22, 'GK',  50,  5, true,  false),
+        ('Ben White',            4, 'RB',  90, 25, true,  false),
+        ('William Saliba',      12, 'RCB', 65, 25, true,  false),
+        ('Gabriel Magalhães',    6, 'LCB', 35, 25, true,  false),
+        ('Riccardo Calafiori',  33, 'LB',  10, 25, true,  false),
+        ('Declan Rice',         41, 'DM',  50, 45, true,  false),
+        ('Martin Ødegaard',      8, 'RCM', 75, 55, true,  true),
+        ('Mikel Merino',        23, 'LCM', 25, 55, true,  false),
+        ('Bukayo Saka',          7, 'RW',  85, 80, true,  false),
+        ('Kai Havertz',         29, 'ST',  50, 88, true,  false),
+        ('Gabriel Martinelli',  11, 'LW',  15, 80, true,  false),
+        ('Leandro Trossard',    19, 'FWD', NULL, NULL, false, false),
+        ('Gabriel Jesus',        9, 'FWD', NULL, NULL, false, false)
+    ) AS seed(name, shirt, pos, gx, gy, starter, captain)
+    JOIN players p
+        ON p.canonical_name = seed.name AND p.current_team_id = v_arsenal_id
+    ON CONFLICT (lineup_id, player_id) DO NOTHING;
 
 END$$;

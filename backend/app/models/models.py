@@ -686,6 +686,68 @@ class FixtureEvent(Base):
     )
 
 
+# ── Lineups (Phase 4: Lineups + Pitch View) ────────────────
+
+
+class FixtureLineup(Base):
+    """Per-team starting lineup metadata for a fixture (formation + coach)."""
+
+    __tablename__ = "fixture_lineups"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    formation: Mapped[str | None] = mapped_column(String(20))
+    coach_name: Mapped[str | None] = mapped_column(String(150))
+    provider: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "fixture_id",
+            "team_id",
+            "provider",
+            name="uq_fixture_lineup_team_provider",
+        ),
+    )
+
+
+class FixtureLineupPlayer(Base):
+    """One row per player in a lineup (starter or substitute).
+
+    Pitch position lives in (grid_x, grid_y) — 0–100 per side, where (50, 5) is GK
+    near own goal and (50, 85) is striker. Frontend mirrors away-side coordinates.
+    """
+
+    __tablename__ = "fixture_lineup_players"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lineup_id: Mapped[int] = mapped_column(
+        ForeignKey("fixture_lineups.id", ondelete="CASCADE"), index=True
+    )
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
+    shirt_number: Mapped[int | None] = mapped_column(Integer)
+    position_label: Mapped[str | None] = mapped_column(String(10))
+    grid_x: Mapped[int | None] = mapped_column(Integer)
+    grid_y: Mapped[int | None] = mapped_column(Integer)
+    is_starting: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_captain: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "lineup_id",
+            "player_id",
+            name="uq_lineup_player",
+        ),
+    )
+
+
 # ── Fixture Statistics (Phase 3: Stats Panel) ──────────────
 
 
