@@ -1120,6 +1120,42 @@ async def debug_db_stats(
     }
 
 
+@router.post("/admin/dev/trigger-score-update/{fixture_id}")
+async def trigger_score_update(
+    fixture_id: int,
+    home_goals: int = 0,
+    away_goals: int = 0,
+    status: str = "live",
+    minute: int | None = None,
+    user: User = Depends(get_current_user),
+):
+    """Publish a manual score-update event to the live WebSocket channel (admin only).
+
+    Test-only endpoint. Lets us verify the live-pipeline end-to-end without waiting
+    for real live fixtures. Connected WebSocket clients receive a `score_update`
+    payload identical to what `update_live_scores` produces in prod.
+    """
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    from app.api.websocket import publish_score_update
+
+    publish_score_update(
+        fixture_id=fixture_id,
+        home_goals=home_goals,
+        away_goals=away_goals,
+        status=status,
+        minute=minute,
+    )
+    return {
+        "status": "published",
+        "fixture_id": fixture_id,
+        "home_goals": home_goals,
+        "away_goals": away_goals,
+        "status_value": status,
+        "minute": minute,
+    }
+
+
 @router.post("/admin/sync-now")
 async def admin_sync_now(
     user: User = Depends(get_current_user),
