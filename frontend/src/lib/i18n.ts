@@ -93,6 +93,16 @@ const translations: Record<Locale, Record<string, string>> = {
         "meta.title": "ScoreLock — AI-driven fotbollsanalys",
         "meta.description": "AI-genererade förhandsanalyser, matchreferat, value bets och prediktioner för fotboll. Driven av maskininlärning.",
 
+        // ── Match info (Phase 2: venue + referee) ──
+        "match_info.stadium": "Arena",
+        "match_info.referee": "Domare",
+        "match_info.capacity": "Kapacitet",
+        "match_info.surface_grass": "Naturgräs",
+        "match_info.surface_artificial": "Konstgräs",
+        "match_info.surface_hybrid": "Hybridgräs",
+        "match_info.yellows_per_game": "gula/match",
+        "match_info.reds_per_game": "röda/match",
+
         // ── Broadcast (Phase 1: Where to Watch) ──
         "broadcast.title": "Var kan jag titta?",
         "broadcast.watch": "Titta nu",
@@ -287,6 +297,16 @@ const translations: Record<Locale, Record<string, string>> = {
         // ── Metadata ──
         "meta.title": "ScoreLock — AI-powered football analytics",
         "meta.description": "AI-generated match previews, reports, value bets and predictions for football. Powered by machine learning.",
+
+        // ── Match info (Phase 2: venue + referee) ──
+        "match_info.stadium": "Stadium",
+        "match_info.referee": "Referee",
+        "match_info.capacity": "Capacity",
+        "match_info.surface_grass": "Grass",
+        "match_info.surface_artificial": "Artificial",
+        "match_info.surface_hybrid": "Hybrid",
+        "match_info.yellows_per_game": "yellows/game",
+        "match_info.reds_per_game": "reds/game",
 
         // ── Broadcast (Phase 1: Where to Watch) ──
         "broadcast.title": "Where to watch",

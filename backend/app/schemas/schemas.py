@@ -566,5 +566,38 @@ class FantasyAIRecommendationsBundle(BaseModel):
     cached: bool
 
 
+# ── Match info-rad (Phase 2) ──────────────────────────────
+
+
+class VenueResponse(BaseModel):
+    id: int
+    canonical_name: str
+    display_name: str
+    country_iso_2: str | None
+    city: str | None
+    capacity: int | None
+    surface: str | None
+    image_ref: str | None
+
+    model_config = {"from_attributes": True}
+
+
+class RefereeResponse(BaseModel):
+    id: int
+    canonical_name: str
+    display_name: str
+    nationality_iso_2: str | None
+    career_games_count: int | None
+    career_yellows_per_game: float | None
+    career_reds_per_game: float | None
+
+    model_config = {"from_attributes": True}
+
+
+class MatchInfoResponse(BaseModel):
+    venue: VenueResponse | None
+    referee: RefereeResponse | None
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

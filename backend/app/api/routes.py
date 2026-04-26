@@ -42,6 +42,9 @@ from app.schemas.schemas import (
     FixtureLineupsBundle,
     MatchIntelligenceResponse,
     MatchIntelligenceBundle,
+    VenueResponse,
+    RefereeResponse,
+    MatchInfoResponse,
 )
 from app.services import db_service
 from app.models.models import (
@@ -49,6 +52,7 @@ from app.models.models import (
     ArticleType,
     FixtureBroadcast,
     FixtureEvent,
+    FixtureMatchInfo,
     FixtureStatistics,
     FixtureLineup,
     FixtureLineupPlayer,
@@ -56,6 +60,8 @@ from app.models.models import (
     IntelligenceKind,
     MatchIntelligence,
     Player,
+    Referee,
+    Venue,
 )
 from sqlalchemy.orm import aliased
 
@@ -230,6 +236,44 @@ async def get_fixture_statistics(
             if away_team_id in by_team
             else None
         ),
+    )
+
+
+@router.get(
+    "/fixtures/{fixture_id}/match-info",
+    response_model=MatchInfoResponse,
+)
+async def get_fixture_match_info(
+    fixture_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return venue + referee for a fixture (or nulls if no mapping seeded)."""
+    row = (
+        await db.execute(
+            select(FixtureMatchInfo).where(FixtureMatchInfo.fixture_id == fixture_id)
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return MatchInfoResponse(venue=None, referee=None)
+
+    venue = (
+        (
+            await db.execute(select(Venue).where(Venue.id == row.venue_id))
+        ).scalar_one_or_none()
+        if row.venue_id
+        else None
+    )
+    referee = (
+        (
+            await db.execute(select(Referee).where(Referee.id == row.referee_id))
+        ).scalar_one_or_none()
+        if row.referee_id
+        else None
+    )
+
+    return MatchInfoResponse(
+        venue=VenueResponse.model_validate(venue) if venue else None,
+        referee=RefereeResponse.model_validate(referee) if referee else None,
     )
 
 

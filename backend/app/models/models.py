@@ -618,6 +618,70 @@ class ProviderConflict(Base):
     )
 
 
+# ── Venue + Referee (Phase 2: Match info-rad) ──────────────
+
+
+class Venue(Base):
+    """Stadium / arena. Used by fixtures for "match info"-rad on match-detail."""
+
+    __tablename__ = "venues"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    canonical_name: Mapped[str] = mapped_column(String(150), index=True)
+    display_name: Mapped[str] = mapped_column(String(150))
+    country_iso_2: Mapped[str | None] = mapped_column(String(2), index=True)
+    city: Mapped[str | None] = mapped_column(String(100))
+    capacity: Mapped[int | None] = mapped_column(Integer)
+    surface: Mapped[str | None] = mapped_column(String(50))
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
+    image_ref: Mapped[str | None] = mapped_column(String(500))
+    external_ids: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Referee(Base):
+    """Match referee. Career stats may be null until provider data is wired."""
+
+    __tablename__ = "referees"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    canonical_name: Mapped[str] = mapped_column(String(150), index=True)
+    display_name: Mapped[str] = mapped_column(String(150))
+    nationality_iso_2: Mapped[str | None] = mapped_column(String(2))
+    career_games_count: Mapped[int | None] = mapped_column(Integer)
+    career_yellows_per_game: Mapped[float | None] = mapped_column(Float)
+    career_reds_per_game: Mapped[float | None] = mapped_column(Float)
+    external_ids: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class FixtureMatchInfo(Base):
+    """Lightweight (fixture, venue, referee) mapping table.
+
+    Will be replaced by direct FK columns on `fixtures` in Phase 7 (v0.6a3).
+    For now this avoids touching the fixtures schema before provider integration.
+    """
+
+    __tablename__ = "fixture_match_info"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    venue_id: Mapped[int | None] = mapped_column(ForeignKey("venues.id"))
+    referee_id: Mapped[int | None] = mapped_column(ForeignKey("referees.id"))
+    provider: Mapped[str] = mapped_column(String(50), default="manual_seed")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 # ── Broadcasts (Phase 1: Where to Watch) ───────────────────
 
 

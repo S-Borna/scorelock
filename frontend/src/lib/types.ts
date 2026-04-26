@@ -186,6 +186,35 @@ export interface WeeklyTopTipper {
 }
 
 
+// ── Match info (Phase 2: venue + referee) ────────────────
+
+export interface Venue {
+    id: number;
+    canonical_name: string;
+    display_name: string;
+    country_iso_2: string | null;
+    city: string | null;
+    capacity: number | null;
+    surface: string | null;
+    image_ref: string | null;
+}
+
+export interface Referee {
+    id: number;
+    canonical_name: string;
+    display_name: string;
+    nationality_iso_2: string | null;
+    career_games_count: number | null;
+    career_yellows_per_game: number | null;
+    career_reds_per_game: number | null;
+}
+
+export interface MatchInfo {
+    venue: Venue | null;
+    referee: Referee | null;
+}
+
+
 // ── Broadcasts (Phase 1: Where to Watch) ─────────────────
 
 export interface Broadcast {

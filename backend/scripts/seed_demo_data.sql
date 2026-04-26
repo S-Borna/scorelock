@@ -17,6 +17,7 @@
 --   * Fantasy: 1 demo-season + 1 gameweek + pricing for 26 players (T1 foundation)
 --   * Fantasy team: default 15-player team for admin user (T2 demo squad)
 --   * AI coach: 3 hand-written demo recommendations (T8 — no API call needed)
+--   * Match info: 8 venues + 8 referees + fixture 328 → Etihad + Anthony Taylor (Phase 2)
 
 -- ── Broadcasts ────────────────────────────────────────────────────────────
 
@@ -560,4 +561,61 @@ BEGIN
         ON CONFLICT DO NOTHING;
     END;
 
+END$$;
+
+-- ── Venues + Referees + match-info mapping (Phase 2) ──────────────────────
+
+INSERT INTO venues (canonical_name, display_name, country_iso_2, city, capacity, surface, image_ref, external_ids, created_at)
+SELECT name, display, country, city, cap, surf, NULL, '{}'::jsonb, now()
+FROM (VALUES
+    ('Etihad Stadium',    'Etihad Stadium',     'GB', 'Manchester', 53400, 'grass'),
+    ('Anfield',           'Anfield',            'GB', 'Liverpool',  61276, 'grass'),
+    ('Stadium of Light',  'Stadium of Light',   'GB', 'Sunderland', 49000, 'grass'),
+    ('Camp Nou',          'Spotify Camp Nou',   'ES', 'Barcelona',  99354, 'grass'),
+    ('Santiago Bernabéu', 'Santiago Bernabéu',  'ES', 'Madrid',     78297, 'hybrid'),
+    ('San Siro',          'San Siro',           'IT', 'Milano',     75923, 'grass'),
+    ('Allianz Arena',     'Allianz Arena',      'DE', 'München',    75024, 'grass'),
+    ('Friends Arena',     'Strawberry Arena',   'SE', 'Stockholm',  50000, 'hybrid')
+) AS seed(name, display, country, city, cap, surf)
+WHERE NOT EXISTS (
+    SELECT 1 FROM venues WHERE canonical_name = seed.name
+);
+
+INSERT INTO referees (canonical_name, display_name, nationality_iso_2, career_games_count, career_yellows_per_game, career_reds_per_game, external_ids, created_at)
+SELECT name, display, nat, games, yc, rc, '{}'::jsonb, now()
+FROM (VALUES
+    ('Anthony Taylor',     'Anthony Taylor',    'GB', 412, 3.8, 0.18),
+    ('Michael Oliver',     'Michael Oliver',    'GB', 380, 3.2, 0.15),
+    ('Felix Zwayer',       'Felix Zwayer',      'DE', 295, 4.1, 0.21),
+    ('Daniele Orsato',     'Daniele Orsato',    'IT', 332, 4.3, 0.19),
+    ('Antonio Mateu Lahoz','Mateu Lahoz',       'ES', 401, 5.2, 0.27),
+    ('Andreas Ekberg',     'Andreas Ekberg',    'SE', 187, 3.5, 0.16),
+    ('Glenn Nyberg',       'Glenn Nyberg',      'SE', 142, 3.4, 0.14),
+    ('Slavko Vinčić',      'Slavko Vinčić',     'SI', 268, 3.9, 0.18)
+) AS seed(name, display, nat, games, yc, rc)
+WHERE NOT EXISTS (
+    SELECT 1 FROM referees WHERE canonical_name = seed.name
+);
+
+-- Map fixture 328 → Etihad + Anthony Taylor (idempotent via UNIQUE on fixture_id)
+DO $$
+DECLARE
+    v_etihad_id INT;
+    v_taylor_id INT;
+    v_fixture_exists BOOL;
+BEGIN
+    SELECT id INTO v_etihad_id FROM venues WHERE canonical_name = 'Etihad Stadium';
+    SELECT id INTO v_taylor_id FROM referees WHERE canonical_name = 'Anthony Taylor';
+    SELECT EXISTS(SELECT 1 FROM fixtures WHERE id = 328) INTO v_fixture_exists;
+
+    IF v_fixture_exists AND v_etihad_id IS NOT NULL AND v_taylor_id IS NOT NULL THEN
+        INSERT INTO fixture_match_info
+            (fixture_id, venue_id, referee_id, provider, created_at, updated_at)
+        VALUES
+            (328, v_etihad_id, v_taylor_id, 'manual_seed', now(), now())
+        ON CONFLICT (fixture_id) DO UPDATE
+            SET venue_id = EXCLUDED.venue_id,
+                referee_id = EXCLUDED.referee_id,
+                updated_at = now();
+    END IF;
 END$$;

@@ -10,8 +10,9 @@ import { EventTimeline } from "@/components/event-timeline";
 import { StatsPanel } from "@/components/stats-panel";
 import { LineupsPitch } from "@/components/lineups-pitch";
 import { IntelligenceCard } from "@/components/intelligence-card";
+import { MatchInfoStrip } from "@/components/match-info-strip";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MatchIntelligenceBundle, Sentiment } from "@/lib/types";
+import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MatchInfo, MatchIntelligenceBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -94,6 +95,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
         lineups = await fetchApi<FixtureLineupsBundle>(`/api/v1/fixtures/${fixture.id}/lineups`);
     } catch { /* not critical */ }
 
+    // Fetch match info (venue + referee)
+    let matchInfo: MatchInfo = { venue: null, referee: null };
+    try {
+        matchInfo = await fetchApi<MatchInfo>(`/api/v1/fixtures/${fixture.id}/match-info`);
+    } catch { /* not critical */ }
+
     // Fetch AI intelligence
     let intelligence: MatchIntelligenceBundle = { pre_match: null, in_match: null, post_match: null };
     try {
@@ -111,6 +118,9 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
             {/* Match header card — live updating */}
             <LiveMatchHeader fixture={fixture} />
+
+            {/* Match info-rad: venue + referee */}
+            <MatchInfoStrip info={matchInfo} />
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-6">
