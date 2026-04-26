@@ -15,6 +15,7 @@
 --   * Lineups: 2 starting elevens + benches with 4-3-3 formations and pitch coords
 --   * Intelligence: hand-written Swedish narrative for pre/in/post-match (no API call)
 --   * Fantasy: 1 demo-season + 1 gameweek + pricing for 26 players (T1 foundation)
+--   * Fantasy team: default 15-player team for admin user (T2 demo squad)
 
 -- ── Broadcasts ────────────────────────────────────────────────────────────
 
@@ -407,5 +408,102 @@ BEGIN
     JOIN players p ON p.canonical_name = seed.name
     WHERE p.current_team_id IN (v_city_id, v_arsenal_id)
     ON CONFLICT (player_id, season_id) DO NOTHING;
+
+END$$;
+
+-- ── Fantasy team default seed (T2) ─────────────────────────────────────
+-- Default 15-player team for admin user (REDACTED-EMAIL). 4-3-3 formation,
+-- captain Haaland, vice Stones, total cost €100M (exact budget).
+-- Creates the admin user if it doesn't already exist (for fresh local DBs).
+
+DO $$
+DECLARE
+    v_admin_id INT;
+    v_season_id INT;
+    v_team_id INT;
+    v_captain_id INT;
+    v_vice_id INT;
+BEGIN
+    SELECT id INTO v_admin_id FROM users WHERE email = 'REDACTED-EMAIL';
+
+    IF v_admin_id IS NULL THEN
+        INSERT INTO users (email, hashed_password, name, tier, is_active, created_at)
+        VALUES (
+            'REDACTED-EMAIL',
+            'REDACTED-BCRYPT-HASH',
+            'Said',
+            'ELITE',
+            true,
+            now()
+        )
+        RETURNING id INTO v_admin_id;
+        RAISE NOTICE 'Created admin user REDACTED-EMAIL (password: REDACTED)';
+    END IF;
+
+    SELECT id INTO v_season_id
+    FROM fantasy_seasons
+    WHERE name = 'Demo — fixture 328 (Man City vs Arsenal)';
+
+    IF v_admin_id IS NULL THEN
+        RAISE NOTICE 'Skipping fantasy team seed: admin user not found';
+        RETURN;
+    END IF;
+    IF v_season_id IS NULL THEN
+        RAISE NOTICE 'Skipping fantasy team seed: demo season not found';
+        RETURN;
+    END IF;
+
+    SELECT id INTO v_captain_id FROM players WHERE canonical_name = 'Erling Haaland';
+    SELECT id INTO v_vice_id FROM players WHERE canonical_name = 'John Stones';
+
+    -- Team
+    SELECT id INTO v_team_id
+    FROM fantasy_teams
+    WHERE user_id = v_admin_id AND season_id = v_season_id;
+
+    IF v_team_id IS NULL THEN
+        INSERT INTO fantasy_teams
+            (user_id, season_id, name, formation,
+             captain_player_id, vice_captain_player_id,
+             total_points, gameweek_points,
+             transfers_made_total, free_transfers_available,
+             bank_balance, created_at, updated_at)
+        VALUES
+            (v_admin_id, v_season_id, 'ScoreLock Demo XI', '4-3-3',
+             v_captain_id, v_vice_id,
+             0, 0, 0, 1, 0, now(), now())
+        RETURNING id INTO v_team_id;
+    END IF;
+
+    -- 15 players: 2 GK + 5 DEF + 5 MID + 3 FWD = 15. Total = 1000 units.
+    INSERT INTO fantasy_team_players
+        (team_id, player_id, slot_position, is_starting, purchase_price)
+    SELECT v_team_id, p.id, seed.slot, seed.starter, seed.price
+    FROM (VALUES
+        -- Goalkeepers (2)
+        ('Ederson Moraes',      'GK',  true,  55),
+        ('David Raya',          'GK',  false, 55),
+        -- Defenders (5: 4 starting + 1 bench)
+        ('John Stones',         'DEF', true,  55),
+        ('Rúben Dias',          'DEF', true,  60),
+        ('Ben White',           'DEF', true,  55),
+        ('Riccardo Calafiori',  'DEF', true,  50),
+        ('Nathan Aké',          'DEF', false, 50),
+        -- Midfielders (5: 3 starting + 2 bench)
+        ('Rodri Hernández',     'MID', true,  65),
+        ('Bernardo Silva',      'MID', true,  75),
+        ('Declan Rice',         'MID', true,  75),
+        ('Mikel Merino',        'MID', false, 60),
+        ('Mateo Kovačić',       'MID', false, 60),
+        -- Forwards (3: all starting)
+        ('Erling Haaland',      'FWD', true,  145),
+        ('Kai Havertz',         'FWD', true,  75),
+        ('Leandro Trossard',    'FWD', true,  65)
+    ) AS seed(name, slot, starter, price)
+    JOIN players p ON p.canonical_name = seed.name
+    ON CONFLICT (team_id, player_id) DO NOTHING;
+
+    -- Selected_by_pct: bump for the demo team's owned players (showcases ownership)
+    -- Skipped — pricing.selected_by_pct already seeded per-player above.
 
 END$$;

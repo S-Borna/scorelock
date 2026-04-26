@@ -471,5 +471,78 @@ class FantasyPlayerMarketBundle(BaseModel):
     players: list[FantasyPlayerMarketResponse]
 
 
+# ── Fantasy Team management (T2) ──────────────────────────
+
+
+class FantasyTeamPlayerEntry(BaseModel):
+    player_id: int
+    display_name: str
+    position_code: str | None
+    slot_position: str
+    is_starting: bool
+    purchase_price: int
+    current_price: int
+    team_name: str | None
+    team_logo_url: str | None
+    is_captain: bool
+    is_vice_captain: bool
+
+
+class FantasyTeamResponse(BaseModel):
+    id: int
+    user_id: int
+    season_id: int
+    name: str
+    formation: str
+    captain_player_id: int | None
+    vice_captain_player_id: int | None
+    total_points: int
+    gameweek_points: int
+    transfers_made_total: int
+    free_transfers_available: int
+    bank_balance: int
+    squad_value: int
+    players: list[FantasyTeamPlayerEntry]
+
+
+class FantasyTeamCreateRequest(BaseModel):
+    season_id: int
+    name: str
+    formation: str = "4-3-3"
+    player_picks: list[dict]
+
+
+class FantasyTeamCaptainRequest(BaseModel):
+    captain_player_id: int
+
+
+class FantasyTeamViceCaptainRequest(BaseModel):
+    vice_captain_player_id: int
+
+
+class FantasyTeamPatchRequest(BaseModel):
+    name: str | None = None
+    formation: str | None = None
+
+
+class FantasyTransferRequest(BaseModel):
+    player_in_id: int
+    player_out_id: int
+
+
+class FantasyTransferResponse(BaseModel):
+    id: int
+    team_id: int
+    player_in_id: int
+    player_out_id: int
+    in_price: int
+    out_price: int
+    was_free: bool
+    point_cost: int
+    completed_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()

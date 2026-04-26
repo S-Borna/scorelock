@@ -351,3 +351,37 @@ export interface FantasyPlayerMarketBundle {
     total_count: number;
     players: FantasyPlayerMarketEntry[];
 }
+
+
+// ── Fantasy Team management (T2) ─────────────────────────
+
+export interface FantasyTeamPlayerEntry {
+    player_id: number;
+    display_name: string;
+    position_code: string | null;
+    slot_position: string;
+    is_starting: boolean;
+    purchase_price: number;
+    current_price: number;
+    team_name: string | null;
+    team_logo_url: string | null;
+    is_captain: boolean;
+    is_vice_captain: boolean;
+}
+
+export interface FantasyTeam {
+    id: number;
+    user_id: number;
+    season_id: number;
+    name: string;
+    formation: string;
+    captain_player_id: number | null;
+    vice_captain_player_id: number | null;
+    total_points: number;
+    gameweek_points: number;
+    transfers_made_total: number;
+    free_transfers_available: number;
+    bank_balance: number;
+    squad_value: number;
+    players: FantasyTeamPlayerEntry[];
+}

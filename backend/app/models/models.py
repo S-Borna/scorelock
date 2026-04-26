@@ -849,6 +849,76 @@ class FantasyPlayerGameweekStats(Base):
     )
 
 
+# ── Fantasy Team management (T2) ──────────────────────────
+
+
+class FantasyTeam(Base):
+    """A user's fantasy team for one season. Squad of 15 (2 GK, 5 DEF, 5 MID, 3 FWD)."""
+
+    __tablename__ = "fantasy_teams"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    season_id: Mapped[int] = mapped_column(
+        ForeignKey("fantasy_seasons.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(150))
+    formation: Mapped[str] = mapped_column(String(20), default="4-3-3")
+    captain_player_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"))
+    vice_captain_player_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"))
+    total_points: Mapped[int] = mapped_column(Integer, default=0)
+    gameweek_points: Mapped[int] = mapped_column(Integer, default=0)
+    transfers_made_total: Mapped[int] = mapped_column(Integer, default=0)
+    free_transfers_available: Mapped[int] = mapped_column(Integer, default=1)
+    bank_balance: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "season_id", name="uq_fantasy_team_user_season"),
+    )
+
+
+class FantasyTeamPlayer(Base):
+    """One player in a fantasy team. Squad position (GK/DEF/MID/FWD) + starting flag."""
+
+    __tablename__ = "fantasy_team_players"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(
+        ForeignKey("fantasy_teams.id", ondelete="CASCADE"), index=True
+    )
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
+    slot_position: Mapped[str] = mapped_column(String(10))
+    is_starting: Mapped[bool] = mapped_column(Boolean, default=True)
+    purchase_price: Mapped[int] = mapped_column(Integer)
+
+    __table_args__ = (
+        UniqueConstraint("team_id", "player_id", name="uq_fantasy_team_player"),
+    )
+
+
+class FantasyTransfer(Base):
+    """A single transfer event — player_out swapped for player_in."""
+
+    __tablename__ = "fantasy_transfers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(
+        ForeignKey("fantasy_teams.id", ondelete="CASCADE"), index=True
+    )
+    gameweek_id: Mapped[int | None] = mapped_column(ForeignKey("fantasy_gameweeks.id"))
+    player_in_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
+    player_out_id: Mapped[int] = mapped_column(ForeignKey("players.id"))
+    in_price: Mapped[int] = mapped_column(Integer)
+    out_price: Mapped[int] = mapped_column(Integer)
+    was_free: Mapped[bool] = mapped_column(Boolean, default=True)
+    point_cost: Mapped[int] = mapped_column(Integer, default=0)
+    completed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 # ── Match Intelligence (Phase 5: AI narrative cards) ───────
 
 

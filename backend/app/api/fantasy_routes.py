@@ -11,12 +11,16 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.security import get_current_user
 from app.models.models import (
     FantasyGameweek,
     FantasyPlayerPricing,
     FantasySeason,
+    FantasyTeam,
+    FantasyTeamPlayer,
     Player,
     Team,
+    User,
 )
 from app.schemas.schemas import (
     FantasyGameweekResponse,
@@ -24,7 +28,16 @@ from app.schemas.schemas import (
     FantasyPlayerMarketResponse,
     FantasySeasonDetailResponse,
     FantasySeasonResponse,
+    FantasyTeamCaptainRequest,
+    FantasyTeamCreateRequest,
+    FantasyTeamPatchRequest,
+    FantasyTeamPlayerEntry,
+    FantasyTeamResponse,
+    FantasyTeamViceCaptainRequest,
+    FantasyTransferRequest,
+    FantasyTransferResponse,
 )
+from app.services import fantasy_team as team_service
 
 router = APIRouter()
 
@@ -242,3 +255,266 @@ async def get_player_market(
         total_count=total_count,
         players=players,
     )
+
+
+# ── Team management (T2) ──────────────────────────────────
+
+
+async def _build_team_response(
+    db: AsyncSession, team: FantasyTeam
+) -> FantasyTeamResponse:
+    """Hydrate a FantasyTeam into the wire response, with pricing + player meta."""
+    players_query = (
+        select(
+            FantasyTeamPlayer.player_id,
+            FantasyTeamPlayer.slot_position,
+            FantasyTeamPlayer.is_starting,
+            FantasyTeamPlayer.purchase_price,
+            Player.display_name,
+            Player.position_code,
+            Player.current_team_id,
+            Team.name.label("team_name"),
+            Team.logo_url.label("team_logo_url"),
+            FantasyPlayerPricing.current_price,
+        )
+        .select_from(FantasyTeamPlayer)
+        .join(Player, FantasyTeamPlayer.player_id == Player.id)
+        .outerjoin(Team, Player.current_team_id == Team.id)
+        .outerjoin(
+            FantasyPlayerPricing,
+            (FantasyPlayerPricing.player_id == FantasyTeamPlayer.player_id)
+            & (FantasyPlayerPricing.season_id == team.season_id),
+        )
+        .where(FantasyTeamPlayer.team_id == team.id)
+    )
+    rows = (await db.execute(players_query)).all()
+
+    entries = [
+        FantasyTeamPlayerEntry(
+            player_id=row.player_id,
+            display_name=row.display_name,
+            position_code=row.position_code,
+            slot_position=row.slot_position,
+            is_starting=row.is_starting,
+            purchase_price=row.purchase_price,
+            current_price=row.current_price or row.purchase_price,
+            team_name=row.team_name,
+            team_logo_url=row.team_logo_url,
+            is_captain=row.player_id == team.captain_player_id,
+            is_vice_captain=row.player_id == team.vice_captain_player_id,
+        )
+        for row in rows
+    ]
+
+    squad_value = sum(e.current_price for e in entries)
+
+    return FantasyTeamResponse(
+        id=team.id,
+        user_id=team.user_id,
+        season_id=team.season_id,
+        name=team.name,
+        formation=team.formation,
+        captain_player_id=team.captain_player_id,
+        vice_captain_player_id=team.vice_captain_player_id,
+        total_points=team.total_points,
+        gameweek_points=team.gameweek_points,
+        transfers_made_total=team.transfers_made_total,
+        free_transfers_available=team.free_transfers_available,
+        bank_balance=team.bank_balance,
+        squad_value=squad_value,
+        players=entries,
+    )
+
+
+@router.post("/teams", response_model=FantasyTeamResponse)
+async def create_fantasy_team(
+    body: FantasyTeamCreateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new fantasy team for the current user."""
+    try:
+        team = await team_service.create_team(
+            db,
+            user_id=user.id,
+            season_id=body.season_id,
+            name=body.name,
+            formation=body.formation,
+            player_picks=body.player_picks,
+        )
+    except team_service.TeamValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return await _build_team_response(db, team)
+
+
+@router.get("/teams/mine", response_model=FantasyTeamResponse)
+async def get_my_team(
+    season_id: int = Query(..., description="Season id"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the current user's team for the given season."""
+    team = (
+        await db.execute(
+            select(FantasyTeam).where(
+                FantasyTeam.user_id == user.id,
+                FantasyTeam.season_id == season_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="No team for this season")
+    return await _build_team_response(db, team)
+
+
+@router.get("/teams/{team_id}", response_model=FantasyTeamResponse)
+async def get_team_by_id(
+    team_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public team view (read-only — used for mini-league leaderboards)."""
+    team = (
+        await db.execute(select(FantasyTeam).where(FantasyTeam.id == team_id))
+    ).scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    return await _build_team_response(db, team)
+
+
+@router.patch("/teams/{team_id}", response_model=FantasyTeamResponse)
+async def patch_team(
+    team_id: int,
+    body: FantasyTeamPatchRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update team name and/or formation (owner only)."""
+    team = (
+        await db.execute(select(FantasyTeam).where(FantasyTeam.id == team_id))
+    ).scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your team")
+    if body.name is not None:
+        team.name = body.name
+    if body.formation is not None:
+        team.formation = body.formation
+    await db.commit()
+    await db.refresh(team)
+    return await _build_team_response(db, team)
+
+
+@router.put("/teams/{team_id}/captain", response_model=FantasyTeamResponse)
+async def set_captain(
+    team_id: int,
+    body: FantasyTeamCaptainRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set the team captain (must be a starting player on the team)."""
+    team = (
+        await db.execute(select(FantasyTeam).where(FantasyTeam.id == team_id))
+    ).scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your team")
+
+    starting = (
+        (
+            await db.execute(
+                select(FantasyTeamPlayer.player_id).where(
+                    FantasyTeamPlayer.team_id == team_id,
+                    FantasyTeamPlayer.is_starting.is_(True),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if body.captain_player_id not in starting:
+        raise HTTPException(
+            status_code=400,
+            detail="Captain must be one of the starting XI",
+        )
+
+    team.captain_player_id = body.captain_player_id
+    if team.vice_captain_player_id == body.captain_player_id:
+        team.vice_captain_player_id = None
+
+    await db.commit()
+    await db.refresh(team)
+    return await _build_team_response(db, team)
+
+
+@router.put("/teams/{team_id}/vice-captain", response_model=FantasyTeamResponse)
+async def set_vice_captain(
+    team_id: int,
+    body: FantasyTeamViceCaptainRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set the team vice-captain (must be a starting player on the team)."""
+    team = (
+        await db.execute(select(FantasyTeam).where(FantasyTeam.id == team_id))
+    ).scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your team")
+
+    starting = (
+        (
+            await db.execute(
+                select(FantasyTeamPlayer.player_id).where(
+                    FantasyTeamPlayer.team_id == team_id,
+                    FantasyTeamPlayer.is_starting.is_(True),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if body.vice_captain_player_id not in starting:
+        raise HTTPException(
+            status_code=400,
+            detail="Vice-captain must be one of the starting XI",
+        )
+    if body.vice_captain_player_id == team.captain_player_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Vice-captain must differ from captain",
+        )
+
+    team.vice_captain_player_id = body.vice_captain_player_id
+    await db.commit()
+    await db.refresh(team)
+    return await _build_team_response(db, team)
+
+
+@router.post("/teams/{team_id}/transfer", response_model=FantasyTransferResponse)
+async def make_transfer(
+    team_id: int,
+    body: FantasyTransferRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Swap player_out for player_in. Same position required, sufficient bank."""
+    team = (
+        await db.execute(select(FantasyTeam).where(FantasyTeam.id == team_id))
+    ).scalar_one_or_none()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your team")
+    try:
+        transfer = await team_service.apply_transfer(
+            db,
+            team=team,
+            player_in_id=body.player_in_id,
+            player_out_id=body.player_out_id,
+        )
+    except team_service.TeamValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return FantasyTransferResponse.model_validate(transfer)

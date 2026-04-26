@@ -88,12 +88,18 @@ export default async function SeasonOverview({ params }: PageProps) {
                 </div>
             </header>
 
-            <div className="mb-8">
+            <div className="mb-8 flex flex-wrap gap-3">
                 <Link
-                    href={`/fantasy/seasons/${id}/players`}
+                    href={`/fantasy/seasons/${id}/team`}
                     className="inline-flex items-center px-4 py-2 bg-scorelock-500 text-black rounded font-semibold hover:bg-scorelock-400 transition-colors"
                 >
-                    Se spelarmarknad →
+                    Mitt lag →
+                </Link>
+                <Link
+                    href={`/fantasy/seasons/${id}/players`}
+                    className="inline-flex items-center px-4 py-2 bg-white/[0.04] text-white rounded hover:bg-white/[0.08] transition-colors"
+                >
+                    Spelarmarknad
                 </Link>
             </div>
 
