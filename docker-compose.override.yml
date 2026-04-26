@@ -1,0 +1,14 @@
+# Local-dev overlay. Auto-applied by `docker compose up`.
+# Switches the frontend to `next dev` with source-mount so .tsx edits hot-reload
+# without rebuilding the image. Production deploys (Railway) ignore this file.
+services:
+    frontend:
+        build:
+            target: dev
+        volumes:
+            - ./frontend:/app
+            - /app/node_modules
+            - /app/.next
+        environment:
+            - NEXT_PUBLIC_API_URL=http://localhost:8000
+        command: npm run dev
