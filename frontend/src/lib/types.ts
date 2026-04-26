@@ -196,3 +196,27 @@ export interface Broadcast {
     language_iso_2: string | null;
     country_iso_2: string;
 }
+
+
+// ── Fixture Events (Phase 2: Event Timeline) ─────────────
+
+export type EventType =
+    | "GOAL" | "OWN_GOAL" | "PENALTY_GOAL" | "MISSED_PENALTY"
+    | "YELLOW_CARD" | "RED_CARD" | "SECOND_YELLOW"
+    | "SUBSTITUTION"
+    | "VAR_GOAL_AWARDED" | "VAR_GOAL_CANCELLED"
+    | "VAR_PENALTY_AWARDED" | "VAR_PENALTY_OVERTURNED" | "VAR_RED_CARD"
+    | "PERIOD_START" | "PERIOD_END" | "MATCH_START" | "MATCH_END";
+
+export interface FixtureEvent {
+    id: number;
+    minute: number;
+    stoppage: number | null;
+    event_type: EventType;
+    team_id: number | null;
+    primary_player_name: string | null;
+    secondary_player_name: string | null;
+    player_in_name: string | null;
+    player_out_name: string | null;
+    description: string | null;
+}

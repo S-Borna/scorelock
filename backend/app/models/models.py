@@ -622,3 +622,61 @@ class FixtureBroadcast(Base):
             "country_iso_2",
         ),
     )
+
+
+# ── Players + Events (Phase 2: Event Timeline) ─────────────
+
+
+class Player(Base):
+    """Player identity (minimal for Phase 2 — extended in later phases)."""
+
+    __tablename__ = "players"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    canonical_name: Mapped[str] = mapped_column(String(150), index=True)
+    display_name: Mapped[str] = mapped_column(String(150))
+    position_code: Mapped[str | None] = mapped_column(String(10))
+    current_team_id: Mapped[int | None] = mapped_column(
+        ForeignKey("teams.id"), index=True
+    )
+    external_ids: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class FixtureEvent(Base):
+    """Match event timeline row. Goals, cards, subs, VAR — minute-ordered, append-only."""
+
+    __tablename__ = "fixture_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+    minute: Mapped[int] = mapped_column(Integer)
+    stoppage: Mapped[int | None] = mapped_column(Integer)
+    event_type: Mapped[str] = mapped_column(String(30), index=True)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
+    primary_player_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"))
+    secondary_player_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"))
+    player_in_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"))
+    player_out_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"))
+    description: Mapped[str | None] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(50))
+    external_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "fixture_id", "provider", "external_id",
+            name="uq_fixture_event_provider_external",
+        ),
+        Index(
+            "ix_fixture_events_fixture_minute",
+            "fixture_id", "minute", "stoppage",
+        ),
+    )

@@ -96,6 +96,13 @@ const translations: Record<Locale, Record<string, string>> = {
         // ── Broadcast (Phase 1: Where to Watch) ──
         "broadcast.title": "Var kan jag titta?",
         "broadcast.watch": "Titta nu",
+
+        // ── Event timeline (Phase 2) ──
+        "event.timeline_title": "Händelseförlopp",
+        "event.assist_label": "ass.",
+        "event.sub_in": "in",
+        "event.sub_out": "ut",
+        "event.empty": "Inga händelser registrerade",
     },
     en: {
         // ── Nav ──
@@ -183,6 +190,13 @@ const translations: Record<Locale, Record<string, string>> = {
         // ── Broadcast (Phase 1: Where to Watch) ──
         "broadcast.title": "Where to watch",
         "broadcast.watch": "Watch now",
+
+        // ── Event timeline (Phase 2) ──
+        "event.timeline_title": "Match timeline",
+        "event.assist_label": "ast",
+        "event.sub_in": "in",
+        "event.sub_out": "out",
+        "event.empty": "No events recorded",
     },
 };
 

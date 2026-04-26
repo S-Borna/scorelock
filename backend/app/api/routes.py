@@ -34,9 +34,11 @@ from app.schemas.schemas import (
     AIvsUserStats,
     WeeklyTopTipper,
     BroadcastResponse,
+    FixtureEventResponse,
 )
 from app.services import db_service
-from app.models.models import User, ArticleType, FixtureBroadcast
+from app.models.models import User, ArticleType, FixtureBroadcast, FixtureEvent, Player
+from sqlalchemy.orm import aliased
 
 router = APIRouter()
 
@@ -165,6 +167,43 @@ async def get_fixture_broadcasts(
         .order_by(FixtureBroadcast.provider_type, FixtureBroadcast.channel_name)
     )
     return result.scalars().all()
+
+
+@router.get(
+    "/fixtures/{fixture_id}/events",
+    response_model=list[FixtureEventResponse],
+)
+async def get_fixture_events(
+    fixture_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return chronological event timeline (goals/cards/subs/VAR) for a fixture."""
+    primary = aliased(Player)
+    secondary = aliased(Player)
+    player_in = aliased(Player)
+    player_out = aliased(Player)
+    stmt = (
+        select(
+            FixtureEvent.id,
+            FixtureEvent.minute,
+            FixtureEvent.stoppage,
+            FixtureEvent.event_type,
+            FixtureEvent.team_id,
+            primary.display_name.label("primary_player_name"),
+            secondary.display_name.label("secondary_player_name"),
+            player_in.display_name.label("player_in_name"),
+            player_out.display_name.label("player_out_name"),
+            FixtureEvent.description,
+        )
+        .outerjoin(primary, FixtureEvent.primary_player_id == primary.id)
+        .outerjoin(secondary, FixtureEvent.secondary_player_id == secondary.id)
+        .outerjoin(player_in, FixtureEvent.player_in_id == player_in.id)
+        .outerjoin(player_out, FixtureEvent.player_out_id == player_out.id)
+        .where(FixtureEvent.fixture_id == fixture_id)
+        .order_by(FixtureEvent.minute, FixtureEvent.stoppage)
+    )
+    result = await db.execute(stmt)
+    return [FixtureEventResponse.model_validate(row, from_attributes=True) for row in result.mappings()]
 
 
 # ── Predictions ────────────────────────────────────────────

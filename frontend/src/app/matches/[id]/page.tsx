@@ -6,8 +6,9 @@ import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
 import { MatchTipSection } from "@/components/match-tip-section";
 import { LiveMatchHeader, LiveMatchStats } from "@/components/live-match-header";
 import { BroadcastCard } from "@/components/broadcast-card";
+import { EventTimeline } from "@/components/event-timeline";
 import { fetchApi } from "@/lib/api";
-import type { Article, ArticleList, Broadcast, FixtureDetail, Sentiment } from "@/lib/types";
+import type { Article, ArticleList, Broadcast, FixtureDetail, FixtureEvent, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -72,6 +73,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
         broadcasts = await fetchApi<Broadcast[]>(`/api/v1/fixtures/${fixture.id}/broadcasts?country=SE`);
     } catch { /* not critical */ }
 
+    // Fetch events
+    let events: FixtureEvent[] = [];
+    try {
+        events = await fetchApi<FixtureEvent[]>(`/api/v1/fixtures/${fixture.id}/events`);
+    } catch { /* not critical */ }
+
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Breadcrumbs */}
@@ -88,6 +95,8 @@ export default async function MatchDetailPage({ params }: PageProps) {
                 <div className="lg:col-span-2 space-y-6">
                     {/* Live match stats (auto-refreshing) */}
                     <LiveMatchStats fixtureId={fixture.id} />
+                    {/* Event timeline */}
+                    <EventTimeline events={events} homeTeamId={fixture.home_team.id} />
                     {/* Prediction */}
                     {fixture.prediction && (
                         <div className="card">

@@ -317,5 +317,23 @@ class BroadcastResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Fixture Events (Phase 2: Event Timeline) ──────────────
+
+
+class FixtureEventResponse(BaseModel):
+    id: int
+    minute: int
+    stoppage: int | None
+    event_type: str
+    team_id: int | None
+    primary_player_name: str | None
+    secondary_player_name: str | None
+    player_in_name: str | None
+    player_out_name: str | None
+    description: str | None
+
+    model_config = {"from_attributes": True}
+
+
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()
