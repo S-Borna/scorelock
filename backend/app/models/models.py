@@ -55,6 +55,19 @@ class IntelligenceKind(str, enum.Enum):
     POST_MATCH = "post_match"
 
 
+class FantasyScope(str, enum.Enum):
+    SINGLE_LEAGUE = "single_league"
+    CROSS_EUROPEAN = "cross_european"
+    WORLD_CUP = "world_cup"
+    DEMO = "demo"
+
+
+class FantasyValueTrend(str, enum.Enum):
+    UP = "up"
+    DOWN = "down"
+    STABLE = "stable"
+
+
 # ── Users & Auth ───────────────────────────────────────────
 
 
@@ -688,6 +701,150 @@ class FixtureEvent(Base):
             "fixture_id",
             "minute",
             "stoppage",
+        ),
+    )
+
+
+# ── Fantasy Foundation (T1: seasons, gameweeks, pricing) ──
+
+
+class FantasySeason(Base):
+    """A fantasy season — single league, cross-european, world cup, or demo."""
+
+    __tablename__ = "fantasy_seasons"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(150))
+    scope: Mapped[FantasyScope] = mapped_column(
+        SAEnum(
+            FantasyScope,
+            name="fantasyscope",
+            values_callable=lambda c: [e.value for e in c],
+        ),
+        index=True,
+    )
+    primary_league_id: Mapped[int | None] = mapped_column(ForeignKey("leagues.id"))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    total_budget_units: Mapped[int] = mapped_column(Integer, default=1000)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    transfer_rules: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    point_weights: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class FantasyGameweek(Base):
+    """A single matchweek within a fantasy season."""
+
+    __tablename__ = "fantasy_gameweeks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    season_id: Mapped[int] = mapped_column(
+        ForeignKey("fantasy_seasons.id", ondelete="CASCADE"), index=True
+    )
+    gameweek_number: Mapped[int] = mapped_column(Integer)
+    deadline_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    first_kickoff_at: Mapped[datetime] = mapped_column(DateTime)
+    last_kickoff_at: Mapped[datetime] = mapped_column(DateTime)
+    is_finalized: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "season_id", "gameweek_number", name="uq_fantasy_gameweek_number"
+        ),
+    )
+
+
+class FantasyGameweekFixture(Base):
+    """Maps real fixtures to fantasy gameweeks (many-to-one)."""
+
+    __tablename__ = "fantasy_gameweek_fixtures"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    gameweek_id: Mapped[int] = mapped_column(
+        ForeignKey("fantasy_gameweeks.id", ondelete="CASCADE"), index=True
+    )
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE"), index=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("gameweek_id", "fixture_id", name="uq_fantasy_gw_fixture"),
+    )
+
+
+class FantasyPlayerPricing(Base):
+    """Per-season per-player pricing + ownership state.
+
+    Price units: 10 = €1.0M (e.g. 50 = €5.0M, 145 = €14.5M).
+    """
+
+    __tablename__ = "fantasy_player_pricing"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
+    season_id: Mapped[int] = mapped_column(
+        ForeignKey("fantasy_seasons.id", ondelete="CASCADE"), index=True
+    )
+    current_price: Mapped[int] = mapped_column(Integer)
+    starting_price: Mapped[int] = mapped_column(Integer)
+    last_change_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    value_trend: Mapped[FantasyValueTrend] = mapped_column(
+        SAEnum(
+            FantasyValueTrend,
+            name="fantasyvaluetrend",
+            values_callable=lambda c: [e.value for e in c],
+        ),
+        default=FantasyValueTrend.STABLE,
+    )
+    selected_by_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    fantasy_points_total: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (
+        UniqueConstraint("player_id", "season_id", name="uq_fantasy_player_pricing"),
+    )
+
+
+class FantasyPlayerGameweekStats(Base):
+    """Per-(player, gameweek, fixture) stats and computed fantasy points.
+
+    Fantasy points calculated by app.services.fantasy_scoring.compute_points().
+    """
+
+    __tablename__ = "fantasy_player_gameweek_stats"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
+    gameweek_id: Mapped[int] = mapped_column(
+        ForeignKey("fantasy_gameweeks.id", ondelete="CASCADE"), index=True
+    )
+    fixture_id: Mapped[int] = mapped_column(
+        ForeignKey("fixtures.id", ondelete="CASCADE")
+    )
+    minutes_played: Mapped[int] = mapped_column(Integer, default=0)
+    goals: Mapped[int] = mapped_column(Integer, default=0)
+    assists: Mapped[int] = mapped_column(Integer, default=0)
+    clean_sheet: Mapped[bool] = mapped_column(Boolean, default=False)
+    yellow_cards: Mapped[int] = mapped_column(Integer, default=0)
+    red_cards: Mapped[int] = mapped_column(Integer, default=0)
+    saves: Mapped[int] = mapped_column(Integer, default=0)
+    goals_conceded: Mapped[int] = mapped_column(Integer, default=0)
+    own_goals: Mapped[int] = mapped_column(Integer, default=0)
+    penalties_missed: Mapped[int] = mapped_column(Integer, default=0)
+    penalties_saved: Mapped[int] = mapped_column(Integer, default=0)
+    bonus_points: Mapped[int] = mapped_column(Integer, default=0)
+    points_earned: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "player_id",
+            "gameweek_id",
+            "fixture_id",
+            name="uq_fantasy_player_gw_stats",
         ),
     )
 

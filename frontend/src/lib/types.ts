@@ -298,3 +298,56 @@ export interface MatchIntelligenceBundle {
     in_match: MatchIntelligence | null;
     post_match: MatchIntelligence | null;
 }
+
+
+// ── Fantasy Foundation (T1: seasons, gameweeks, market) ──
+
+export type FantasyScope = "single_league" | "cross_european" | "world_cup" | "demo";
+export type FantasyValueTrend = "up" | "down" | "stable";
+
+export interface FantasyGameweek {
+    id: number;
+    gameweek_number: number;
+    deadline_at: string;
+    first_kickoff_at: string;
+    last_kickoff_at: string;
+    is_finalized: boolean;
+}
+
+export interface FantasySeason {
+    id: number;
+    name: string;
+    scope: FantasyScope;
+    primary_league_id: number | null;
+    start_date: string;
+    end_date: string;
+    total_budget_units: number;
+    is_active: boolean;
+    transfer_rules: Record<string, unknown>;
+    point_weights: Record<string, number>;
+}
+
+export interface FantasySeasonDetail extends FantasySeason {
+    gameweeks: FantasyGameweek[];
+}
+
+export interface FantasyPlayerMarketEntry {
+    player_id: number;
+    display_name: string;
+    position_code: string | null;
+    team_id: number | null;
+    team_name: string | null;
+    team_logo_url: string | null;
+    league_id: number | null;
+    current_price: number;
+    starting_price: number;
+    value_trend: FantasyValueTrend;
+    selected_by_pct: number;
+    fantasy_points_total: number;
+}
+
+export interface FantasyPlayerMarketBundle {
+    season_id: number;
+    total_count: number;
+    players: FantasyPlayerMarketEntry[];
+}

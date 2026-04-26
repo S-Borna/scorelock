@@ -14,6 +14,7 @@
 --   * Statistics: 2 rows (City home + Arsenal away) for fixture 328
 --   * Lineups: 2 starting elevens + benches with 4-3-3 formations and pitch coords
 --   * Intelligence: hand-written Swedish narrative for pre/in/post-match (no API call)
+--   * Fantasy: 1 demo-season + 1 gameweek + pricing for 26 players (T1 foundation)
 
 -- ── Broadcasts ────────────────────────────────────────────────────────────
 
@@ -297,5 +298,114 @@ Två saker att ta med: Stones var matchens bäste försvarare, kapten in i kamer
     JOIN players p
         ON p.canonical_name = seed.name AND p.current_team_id = v_arsenal_id
     ON CONFLICT (lineup_id, player_id) DO NOTHING;
+
+END$$;
+
+-- ── Fantasy foundation seed (T1) ─────────────────────────────────────────
+-- Demo season tied to fixture 328 (Man City vs Arsenal). 1 gameweek.
+-- Pricing for all 26 demo players. Fully idempotent.
+
+DO $$
+DECLARE
+    v_city_id INT;
+    v_arsenal_id INT;
+    v_season_id INT;
+    v_gameweek_id INT;
+BEGIN
+    SELECT id INTO v_city_id FROM teams WHERE name = 'Manchester City FC';
+    SELECT id INTO v_arsenal_id FROM teams WHERE name = 'Arsenal FC';
+
+    IF v_city_id IS NULL OR v_arsenal_id IS NULL THEN
+        RAISE NOTICE 'Skipping fantasy seed: City/Arsenal teams not found';
+        RETURN;
+    END IF;
+
+    -- Season
+    SELECT id INTO v_season_id
+    FROM fantasy_seasons
+    WHERE name = 'Demo — fixture 328 (Man City vs Arsenal)';
+
+    IF v_season_id IS NULL THEN
+        INSERT INTO fantasy_seasons
+            (name, scope, start_date, end_date, total_budget_units,
+             is_active, transfer_rules, point_weights, created_at)
+        VALUES
+            ('Demo — fixture 328 (Man City vs Arsenal)',
+             'demo',
+             '2026-04-26',
+             '2026-04-27',
+             1000,
+             true,
+             '{"free_per_gw": 1, "extra_cost_points": 4, "wildcards_total": 1}'::jsonb,
+             '{"fantasy": 0.7, "match": 0.2, "bracket": 0.1}'::jsonb,
+             now())
+        RETURNING id INTO v_season_id;
+    END IF;
+
+    -- Gameweek 1
+    SELECT id INTO v_gameweek_id
+    FROM fantasy_gameweeks
+    WHERE season_id = v_season_id AND gameweek_number = 1;
+
+    IF v_gameweek_id IS NULL THEN
+        INSERT INTO fantasy_gameweeks
+            (season_id, gameweek_number, deadline_at,
+             first_kickoff_at, last_kickoff_at, is_finalized)
+        SELECT
+            v_season_id, 1,
+            f.kickoff - INTERVAL '1 hour',
+            f.kickoff,
+            f.kickoff,
+            false
+        FROM fixtures f WHERE f.id = 328
+        RETURNING id INTO v_gameweek_id;
+    END IF;
+
+    -- Map fixture 328 to GW1
+    INSERT INTO fantasy_gameweek_fixtures (gameweek_id, fixture_id)
+    VALUES (v_gameweek_id, 328)
+    ON CONFLICT (gameweek_id, fixture_id) DO NOTHING;
+
+    -- Pricing for all 26 demo players (City + Arsenal)
+    -- Prices in budget units: 10 = €1.0M (e.g. 145 = €14.5M).
+
+    INSERT INTO fantasy_player_pricing
+        (player_id, season_id, current_price, starting_price,
+         last_change_at, value_trend, selected_by_pct, fantasy_points_total)
+    SELECT p.id, v_season_id, seed.price, seed.price,
+           now(), 'stable', seed.ownership, 0
+    FROM (VALUES
+        -- Manchester City (13)
+        ('Ederson Moraes',      55,  4.5),
+        ('Kyle Walker',         55,  3.2),
+        ('Rúben Dias',          60,  6.1),
+        ('John Stones',         55,  5.8),
+        ('Nathan Aké',          50,  3.0),
+        ('Rodri Hernández',     65,  18.4),
+        ('Kevin De Bruyne',    110,  41.2),
+        ('Bernardo Silva',      75,  12.6),
+        ('Jérémy Doku',         75,  9.8),
+        ('Erling Haaland',     145,  62.4),
+        ('Phil Foden',          90,  28.7),
+        ('Mateo Kovačić',       60,  5.1),
+        ('Joško Gvardiol',      50,  4.2),
+        -- Arsenal (13)
+        ('David Raya',          55,  6.3),
+        ('Ben White',           55,  4.8),
+        ('William Saliba',      60,  19.2),
+        ('Gabriel Magalhães',   60,  21.5),
+        ('Riccardo Calafiori',  50,  3.4),
+        ('Declan Rice',         75,  22.7),
+        ('Martin Ødegaard',     90,  31.1),
+        ('Mikel Merino',        60,  4.9),
+        ('Bukayo Saka',        100,  44.6),
+        ('Kai Havertz',         75,  15.2),
+        ('Gabriel Martinelli',  80,  18.4),
+        ('Leandro Trossard',    65,  6.8),
+        ('Gabriel Jesus',       70,  4.1)
+    ) AS seed(name, price, ownership)
+    JOIN players p ON p.canonical_name = seed.name
+    WHERE p.current_team_id IN (v_city_id, v_arsenal_id)
+    ON CONFLICT (player_id, season_id) DO NOTHING;
 
 END$$;

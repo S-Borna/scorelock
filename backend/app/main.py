@@ -15,6 +15,7 @@ from app.api.routes import router
 from app.api.auth import router as auth_router
 from app.api.stripe import router as stripe_router
 from app.api.websocket import router as ws_router
+from app.api.fantasy_routes import router as fantasy_router
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -75,4 +76,5 @@ app.add_middleware(RateLimitMiddleware)
 app.include_router(router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(stripe_router, prefix="/api/v1")
+app.include_router(fantasy_router, prefix="/api/v1/fantasy")
 app.include_router(ws_router)  # WebSocket on root path: /ws/live (not /api/v1/ws/live)

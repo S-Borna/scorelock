@@ -1,6 +1,6 @@
 """Pydantic schemas for API request/response validation."""
 
-from datetime import datetime
+from datetime import date, datetime
 from pydantic import BaseModel, EmailStr
 
 
@@ -415,6 +415,60 @@ class MatchIntelligenceBundle(BaseModel):
     pre_match: MatchIntelligenceResponse | None
     in_match: MatchIntelligenceResponse | None
     post_match: MatchIntelligenceResponse | None
+
+
+# ── Fantasy Foundation (T1: seasons, gameweeks, market) ────
+
+
+class FantasyGameweekResponse(BaseModel):
+    id: int
+    gameweek_number: int
+    deadline_at: datetime
+    first_kickoff_at: datetime
+    last_kickoff_at: datetime
+    is_finalized: bool
+
+    model_config = {"from_attributes": True}
+
+
+class FantasySeasonResponse(BaseModel):
+    id: int
+    name: str
+    scope: str
+    primary_league_id: int | None
+    start_date: date
+    end_date: date
+    total_budget_units: int
+    is_active: bool
+    transfer_rules: dict
+    point_weights: dict
+
+    model_config = {"from_attributes": True}
+
+
+class FantasySeasonDetailResponse(FantasySeasonResponse):
+    gameweeks: list[FantasyGameweekResponse]
+
+
+class FantasyPlayerMarketResponse(BaseModel):
+    player_id: int
+    display_name: str
+    position_code: str | None
+    team_id: int | None
+    team_name: str | None
+    team_logo_url: str | None
+    league_id: int | None
+    current_price: int
+    starting_price: int
+    value_trend: str
+    selected_by_pct: float
+    fantasy_points_total: int
+
+
+class FantasyPlayerMarketBundle(BaseModel):
+    season_id: int
+    total_count: int
+    players: list[FantasyPlayerMarketResponse]
 
 
 # Rebuild models for forward references
