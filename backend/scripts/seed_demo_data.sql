@@ -1,0 +1,186 @@
+-- Demo seed data for ScoreLock local dev / staging.
+--
+-- Run via: make seed-demo  (or: docker compose exec -T db psql ... < this_file)
+--
+-- Idempotent: safe to re-run. Each block guards against duplicates.
+-- Tied to fixture 328 = Manchester City 2-1 Arsenal in dev. On other envs
+-- (e.g. prod where fixture 328 is a different match) the seed silently
+-- no-ops via IF EXISTS / NOT EXISTS guards instead of inserting nonsense data.
+--
+-- Seed contents:
+--   * Broadcasts: 5 most-recent PL → Viaplay, 5 most-recent La Liga → C More
+--   * Players: 22 starting + 4 bench for Manchester City + Arsenal
+--   * Events: 10 events for fixture 328 (3 goals, 3 yellows, 4 subs)
+--   * Statistics: 2 rows (City home + Arsenal away) for fixture 328
+
+-- ── Broadcasts ────────────────────────────────────────────────────────────
+
+-- Global per-channel guards: skip insert if ANY row already exists for that channel.
+-- Avoids per-fixture matching (which would happily insert against a different
+-- set of fixtures on re-run).
+
+INSERT INTO fixture_broadcasts
+    (fixture_id, country_iso_2, provider_type, channel_name, watch_url, language_iso_2, created_at)
+SELECT f.id, 'SE', 'STREAMING', 'Viaplay', 'https://viaplay.se/sport', 'sv', now()
+FROM fixtures f JOIN leagues l ON l.id = f.league_id
+WHERE l.name = 'Premier League'
+  AND NOT EXISTS (
+      SELECT 1 FROM fixture_broadcasts WHERE channel_name = 'Viaplay' AND country_iso_2 = 'SE'
+  )
+ORDER BY f.kickoff DESC
+LIMIT 5;
+
+INSERT INTO fixture_broadcasts
+    (fixture_id, country_iso_2, provider_type, channel_name, watch_url, language_iso_2, created_at)
+SELECT f.id, 'SE', 'TV', 'TV4 Sport', 'https://www.tv4play.se/sport', 'sv', now()
+FROM fixtures f JOIN leagues l ON l.id = f.league_id
+WHERE l.name = 'Allsvenskan'
+  AND NOT EXISTS (
+      SELECT 1 FROM fixture_broadcasts WHERE channel_name = 'TV4 Sport' AND country_iso_2 = 'SE'
+  )
+ORDER BY f.kickoff DESC
+LIMIT 5;
+
+INSERT INTO fixture_broadcasts
+    (fixture_id, country_iso_2, provider_type, channel_name, watch_url, language_iso_2, created_at)
+SELECT f.id, 'SE', 'STREAMING', 'C More Fotboll', 'https://www.cmore.se/sport', 'sv', now()
+FROM fixtures f JOIN leagues l ON l.id = f.league_id
+WHERE l.name = 'La Liga'
+  AND NOT EXISTS (
+      SELECT 1 FROM fixture_broadcasts WHERE channel_name = 'C More Fotboll' AND country_iso_2 = 'SE'
+  )
+ORDER BY f.kickoff DESC
+LIMIT 5;
+
+-- ── Players + Events + Statistics for fixture 328 ─────────────────────────
+-- Wrapped in a single DO block: only runs if fixture 328 is Man City vs Arsenal
+-- (which is the case on local dev — silently no-ops elsewhere).
+
+DO $$
+DECLARE
+    v_city_id INT;
+    v_arsenal_id INT;
+    v_home_id INT;
+    v_away_id INT;
+BEGIN
+    -- Resolve teams
+    SELECT id INTO v_city_id FROM teams WHERE name = 'Manchester City FC';
+    SELECT id INTO v_arsenal_id FROM teams WHERE name = 'Arsenal FC';
+
+    IF v_city_id IS NULL OR v_arsenal_id IS NULL THEN
+        RAISE NOTICE 'Skipping demo seed for fixture 328: City/Arsenal teams not found';
+        RETURN;
+    END IF;
+
+    -- Resolve fixture 328 — only seed if it's actually Man City vs Arsenal
+    SELECT home_team_id, away_team_id INTO v_home_id, v_away_id
+    FROM fixtures WHERE id = 328;
+
+    IF v_home_id IS NULL THEN
+        RAISE NOTICE 'Skipping demo seed for fixture 328: fixture not found';
+        RETURN;
+    END IF;
+
+    IF NOT (v_home_id = v_city_id AND v_away_id = v_arsenal_id) THEN
+        RAISE NOTICE 'Skipping demo seed for fixture 328: not Man City vs Arsenal on this env';
+        RETURN;
+    END IF;
+
+    -- Players (idempotent: skip if same canonical_name + team already exists)
+    INSERT INTO players (canonical_name, display_name, position_code, current_team_id, external_ids, created_at, updated_at)
+    SELECT name, display, pos, team_id_for_name, '{}'::jsonb, now(), now()
+    FROM (VALUES
+        ('Ederson Moraes',     'Ederson',     'GK',  v_city_id),
+        ('Kyle Walker',        'Walker',      'DEF', v_city_id),
+        ('John Stones',        'Stones',      'DEF', v_city_id),
+        ('Rúben Dias',         'Dias',        'DEF', v_city_id),
+        ('Nathan Aké',         'Aké',         'DEF', v_city_id),
+        ('Rodri Hernández',    'Rodri',       'MID', v_city_id),
+        ('Kevin De Bruyne',    'De Bruyne',   'MID', v_city_id),
+        ('Bernardo Silva',     'B. Silva',    'MID', v_city_id),
+        ('Phil Foden',         'Foden',       'FWD', v_city_id),
+        ('Erling Haaland',     'Haaland',     'FWD', v_city_id),
+        ('Jérémy Doku',        'Doku',        'FWD', v_city_id),
+        ('Joško Gvardiol',     'Gvardiol',    'DEF', v_city_id),
+        ('Mateo Kovačić',      'Kovačić',     'MID', v_city_id),
+        ('David Raya',         'Raya',        'GK',  v_arsenal_id),
+        ('Ben White',           'White',      'DEF', v_arsenal_id),
+        ('William Saliba',      'Saliba',     'DEF', v_arsenal_id),
+        ('Gabriel Magalhães',   'Gabriel',    'DEF', v_arsenal_id),
+        ('Riccardo Calafiori',  'Calafiori',  'DEF', v_arsenal_id),
+        ('Declan Rice',         'Rice',       'MID', v_arsenal_id),
+        ('Martin Ødegaard',     'Ødegaard',   'MID', v_arsenal_id),
+        ('Mikel Merino',        'Merino',     'MID', v_arsenal_id),
+        ('Bukayo Saka',         'Saka',       'FWD', v_arsenal_id),
+        ('Kai Havertz',         'Havertz',    'FWD', v_arsenal_id),
+        ('Leandro Trossard',    'Trossard',   'FWD', v_arsenal_id),
+        ('Gabriel Martinelli',  'Martinelli', 'FWD', v_arsenal_id),
+        ('Gabriel Jesus',       'Jesus',      'FWD', v_arsenal_id)
+    ) AS seed(name, display, pos, team_id_for_name)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM players p
+        WHERE p.canonical_name = seed.name AND p.current_team_id = seed.team_id_for_name
+    );
+
+    -- Events (idempotent via UNIQUE (fixture_id, provider, external_id))
+    INSERT INTO fixture_events
+        (fixture_id, minute, stoppage, event_type, team_id, primary_player_id, secondary_player_id, player_in_id, player_out_id, description, provider, external_id, created_at)
+    VALUES
+        (328, 12, NULL, 'YELLOW_CARD', v_city_id,
+            (SELECT id FROM players WHERE canonical_name='Rodri Hernández' AND current_team_id=v_city_id),
+            NULL, NULL, NULL, 'Tactical foul', 'manual_seed', 'mc-ars-1', now()),
+        (328, 17, NULL, 'GOAL', v_city_id,
+            (SELECT id FROM players WHERE canonical_name='Erling Haaland' AND current_team_id=v_city_id),
+            (SELECT id FROM players WHERE canonical_name='Phil Foden' AND current_team_id=v_city_id),
+            NULL, NULL, 'Header from corner, assist Foden', 'manual_seed', 'mc-ars-2', now()),
+        (328, 24, NULL, 'YELLOW_CARD', v_arsenal_id,
+            (SELECT id FROM players WHERE canonical_name='Bukayo Saka' AND current_team_id=v_arsenal_id),
+            NULL, NULL, NULL, 'Dissent', 'manual_seed', 'mc-ars-3', now()),
+        (328, 53, NULL, 'GOAL', v_city_id,
+            (SELECT id FROM players WHERE canonical_name='Kevin De Bruyne' AND current_team_id=v_city_id),
+            (SELECT id FROM players WHERE canonical_name='Bernardo Silva' AND current_team_id=v_city_id),
+            NULL, NULL, 'Curled finish from edge of box', 'manual_seed', 'mc-ars-4', now()),
+        (328, 58, NULL, 'SUBSTITUTION', v_arsenal_id, NULL, NULL,
+            (SELECT id FROM players WHERE canonical_name='Gabriel Martinelli' AND current_team_id=v_arsenal_id),
+            (SELECT id FROM players WHERE canonical_name='Leandro Trossard' AND current_team_id=v_arsenal_id),
+            NULL, 'manual_seed', 'mc-ars-5', now()),
+        (328, 67, NULL, 'YELLOW_CARD', v_arsenal_id,
+            (SELECT id FROM players WHERE canonical_name='Riccardo Calafiori' AND current_team_id=v_arsenal_id),
+            NULL, NULL, NULL, 'Late challenge', 'manual_seed', 'mc-ars-6', now()),
+        (328, 71, NULL, 'GOAL', v_arsenal_id,
+            (SELECT id FROM players WHERE canonical_name='Bukayo Saka' AND current_team_id=v_arsenal_id),
+            (SELECT id FROM players WHERE canonical_name='Martin Ødegaard' AND current_team_id=v_arsenal_id),
+            NULL, NULL, 'Cut inside, low finish', 'manual_seed', 'mc-ars-7', now()),
+        (328, 75, NULL, 'SUBSTITUTION', v_city_id, NULL, NULL,
+            (SELECT id FROM players WHERE canonical_name='Mateo Kovačić' AND current_team_id=v_city_id),
+            (SELECT id FROM players WHERE canonical_name='Kevin De Bruyne' AND current_team_id=v_city_id),
+            NULL, 'manual_seed', 'mc-ars-8', now()),
+        (328, 78, NULL, 'SUBSTITUTION', v_arsenal_id, NULL, NULL,
+            (SELECT id FROM players WHERE canonical_name='Gabriel Jesus' AND current_team_id=v_arsenal_id),
+            (SELECT id FROM players WHERE canonical_name='Kai Havertz' AND current_team_id=v_arsenal_id),
+            NULL, 'manual_seed', 'mc-ars-9', now()),
+        (328, 82, NULL, 'SUBSTITUTION', v_city_id, NULL, NULL,
+            (SELECT id FROM players WHERE canonical_name='Joško Gvardiol' AND current_team_id=v_city_id),
+            (SELECT id FROM players WHERE canonical_name='Jérémy Doku' AND current_team_id=v_city_id),
+            NULL, 'manual_seed', 'mc-ars-10', now())
+    ON CONFLICT (fixture_id, provider, external_id) DO NOTHING;
+
+    -- Statistics (idempotent via UNIQUE (fixture_id, team_id, provider))
+    INSERT INTO fixture_statistics
+        (fixture_id, team_id, possession_pct, shots_total, shots_on_target,
+         shots_off_target, shots_blocked, corners, fouls, yellow_cards_count,
+         red_cards_count, offsides, xg, passes_total, passes_accurate,
+         pass_accuracy_pct, tackles, interceptions, blocks, clearances,
+         provider, as_of_minute, created_at, updated_at)
+    VALUES
+        (328, v_city_id,
+         58.0, 14, 6, 5, 3, 7, 9, 1, 0, 2, 1.85,
+         612, 553, 90.4, 14, 9, 8, 18,
+         'manual_seed', NULL, now(), now()),
+        (328, v_arsenal_id,
+         42.0, 11, 4, 4, 3, 4, 12, 2, 0, 3, 1.20,
+         441, 376, 85.3, 19, 12, 11, 22,
+         'manual_seed', NULL, now(), now())
+    ON CONFLICT (fixture_id, team_id, provider) DO NOTHING;
+
+END$$;

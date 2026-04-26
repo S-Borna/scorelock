@@ -74,6 +74,9 @@ run-predictions: ## Manually trigger ML predictions
 seed: ## Seed leagues and teams from API-Football
 	docker compose exec backend python -m app.services.seed
 
+seed-demo: ## Apply local demo data (broadcasts/players/events/stats for fixture 328 if it's Man City vs Arsenal)
+	docker compose exec -T db psql -U scorelock -d scorelock < backend/scripts/seed_demo_data.sql
+
 historical: ## Fetch historical fixtures + standings (uses ~48 API calls)
 	docker compose exec backend python -m app.services.historical
 

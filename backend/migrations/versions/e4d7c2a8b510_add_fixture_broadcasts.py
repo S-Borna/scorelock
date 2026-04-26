@@ -50,43 +50,7 @@ def upgrade() -> None:
         "fixture_broadcasts",
         ["fixture_id", "country_iso_2"],
     )
-
-    # Seed: SE broadcasts for the 5 most recent fixtures per league.
-    # Real Sweden TV-rights mapping (as of 2025): Viaplay = Premier League,
-    # TV4 Sport = Allsvenskan, C More = La Liga.
-    op.execute(
-        """
-        INSERT INTO fixture_broadcasts
-            (fixture_id, country_iso_2, provider_type, channel_name, watch_url, language_iso_2, created_at)
-        SELECT f.id, 'SE', 'STREAMING', 'Viaplay', 'https://viaplay.se/sport', 'sv', now()
-        FROM fixtures f JOIN leagues l ON l.id = f.league_id
-        WHERE l.name = 'Premier League'
-        ORDER BY f.kickoff DESC
-        LIMIT 5
-        """
-    )
-    op.execute(
-        """
-        INSERT INTO fixture_broadcasts
-            (fixture_id, country_iso_2, provider_type, channel_name, watch_url, language_iso_2, created_at)
-        SELECT f.id, 'SE', 'TV', 'TV4 Sport', 'https://www.tv4play.se/sport', 'sv', now()
-        FROM fixtures f JOIN leagues l ON l.id = f.league_id
-        WHERE l.name = 'Allsvenskan'
-        ORDER BY f.kickoff DESC
-        LIMIT 5
-        """
-    )
-    op.execute(
-        """
-        INSERT INTO fixture_broadcasts
-            (fixture_id, country_iso_2, provider_type, channel_name, watch_url, language_iso_2, created_at)
-        SELECT f.id, 'SE', 'STREAMING', 'C More Fotboll', 'https://www.cmore.se/sport', 'sv', now()
-        FROM fixtures f JOIN leagues l ON l.id = f.league_id
-        WHERE l.name = 'La Liga'
-        ORDER BY f.kickoff DESC
-        LIMIT 5
-        """
-    )
+    # Demo seed extracted to backend/scripts/seed_demo_data.sql — run `make seed-demo` locally.
 
 
 def downgrade() -> None:

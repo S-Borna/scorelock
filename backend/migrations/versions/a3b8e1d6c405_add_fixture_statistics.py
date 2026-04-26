@@ -70,36 +70,7 @@ def upgrade() -> None:
         "fixture_statistics",
         ["fixture_id"],
     )
-
-    # Seed: Manchester City 2-1 Arsenal (fixture 328) — final-state stats per team.
-    # Plausible numbers for City home win. NOTE: fictional, not actual match data.
-    # Wrapped in IF EXISTS guard so CI / fresh-DB envs without fixture 328 cleanly no-op.
-    op.execute(
-        """
-        DO $$
-        BEGIN
-        IF EXISTS (SELECT 1 FROM fixtures WHERE id = 328) THEN
-
-        INSERT INTO fixture_statistics
-            (fixture_id, team_id, possession_pct, shots_total, shots_on_target,
-             shots_off_target, shots_blocked, corners, fouls, yellow_cards_count,
-             red_cards_count, offsides, xg, passes_total, passes_accurate,
-             pass_accuracy_pct, tackles, interceptions, blocks, clearances,
-             provider, as_of_minute, created_at, updated_at)
-        VALUES
-            (328, (SELECT id FROM teams WHERE name='Manchester City FC'),
-             58.0, 14, 6, 5, 3, 7, 9, 1, 0, 2, 1.85,
-             612, 553, 90.4, 14, 9, 8, 18,
-             'manual_seed', NULL, now(), now()),
-            (328, (SELECT id FROM teams WHERE name='Arsenal FC'),
-             42.0, 11, 4, 4, 3, 4, 12, 2, 0, 3, 1.20,
-             441, 376, 85.3, 19, 12, 11, 22,
-             'manual_seed', NULL, now(), now());
-
-        END IF;
-        END$$;
-        """
-    )
+    # Demo seed extracted to backend/scripts/seed_demo_data.sql — run `make seed-demo` locally.
 
 
 def downgrade() -> None:
