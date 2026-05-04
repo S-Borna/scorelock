@@ -1,7 +1,6 @@
 # ScoreLock Provider Abstraction v0.4
 
-> Design document. No application code created, modified, or refactored in this version. Cites current repo state at commit `fffb3ba`.
-> Purpose: define the contract, normalized schema, registry, and migration path for a provider-neutral backend before any paid-provider integration work begins. Per v0.3 Hard Rule #4, no billable provider integration starts until the abstraction skeleton lands in a subsequent version.
+> Design document. No application code created, modified, or refactored in this version. Cites current repo state at commit `fffb3ba`. Purpose: define the contract, normalized schema, registry, and migration path for a provider-neutral backend before any paid-provider integration work begins. Per v0.3 Hard Rule #4, no billable provider integration starts until the abstraction skeleton lands in a subsequent version.
 
 ---
 
@@ -24,28 +23,28 @@ Cited files (read in this version, not modified):
 
 ### `backend/app/services/api_football.py` (226 lines)
 
-- **Current responsibility**: Full-featured REST client for api-sports.io. Endpoints wrapped: `/leagues`, `/fixtures` (by date / league / id / live), `/fixtures/statistics`, `/fixtures/headtohead`, `/teams`, `/teams` (by league+season), `/standings`, `/odds`, `/players/squads`, `/injuries`, `/predictions`. Module-level `LEAGUE_IDS` dict maps ScoreLock's internal league slugs to API-Football integer IDs (22 leagues across Phase 1–3). Module-level `PHASE_1_LEAGUES` list (8 entries). Singleton `api_football = APIFootballClient()` instantiated at import.
+- **Current responsibility**: Full-featured REST client for [api-sports.io](http://api-sports.io). Endpoints wrapped: `/leagues`, `/fixtures` (by date / league / id / live), `/fixtures/statistics`, `/fixtures/headtohead`, `/teams`, `/teams` (by league+season), `/standings`, `/odds`, `/players/squads`, `/injuries`, `/predictions`. Module-level `LEAGUE_IDS` dict maps ScoreLock's internal league slugs to API-Football integer IDs (22 leagues across Phase 1–3). Module-level `PHASE_1_LEAGUES` list (8 entries). Singleton `api_football = APIFootballClient()` instantiated at import.
 - **Coupling risk**: **Highest of the three.** (1) Module-level `LEAGUE_IDS` is imported directly by `tasks.py`, `seed.py`, `historical.py` — every caller knows the API-Football league catalogue. (2) The `api_football_id` concept bleeds into `football_data.py` and `odds_api.py` as the canonical identifier. (3) No quota manager integration — the free tier's 100/day limit is not enforced at the client level (only logged via response header). (4) Singleton at import time means no swap or mock without patching.
 - **Reusable parts**: The `httpx.AsyncClient` pattern, `tenacity` retry decorator, structured logging of rate-limit headers. Endpoint coverage is broad and will remain useful as one provider among several.
 - **Must not change yet**: Everything. The whole file stays as-is through v0.4 and is wrapped behind the abstraction in v0.5d.
 
 ### `backend/app/services/football_data.py` (322 lines)
 
-- **Current responsibility**: REST client for football-data.org v4. Endpoints: `/competitions/{code}`, `/competitions/{code}/standings`, `/competitions/{code}/matches`, `/competitions/{code}/teams`, `/competitions/{code}/scorers`. Module-level `FD_COMPETITIONS` dict maps FD competition codes to FD internal IDs **and to API-Football IDs** (the second mapping leaks the coupling). `FD_UNSUPPORTED_LEAGUES` set explicitly names leagues not covered (`allsvenskan`, `europa_league`, `conference_league`). Two normalizer statics: `normalize_match_to_fixture()` converts FD match → API-Football-shaped dict, and `normalize_standing()` same for standings. Uses quota manager (`football_data`, `football_data_daily` buckets). Singleton `football_data`.
+- **Current responsibility**: REST client for [football-data.org](http://football-data.org) v4. Endpoints: `/competitions/{code}`, `/competitions/{code}/standings`, `/competitions/{code}/matches`, `/competitions/{code}/teams`, `/competitions/{code}/scorers`. Module-level `FD_COMPETITIONS` dict maps FD competition codes to FD internal IDs **and to API-Football IDs** (the second mapping leaks the coupling). `FD_UNSUPPORTED_LEAGUES` set explicitly names leagues not covered (`allsvenskan`, `europa_league`, `conference_league`). Two normalizer statics: `normalize_match_to_fixture()` converts FD match → API-Football-shaped dict, and `normalize_standing()` same for standings. Uses quota manager (`football_data`, `football_data_daily` buckets). Singleton `football_data`.
 - **Coupling risk**: (1) Normalization targets API-Football's response shape, not a neutral internal shape — forces all non-API-Football providers to mimic API-Football. (2) ID offset `+ 2_000_000` (line 237, 259, 264, 294) is a band-aid for ID collision that only works with two providers. (3) Raises a custom `QuotaExhaustedError` defined in the same file — duplicated in `odds_api.py`.
 - **Reusable parts**: The quota-aware `_get()` pattern. The concept of normalization (but the target shape must change).
 - **Must not change yet**: Everything.
 
 ### `backend/app/services/odds_api.py` (288 lines)
 
-- **Current responsibility**: REST client for the-odds-api.com v4. Endpoints: `/sports`, `/sports/{key}/odds`, `/sports/{key}/events/{id}/odds`. Module-level `ODDS_SPORT_KEYS` dict maps The Odds API's sport keys to ScoreLock's API-Football IDs (8 leagues). Market constants: `MARKET_H2H`, `MARKET_TOTALS`, `MARKET_SPREADS`. `extract_best_odds()` static scans bookmakers across an event for highest price per outcome (home / draw / away / over 2.5 / under 2.5, with bookmaker names). `match_event_to_fixture()` static uses fuzzy team-name matching (substring check, case-insensitive) to link an Odds API event to a DB fixture. Singleton `odds_api`.
+- **Current responsibility**: REST client for [the-odds-api.com](http://the-odds-api.com) v4. Endpoints: `/sports`, `/sports/{key}/odds`, `/sports/{key}/events/{id}/odds`. Module-level `ODDS_SPORT_KEYS` dict maps The Odds API's sport keys to ScoreLock's API-Football IDs (8 leagues). Market constants: `MARKET_H2H`, `MARKET_TOTALS`, `MARKET_SPREADS`. `extract_best_odds()` static scans bookmakers across an event for highest price per outcome (home / draw / away / over 2.5 / under 2.5, with bookmaker names). `match_event_to_fixture()` static uses fuzzy team-name matching (substring check, case-insensitive) to link an Odds API event to a DB fixture. Singleton `odds_api`.
 - **Coupling risk**: (1) Identifies leagues by `api_football_id` — odds provider coupled to sports-data provider's identity. (2) Fuzzy name matching (`match_event_to_fixture`) will silently misattribute odds when two teams have overlapping names (e.g. Manchester United / Manchester City). This is latent data-integrity risk once we scale beyond PL. (3) `extract_best_odds` hardcodes the 2.5 over/under line — no support for 1.5, 3.5, BTTS, Asian handicap. (4) Second `QuotaExhaustedError` class definition — diverges from `football_data.py`'s.
 - **Reusable parts**: Quota integration, best-odds extraction algorithm concept, decimal odds format.
 - **Must not change yet**: Everything.
 
 ### `backend/app/services/tasks.py` (1174 lines)
 
-- **Current responsibility**: Celery task definitions. 16 scheduled beat tasks plus ad-hoc tasks (from v0.2 intake). Provider singletons + module-level catalogues imported directly — re-verified in v0.4: `from app.services.api_football import LEAGUE_IDS, PHASE_1_LEAGUES` at line 81 (inside `fetch_daily_fixtures` defined at line 64) and again at line 573 (inside `update_standings` defined at line 560). `fetch_daily_fixtures`, `update_standings`, `run_daily_predictions` (line 369), `update_live_scores` all call provider clients directly, not through any abstraction. Known long functions: `fetch_odds_updates` ~135 LOC, `run_daily_predictions` ~113 LOC, `fetch_daily_fixtures` ~102 LOC, `update_live_scores` ~65 LOC.
+- **Current responsibility**: Celery task definitions. 16 scheduled beat tasks plus ad-hoc tasks (from v0.2 intake). Provider singletons + module-level catalogues imported directly — re-verified in v0.4: `from app.services.api_football import LEAGUE_IDS, PHASE_1_LEAGUES` at line 81 (inside `fetch_daily_fixtures` defined at line 64) and again at line 573 (inside `update_standings` defined at line 560). `fetch_daily_fixtures`, `update_standings`, `run_daily_predictions` (line 369), `update_live_scores` all call provider clients directly, not through any abstraction. Known long functions: `fetch_odds_updates` \~135 LOC, `run_daily_predictions` \~113 LOC, `fetch_daily_fixtures` \~102 LOC, `update_live_scores` \~65 LOC.
 - **Coupling risk**: Tasks are the primary consumer of the current coupled design. They import provider singletons directly; any provider swap requires editing every task.
 - **Reusable parts**: Task structure, Celery beat schedule, quota logging.
 - **Must not change yet**: Everything. Tasks get rewired to the registry in v0.5d.
@@ -82,15 +81,15 @@ Cited files (read in this version, not modified):
 
 Explicit, testable goals for the abstraction:
 
-1. **Provider-neutral backend.** No file outside `backend/app/providers/` imports from a concrete provider client. Tasks, routes, services, and the AI pipeline depend only on the abstract interfaces and normalized domain objects.
-2. **Normalized internal schema.** Every provider response is transformed into one of the `Normalized*` domain objects defined below before leaving the provider layer. The canonical DB schema reflects those objects, not any provider's response shape.
-3. **Raw payload retention.** Every provider response is persisted in `provider_payloads` (JSONB) before normalization. Normalization is a pure function of the raw payload, repeatable at any time.
-4. **Operation-scoped fallback chain.** Fallback order is defined per `(operation, scope)` tuple — where scope may be `league_id`, `country`, or `global`. No global "Provider A → Provider B" list.
-5. **Quota and rate-limit governance.** All providers share `core/quota_manager.py`. Per-provider per-window counters. Hard cap at 90% of published limit. When near cap, registry degrades to next provider rather than throttling in place.
-6. **Stale data detection.** Every normalized row stamped with `fetched_at` and `provider`. Live-fixture refresh scans for stale records and triggers provider calls. Stale threshold is operation-specific (live scores: 15s; standings: 30min; fixtures window: 12h).
-7. **Provider health monitoring.** Circuit breaker per `(provider, operation)`: N consecutive failures within M seconds → open circuit → skip to next provider → half-open retry after cooldown. State in Redis + exported Prometheus counter.
-8. **Testable mock provider.** `MockSportsDataProvider` reads canned JSON fixtures. Full local stack runs without any paid keys. CI runs without paid keys. Mock provider is the default in `ENVIRONMENT=test`.
-9. **No provider-specific logic in frontend.** The frontend calls ScoreLock's own API only. Provider choice, fallback behavior, quota state are never visible in the response shape. No provider names, no raw payloads, no provider-specific enum values ever cross the API boundary.
+ 1. **Provider-neutral backend.** No file outside `backend/app/providers/` imports from a concrete provider client. Tasks, routes, services, and the AI pipeline depend only on the abstract interfaces and normalized domain objects.
+ 2. **Normalized internal schema.** Every provider response is transformed into one of the `Normalized*` domain objects defined below before leaving the provider layer. The canonical DB schema reflects those objects, not any provider's response shape.
+ 3. **Raw payload retention.** Every provider response is persisted in `provider_payloads` (JSONB) before normalization. Normalization is a pure function of the raw payload, repeatable at any time.
+ 4. **Operation-scoped fallback chain.** Fallback order is defined per `(operation, scope)` tuple — where scope may be `league_id`, `country`, or `global`. No global "Provider A → Provider B" list.
+ 5. **Quota and rate-limit governance.** All providers share `core/quota_manager.py`. Per-provider per-window counters. Hard cap at 90% of published limit. When near cap, registry degrades to next provider rather than throttling in place.
+ 6. **Stale data detection.** Every normalized row stamped with `fetched_at` and `provider`. Live-fixture refresh scans for stale records and triggers provider calls. Stale threshold is operation-specific (live scores: 15s; standings: 30min; fixtures window: 12h).
+ 7. **Provider health monitoring.** Circuit breaker per `(provider, operation)`: N consecutive failures within M seconds → open circuit → skip to next provider → half-open retry after cooldown. State in Redis + exported Prometheus counter.
+ 8. **Testable mock provider.** `MockSportsDataProvider` reads canned JSON fixtures. Full local stack runs without any paid keys. CI runs without paid keys. Mock provider is the default in `ENVIRONMENT=test`.
+ 9. **No provider-specific logic in frontend.** The frontend calls ScoreLock's own API only. Provider choice, fallback behavior, quota state are never visible in the response shape. No provider names, no raw payloads, no provider-specific enum values ever cross the API boundary.
 10. **No provider payload in AI prompts without normalization.** Claude prompts consume normalized domain objects only. Raw JSON never gets concatenated into an LLM prompt.
 
 ## Provider Interface Contract
@@ -168,6 +167,7 @@ class SportsDataProvider(Protocol):
 ```
 
 **Error model (shared by all interfaces)**:
+
 ```python
 class ProviderError(Exception): ...
 class ProviderUnavailable(ProviderError): ...        # network, 5xx, timeout
@@ -263,86 +263,103 @@ All `Normalized*` objects are Pydantic v2 models. Fields below are conceptual; f
 ---
 
 ### `NormalizedSport`
+
 - **Required**: `code` (e.g. `"football"`), `display_name`.
 - **Optional**: `icon_ref`.
 - **Mapping concern**: Every provider must map to ScoreLock's canonical sport code. Football-first; multi-sport deferred to PL3 per ROADMAP.
 
 ### `NormalizedCountry`
+
 - **Required**: `iso_2` (ISO 3166-1 alpha-2), `iso_3`, `display_name`.
 - **Optional**: `flag_ref`.
 - **Mapping concern**: Providers disagree on naming ("England" vs "United Kingdom" vs "GB-ENG"). Normalize to FIFA-style entity codes where possible; fall back to ISO.
 
 ### `NormalizedCompetition`
+
 - **Required**: `code` (ScoreLock slug), `display_name`, `country_iso_2`, `competition_type` (`league|cup|international`), `sport_code`.
 - **Optional**: `logo_ref`, `tier` (e.g. `1` for top flight), `gender` (`m|w`), `age_group` (`senior|u21|u19`).
 - **Mapping concern**: Tier + country pair is the natural identity; external IDs vary wildly. Expect to retain the current `leagues.api_football_id` column for backward compat and add neutral mapping via `provider_entity_ids`.
 
 ### `NormalizedSeason`
+
 - **Required**: `competition_code`, `year_start` (int), `label` (e.g. `"2025/26"`), `start_date`, `end_date`.
 - **Optional**: `is_current`.
 - **Mapping concern**: Some providers label seasons by end year (2026), some by start (2025). Always store start year.
 
 ### `NormalizedTeam`
+
 - **Required**: `canonical_name`, `short_name`, `country_iso_2`, `sport_code`.
 - **Optional**: `logo_ref`, `colors` (primary / secondary hex), `founded_year`, `venue_external_id`, `market_value_eur`.
 - **Mapping concern**: Name variants are the primary pain (Nottingham Forest / Nottm Forest / Forest). Canonical name is chosen at ingest and does not change without manual override. `provider_entity_ids` records every variant the provider returned.
 
 ### `NormalizedPlayer`
+
 - **Required**: `canonical_name`, `nationality_iso_2`, `position_code` (`GK|DEF|MID|FWD`).
 - **Optional**: `date_of_birth`, `height_cm`, `weight_kg`, `preferred_foot`, `market_value_eur`, `photo_ref`, `current_team_external_id`.
 - **Mapping concern**: Many players move teams within a season. The current-team relationship is transient; the canonical identity is the player. Store team history separately (not in v0.4 scope).
 
 ### `NormalizedFixture`
+
 - **Required**: `competition_code`, `season_year_start`, `round_label`, `round_number` (nullable), `home_team_external_id`, `away_team_external_id`, `kickoff_utc`, `status_code` (`SCHEDULED|IN_PLAY|HALF_TIME|FULL_TIME|POSTPONED|CANCELLED|SUSPENDED|AWARDED`), `home_score`, `away_score`.
 - **Optional**: `home_score_halftime`, `away_score_halftime`, `venue_external_id`, `referee_external_id`, `live_minute`, `live_stoppage`, `attendance`, `postponed_from`.
 - **Mapping concern**: Status vocabularies vary (see `football_data.py` line 220–230 `status_map`). Map to the canonical enum; retain raw provider status in the raw payload for debugging.
 
 ### `NormalizedLineup`
+
 - **Required**: `fixture_external_id`, `team_external_id`, `formation_code` (e.g. `"4-3-3"`), `state` (`PROJECTED|CONFIRMED`).
 - **Optional**: `confirmed_at`, `manager_name`.
 - **Mapping concern**: Projected lineups are mutable until kickoff; `state` transitions track this. Confirmed lineup supersedes projected.
 
 ### `NormalizedLineupPlayer`
+
 - **Required**: `lineup_external_id`, `player_external_id`, `position_code`, `shirt_number`, `is_starter`, `grid_x` (0–5), `grid_y` (0–3), `is_captain`.
 - **Optional**: `provider_rating_value`, `provider_rating_source` (`"opta"` | `"sportmonks"` | `"api_football"`), `minutes_played`.
 - **Mapping concern**: Grid positions are provider-normalized. If a provider only gives `position_code`, derive grid from formation template. Never invent a rating.
 
 ### `NormalizedMatchEvent`
+
 - **Required**: `fixture_external_id`, `minute`, `stoppage` (nullable int), `event_type` (`GOAL|OWN_GOAL|PENALTY_GOAL|MISSED_PENALTY|YELLOW_CARD|RED_CARD|SECOND_YELLOW|SUBSTITUTION|VAR_GOAL_AWARDED|VAR_GOAL_CANCELLED|VAR_PENALTY_AWARDED|VAR_PENALTY_OVERTURNED|VAR_RED_CARD`), `team_external_id`.
 - **Optional**: `player_in_external_id` (subs), `player_out_external_id` (subs), `primary_player_external_id` (scorer / booked player / VAR subject), `assist_player_external_id`, `description`, `video_clip_ref`.
 - **Mapping concern**: SofaScore exposes VAR decisions; API-Football does not distinguish all VAR variants. Providers that don't model VAR return only `GOAL` / `OWN_GOAL` / etc.; the `VAR_*` events only populate when the provider supports them.
 
 ### `NormalizedMatchStatistics`
+
 - **Required**: `fixture_external_id`, one sub-record per team with: `team_external_id`, `possession_pct`, `shots_total`, `shots_on_target`, `shots_off_target`, `corners`, `fouls`, `yellow_cards_count`, `red_cards_count`, `offsides`.
 - **Optional per team**: `xg`, `passes_total`, `passes_accurate`, `pass_accuracy_pct`, `ball_in_play_seconds`, `tackles`, `blocks`, `clearances`, `big_chances_created`, `big_chances_missed`.
 - **Mapping concern**: xG is not universal; when missing, `xg = None`. Possession should sum to 100 ± 1; provider drift beyond that threshold logs a conflict.
 
 ### `NormalizedStanding`
+
 - **Required**: `competition_code`, `season_year_start`, `team_external_id`, `position`, `played`, `wins`, `draws`, `losses`, `goals_for`, `goals_against`, `goal_difference`, `points`.
 - **Optional**: `form_string` (e.g. `"WWDLW"`), `home_played`, `home_wins`, etc. (home/away splits), `zone` (`CL|EL|UECL|RELEGATION|NONE`).
 - **Mapping concern**: Some providers surface home/away splits separately; others return aggregated. Zone is derived from position + competition rules, not provider data.
 
 ### `NormalizedOddsSnapshot`
+
 - **Required**: `fixture_external_id`, `bookmaker_external_id`, `market_code` (`H2H|TOTALS|SPREADS|BTTS|CORRECT_SCORE|NEXT_GOAL|...`), `taken_at`, `outcomes` (list of `{selection_code, value_numeric, price_decimal}`).
 - **Optional**: `is_in_play`, `suspended`, `market_line` (e.g. `2.5` for totals), `region`.
 - **Mapping concern**: Decimal odds only. American / fractional conversion happens at the provider edge. Outcomes are identified by `selection_code` (`HOME|DRAW|AWAY|OVER|UNDER|YES|NO|1-0|0-1|...`), not provider-specific labels.
 
 ### `NormalizedBroadcast`
+
 - **Required**: `fixture_external_id`, `country_iso_2`, `provider_type` (`TV|STREAMING|RADIO`), `channel_name` (or streaming service name).
 - **Optional**: `watch_url`, `affiliate_partner`, `requires_subscription`, `language_iso_2`, `logo_ref`.
 - **Mapping concern**: Rights are region-specific. The same fixture has different broadcasts in SE vs UK vs DE. Store per (fixture, country).
 
 ### `NormalizedVenue`
+
 - **Required**: `canonical_name`, `country_iso_2`, `city`.
 - **Optional**: `capacity`, `surface` (`grass|artificial|hybrid`), `latitude`, `longitude`, `address`, `opened_year`.
 - **Mapping concern**: Name-variant matching. "Stadium of Light" exists in Sunderland and Lisbon — geographic disambiguation required.
 
 ### `NormalizedReferee`
+
 - **Required**: `canonical_name`, `nationality_iso_2`.
 - **Optional**: `career_games_count`, `career_yellows_per_game`, `career_reds_per_game`, `career_penalties_per_game`.
 - **Mapping concern**: Aggregated stats are provider-computed or derived; always label the source.
 
 ### `NormalizedWeatherSnapshot`
+
 - **Required**: `venue_external_id`, `observed_at`, `temperature_c`, `conditions_code` (`clear|clouds|rain|snow|storm|fog`), `is_forecast`.
 - **Optional**: `wind_speed_mps`, `wind_direction_deg`, `humidity_pct`, `precipitation_mm`, `pressure_hpa`, `uv_index`, `icon_ref`.
 - **Mapping concern**: Historical providers (Meteostat) may lack some fields; forecast providers (Open-Meteo) have all. `is_forecast` drives UI copy ("Forecast: …" vs "Conditions: …").
@@ -427,17 +444,20 @@ REGISTRY: dict[Operation, list[ProviderRule]] = {
 **No-provider behavior**: If no rule matches scope (e.g. `Operation.LIVE_FIXTURES` for a league no registered provider covers), raise `ProviderUnsupported`. The caller (usually a Celery task) logs and skips. Does not crash the app.
 
 **Conflict resolution**: If two providers return divergent values for the same canonical entity/field within the same refresh window:
+
 1. Provider priority (order in the rule list) wins by default.
 2. Divergence is logged to `provider_conflicts` (new table in v0.5b) with both values + timestamps.
 3. Field-specific overrides allowed: e.g. "trust SportMonks for xG, trust API-Football for final score" — configured in a `FIELD_PRIORITIES` dict, not hardcoded per call site.
 4. Manual override via admin endpoint: operator can mark a field value as authoritative, which suppresses further provider updates until cleared.
 
 **Stale data handling**: Each normalized row carries `fetched_at` + `provider`. A Celery Beat task (`refresh_stale_*`) runs per operation class:
+
 - Live fixtures: scan every 30s for `IN_PLAY` records with `fetched_at < now - 15s`, trigger refresh.
 - Standings: scan every 10min for records with `fetched_at < now - 30min` in active leagues.
 - Fixtures window: scan every 1h for records with `kickoff < now + 14d` and `fetched_at < now - 12h`.
 
 **Circuit breaker**: Per `(provider, operation)` tuple, state in Redis key `cb:{provider}:{operation}`:
+
 - Consecutive failure threshold: 5 failures within 60s → open.
 - Open cooldown: 5 minutes.
 - Half-open: allow one trial call; success closes the circuit, failure returns to open with extended cooldown (exponential, capped at 60 min).
@@ -449,6 +469,7 @@ REGISTRY: dict[Operation, list[ProviderRule]] = {
 ### `provider_payloads` table (new in v0.5b)
 
 Columns:
+
 - `id` (bigserial, PK)
 - `provider` (text, indexed)
 - `operation` (text, indexed)
@@ -467,20 +488,21 @@ Primary-key composite index: `(provider, operation, fetched_at DESC)` for replay
 ### `provider_entity_ids` (mapping table, new in v0.5b)
 
 Columns:
+
 - `entity_type` (text) — `team|player|league|fixture|venue|referee|bookmaker`
 - `canonical_id` (bigint) — FK to the canonical row in the relevant table
 - `provider` (text)
 - `external_id` (text)
 - `first_seen_at`, `last_seen_at` (timestamptz)
 
-Primary key: `(entity_type, provider, external_id)`.
-Secondary index: `(entity_type, canonical_id)` for reverse lookup.
+Primary key: `(entity_type, provider, external_id)`. Secondary index: `(entity_type, canonical_id)` for reverse lookup.
 
 ### `external_ids JSONB` on canonical rows vs separate table — decision
 
-**Decision: separate `provider_entity_ids` table.**
+**Decision: separate** `provider_entity_ids` **table.**
 
 Rationale:
+
 - JSONB on every canonical row works for lookups "what's team X's SportMonks ID?" (easy) but fails for the reverse: "what team has SportMonks ID 5247?" That reverse is the ingest path's primary query. A JSONB GIN index works but is less efficient and less introspectable than a normal B-tree on `(provider, external_id)`.
 - Audit trail: `first_seen_at`/`last_seen_at` per mapping is valuable during provider drift investigations.
 - Decoupling: adding a new provider adds rows, not columns. JSONB path would require no schema change but would lose the per-provider query ergonomics.
@@ -528,13 +550,7 @@ Redis keys: `quota:{provider}:{window}:{bucket_start_ts}`. Incremented atomicall
 
 ### Per-provider limits (published tiers at time of writing)
 
-| Provider | Free tier | Paid tier expected |
-|---|---|---|
-| API-Football | 100 req/day, 10 req/min | $19/mo Dev 7 500/day, 30/min · $29/mo Ultra 75 000/day, 450/min |
-| football-data.org | 10 req/min, 10 comp | £14/mo Tier One 10/min 10 comps |
-| SportMonks | 180 req/min (football) | Plan-dependent; Advanced targets 3 000/min |
-| The Odds API | 500 req/mo | $30 30k/mo · $99 1M/mo with in-play |
-| Open-Meteo | 10 000 req/day | Free tier sufficient |
+ProviderFree tierPaid tier expectedAPI-Football100 req/day, 10 req/min$19/mo Dev 7 500/day, 30/min · $29/mo Ultra 75 000/day, 450/min[football-data.org](http://football-data.org)10 req/min, 10 comp£14/mo Tier One 10/min 10 compsSportMonks180 req/min (football)Plan-dependent; Advanced targets 3 000/minThe Odds API500 req/mo$30 30k/mo · $99 1M/mo with in-playOpen-Meteo10 000 req/dayFree tier sufficient
 
 Values to be confirmed at v0.5d when paid provider keys are provisioned. The quota manager will consume these from config, not from hardcoded constants. v0.5a only declared the descriptor placeholder; no provider was provisioned and no values were committed.
 
@@ -542,15 +558,7 @@ Values to be confirmed at v0.5d when paid provider keys are provisioned. The quo
 
 Not every operation is a single HTTP call. Default weight = 1. Overrides:
 
-| Operation | Default weight | Rationale |
-|---|---|---|
-| FIXTURES (bulk) | 1 | One call per league/season |
-| LIVE_FIXTURES | 1 | One call, can return many fixtures |
-| LINEUPS | 1 per fixture | Called per fixture |
-| EVENTS | 1 per fixture | Called per fixture |
-| STATISTICS | 1 per fixture | Called per fixture |
-| IN_PLAY_ODDS | 2 | Higher cost, stricter budget |
-| STREAM_LIVE | 0 | WebSocket/SSE — not counted per message |
+OperationDefault weightRationaleFIXTURES (bulk)1One call per league/seasonLIVE_FIXTURES1One call, can return many fixturesLINEUPS1 per fixtureCalled per fixtureEVENTS1 per fixtureCalled per fixtureSTATISTICS1 per fixtureCalled per fixtureIN_PLAY_ODDS2Higher cost, stricter budgetSTREAM_LIVE0WebSocket/SSE — not counted per message
 
 ### Backoff
 
@@ -560,6 +568,7 @@ Not every operation is a single HTTP call. Default weight = 1. Overrides:
 ### Fail-open vs fail-closed
 
 **Per operation class**:
+
 - **Read-heavy discovery operations** (fixtures, standings, teams, players): fail-open. Missing data is degraded UX; crashing is worse. Return whatever was last persisted and log the miss.
 - **Write/ingest tasks** (Celery sync tasks): fail-closed. A failed sync task must raise so Celery retries it and so failures are visible in monitoring.
 - **Live operations** (live_fixtures, in_play_odds): fail-open. Return last known snapshot; UI shows a `last updated` timestamp.
@@ -679,13 +688,13 @@ Sequenced after v0.4 (design). Each version is small, shippable, and reversible.
 
 ### Provider drift detection
 
-- Daily Celery task (`detect_provider_drift`) samples live API calls (1 call per provider per operation per day), compares response shape to the last committed fixture. Diff > threshold → admin alert. Non-blocking.
+- Daily Celery task (`detect_provider_drift`) samples live API calls (1 call per provider per operation per day), compares response shape to the last committed fixture. Diff &gt; threshold → admin alert. Non-blocking.
 - Fixture refresh workflow: drift alert → engineer captures the new payload → commits it to `tests/fixtures/providers/...` → updates normalizer if needed → fixture and normalizer land in the same PR.
 
 ## Non-Negotiables
 
 1. **Frontend never calls a provider directly.** All external sports data flows through ScoreLock's backend API. The frontend has no provider keys, no provider-specific branches, no provider names in responses.
-2. **No paid provider before abstraction skeleton.** v0.5a must land before any SportMonks / API-Football Pro / The Odds API in-play / SportsData.io / Opta contract is signed or key is provisioned.
+2. **No paid provider before abstraction skeleton.** v0.5a must land before any SportMonks / API-Football Pro / The Odds API in-play / [SportsData.io](http://SportsData.io) / Opta contract is signed or key is provisioned.
 3. **No provider payload in AI prompts without normalization.** Claude prompts consume `Normalized*` objects. Raw JSON payloads do not get concatenated into prompts. If an AI feature needs a new field, the field is added to the Normalized object first.
 4. **No scraping as production dependency.** SofaScore's and FotMob's unofficial endpoints are off-limits. Competitive-intelligence only. All production providers have a stated ToS and a licensed commercial relationship.
 5. **No schema migration without rollback plan.** Every Alembic revision from v0.5b onward ships with a tested downgrade. Migrations are rehearsed against a DB dump before any remote apply.
@@ -695,13 +704,13 @@ Sequenced after v0.4 (design). Each version is small, shippable, and reversible.
 
 Decisions that require the project owner before paid provider integration or v0.5d begins. v0.5a can start without these decisions.
 
-1. **Primary paid sports-data provider**: SportMonks (recommended in v0.3 for football depth + Allsvenskan) vs API-Football Pro (cheaper, current integration path, weaker metadata) vs SportsData.io (broader multi-sport but weaker football in EU) vs Stats Perform / Opta (enterprise-tier, requires commercial discussion). Impacts onboarding timeline (1 week for API-Football Pro upgrade, 1–3 weeks for SportMonks, quarter+ for enterprise).
-2. **Broadcast data source**: SportMonks broadcast add-on, dedicated Nordic provider (e.g. Screenhits), Stats Perform partnership, or manual curation for Sweden only at launch. Blocks FotMob-style "Where to watch" card in match-detail.
-3. **Odds tier**: The Odds API $99/mo (in-play included, 1M req/mo) vs $30/mo (30k req/mo, pre-match only). Blocks next-goal / in-play markets.
-4. **Initial league package**: v0.3 default was Big-5 + CL/EL/UECL + Allsvenskan. Confirm whether Allsvenskan is a launch requirement (moats) or post-launch (simplicity). Superettan: include or defer?
-5. **Raw payload retention period**: Proposal is 30d live, 180d non-live. Confirm acceptable under GDPR and storage-cost appetite.
-6. **Raw payload storage location**: Postgres JSONB (current proposal) vs S3/object storage (cheaper at scale, harder to query, requires new infra). Tied to retention and volume.
-7. **Provider conflict policy**: Default is provider priority + field overrides. Any operations where conflicts should instead escalate to manual review rather than silently pick a winner (e.g. final score on finished matches)?
-8. **Mock-provider scope**: Should mocks include deliberately broken scenarios (schema drift, HTTP 500s, quota exhaustion) for chaos testing, or stay clean?
-9. **Provider sandbox / staging**: Do we target two Railway environments (dev pointing to free/mock providers, prod pointing to paid) or one environment with paid keys ungated from day one?
+ 1. **Primary paid sports-data provider**: SportMonks (recommended in v0.3 for football depth + Allsvenskan) vs API-Football Pro (cheaper, current integration path, weaker metadata) vs [SportsData.io](http://SportsData.io) (broader multi-sport but weaker football in EU) vs Stats Perform / Opta (enterprise-tier, requires commercial discussion). Impacts onboarding timeline (1 week for API-Football Pro upgrade, 1–3 weeks for SportMonks, quarter+ for enterprise).
+ 2. **Broadcast data source**: SportMonks broadcast add-on, dedicated Nordic provider (e.g. Screenhits), Stats Perform partnership, or manual curation for Sweden only at launch. Blocks FotMob-style "Where to watch" card in match-detail.
+ 3. **Odds tier**: The Odds API $99/mo (in-play included, 1M req/mo) vs $30/mo (30k req/mo, pre-match only). Blocks next-goal / in-play markets.
+ 4. **Initial league package**: v0.3 default was Big-5 + CL/EL/UECL + Allsvenskan. Confirm whether Allsvenskan is a launch requirement (moats) or post-launch (simplicity). Superettan: include or defer?
+ 5. **Raw payload retention period**: Proposal is 30d live, 180d non-live. Confirm acceptable under GDPR and storage-cost appetite.
+ 6. **Raw payload storage location**: Postgres JSONB (current proposal) vs S3/object storage (cheaper at scale, harder to query, requires new infra). Tied to retention and volume.
+ 7. **Provider conflict policy**: Default is provider priority + field overrides. Any operations where conflicts should instead escalate to manual review rather than silently pick a winner (e.g. final score on finished matches)?
+ 8. **Mock-provider scope**: Should mocks include deliberately broken scenarios (schema drift, HTTP 500s, quota exhaustion) for chaos testing, or stay clean?
+ 9. **Provider sandbox / staging**: Do we target two Railway environments (dev pointing to free/mock providers, prod pointing to paid) or one environment with paid keys ungated from day one?
 10. **VAR event modeling**: The proposed enum splits VAR into five variants (goal awarded / cancelled / penalty awarded / overturned / red card). Confirm this is the product-level granularity we want to display, or collapse to a single `VAR_DECISION` with a nested sub-type.

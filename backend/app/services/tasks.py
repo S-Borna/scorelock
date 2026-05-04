@@ -1172,3 +1172,59 @@ def distribute_match_results():
         return {"status": "ok", "sent": sent}
 
     return run_async(_distribute())
+
+
+# ── SportMonks provider sync (Phase 7.4) ───────────────────
+
+
+@celery_app.task(
+    name="app.services.tasks.sportmonks_sync_fixture",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=300,
+    max_retries=3,
+)
+def sportmonks_sync_fixture(self, fixture_external_id: str):
+    """Sync en SportMonks-fixture end-to-end till DB.
+
+    Static-mode (default pre-augusti): ignorerar fixture_external_id, läser
+    från `/competitor-ref/sportmonks/payloads/Match Centre.json`.
+
+    Live-mode: hämtar via SportMonks v3 API + persisterar via normalizer.
+
+    Idempotent — re-sync av samma fixture uppdaterar mutable fält men
+    skapar inga duplicat-rader (verifierat i test_sportmonks_normalizer).
+    """
+
+    async def _sync():
+        from app.core.config import get_settings
+        from app.providers.sportmonks import SportMonksProvider
+        from app.services.sportmonks_normalizer import sync_fixture_detail
+
+        provider = SportMonksProvider(get_settings())
+        async with async_session() as session:
+            try:
+                fixture = await sync_fixture_detail(
+                    session, provider, fixture_external_id
+                )
+                await session.commit()
+                logger.info(
+                    "sportmonks_sync_ok",
+                    fixture_external_id=fixture_external_id,
+                    fixture_id=fixture.id,
+                    home_score=fixture.home_goals,
+                    away_score=fixture.away_goals,
+                    status=fixture.status.value,
+                )
+                return {
+                    "status": "ok",
+                    "fixture_id": fixture.id,
+                    "external_id": fixture_external_id,
+                    "score": f"{fixture.home_goals}-{fixture.away_goals}",
+                    "match_status": fixture.status.value,
+                }
+            finally:
+                await provider.aclose()
+
+    return run_async(_sync())

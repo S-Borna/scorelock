@@ -1268,6 +1268,34 @@ async def trigger_task(
     return {"status": "queued", "task_id": result.id, "task_name": task_name}
 
 
+@router.post("/admin/trigger/sportmonks-sync/{fixture_external_id}")
+async def trigger_sportmonks_sync(
+    fixture_external_id: str,
+    user: User = Depends(get_current_user),
+):
+    """Trigger SportMonks sync för en specifik fixture (admin only).
+
+    Static-mode (default): ignorerar fixture_external_id, läser från
+    competitor-ref payload-filer. Live-mode: hämtar via SportMonks v3 API.
+
+    Idempotent — re-trigger uppdaterar mutable fält utan dupliacering.
+    """
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    from app.core.celery_app import celery_app
+
+    result = celery_app.send_task(
+        "app.services.tasks.sportmonks_sync_fixture",
+        args=[fixture_external_id],
+    )
+    return {
+        "status": "queued",
+        "task_id": result.id,
+        "task_name": "sportmonks_sync_fixture",
+        "fixture_external_id": fixture_external_id,
+    }
+
+
 @router.get("/admin/quota")
 async def get_quota_status(user: User = Depends(get_current_user)):
     """Get API quota usage across all data sources (admin only)."""

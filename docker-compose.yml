@@ -11,6 +11,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - ./competitor-ref:/competitor-ref:ro
     depends_on:
       db:
         condition: service_healthy
@@ -31,6 +32,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - ./competitor-ref:/competitor-ref:ro
     depends_on:
       db:
         condition: service_healthy
@@ -51,6 +53,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - ./competitor-ref:/competitor-ref:ro
     depends_on:
       - celery-worker
     command: celery -A app.core.celery_app beat --loglevel=info

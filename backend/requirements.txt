@@ -24,6 +24,10 @@ scipy==1.15.1
 httpx==0.28.1
 aiohttp==3.11.11
 
+# ── HTML Parsing (Track S-1 Allsvenskan-pipeline) ─────────
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
 # ── Auth & Security ────────────────────────────────────────
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
