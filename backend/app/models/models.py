@@ -33,6 +33,12 @@ class MatchStatus(str, enum.Enum):
     FINISHED = "finished"
     POSTPONED = "postponed"
     CANCELLED = "cancelled"
+    # v0.6a3: provider-rikare states
+    IN_PLAY = "in_play"
+    IN_PROGRESS_EXTRA_TIME = "in_progress_extra_time"
+    IN_PROGRESS_PENALTIES = "in_progress_penalties"
+    SUSPENDED = "suspended"
+    AWARDED = "awarded"
 
 
 class SubscriptionTier(str, enum.Enum):
@@ -115,6 +121,15 @@ class League(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     phase: Mapped[int] = mapped_column(Integer, default=1)  # Launch phase 1/2/3
 
+    # v0.6a3 extension
+    sport_id: Mapped[int | None] = mapped_column(ForeignKey("sports.id"))
+    country_id: Mapped[int | None] = mapped_column(ForeignKey("countries.id"))
+    tier: Mapped[int | None] = mapped_column(Integer)
+    slug: Mapped[str | None] = mapped_column(String(80))
+    external_ids: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+
     # Relationships
     fixtures: Mapped[list["Fixture"]] = relationship(back_populates="league")
     standings: Mapped[list["Standing"]] = relationship(back_populates="league")
@@ -131,6 +146,16 @@ class Team(Base):
     country: Mapped[str | None] = mapped_column(String(100))
     venue_name: Mapped[str | None] = mapped_column(String(200))
     venue_capacity: Mapped[int | None] = mapped_column(Integer)
+
+    # v0.6a3 extension
+    country_id: Mapped[int | None] = mapped_column(ForeignKey("countries.id"))
+    slug: Mapped[str | None] = mapped_column(String(80))
+    color_primary: Mapped[str | None] = mapped_column(String(7))
+    color_secondary: Mapped[str | None] = mapped_column(String(7))
+    external_ids: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    primary_venue_id: Mapped[int | None] = mapped_column(ForeignKey("venues.id"))
 
     # Relationships
     home_fixtures: Mapped[list["Fixture"]] = relationship(
@@ -170,6 +195,17 @@ class Fixture(Base):
 
     # Match statistics (stored as JSON for flexibility)
     stats: Mapped[dict | None] = mapped_column(JSONB)
+
+    # v0.6a3 extension
+    season_id: Mapped[int | None] = mapped_column(ForeignKey("seasons.id"))
+    venue_id: Mapped[int | None] = mapped_column(ForeignKey("venues.id"))
+    referee_id: Mapped[int | None] = mapped_column(ForeignKey("referees.id"))
+    external_ids: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    live_minute: Mapped[int | None] = mapped_column(Integer)
+    live_stoppage: Mapped[int | None] = mapped_column(Integer)
+    attendance: Mapped[int | None] = mapped_column(Integer)
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -302,6 +338,23 @@ class Standing(Base):
     # Advanced stats
     xg_for: Mapped[float | None] = mapped_column(Float)
     xg_against: Mapped[float | None] = mapped_column(Float)
+
+    # v0.6a3 extension
+    season_id: Mapped[int | None] = mapped_column(ForeignKey("seasons.id"))
+    zone: Mapped[str | None] = mapped_column(String(40))
+    home_played: Mapped[int | None] = mapped_column(Integer)
+    home_won: Mapped[int | None] = mapped_column(Integer)
+    home_drawn: Mapped[int | None] = mapped_column(Integer)
+    home_lost: Mapped[int | None] = mapped_column(Integer)
+    home_goals_for: Mapped[int | None] = mapped_column(Integer)
+    home_goals_against: Mapped[int | None] = mapped_column(Integer)
+    away_played: Mapped[int | None] = mapped_column(Integer)
+    away_won: Mapped[int | None] = mapped_column(Integer)
+    away_drawn: Mapped[int | None] = mapped_column(Integer)
+    away_lost: Mapped[int | None] = mapped_column(Integer)
+    away_goals_for: Mapped[int | None] = mapped_column(Integer)
+    away_goals_against: Mapped[int | None] = mapped_column(Integer)
+    provider: Mapped[str | None] = mapped_column(String(50))
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
