@@ -41,12 +41,13 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.fetch_daily_fixtures",
         "schedule": crontab(hour="6,18", minute=0),
     },
-    # Update live scores (API-Football — only source with live data)
-    # Every 5 minutes during match hours (12:00–23:00 UTC)
-    "update-live-scores": {
-        "task": "app.services.tasks.update_live_scores",
-        "schedule": crontab(minute="*/5", hour="12-23"),
-    },
+    # SHELVED 2026-05-04 — API-Football account suspended (HTTP 403 on /status + /leagues).
+    # Re-enable when account is restored eller efter pivot till SportMonks livescores.
+    # Task-koden i services/tasks.py + services/api_football.py är intakt och re-arms vid uncomment.
+    # "update-live-scores": {
+    #     "task": "app.services.tasks.update_live_scores",
+    #     "schedule": crontab(minute="*/5", hour="12-23"),
+    # },
     # Fetch odds from The Odds API (2x/day to conserve 500 req/month budget)
     "fetch-odds": {
         "task": "app.services.tasks.fetch_odds_updates",
@@ -121,6 +122,30 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute=45, hour="14-23"),
     },
 }
+
+# ── SportMonks sync (Phase 7.4) ────────────────────────────
+# Aktiveras automatiskt när SPORTMONKS_USE_STATIC_FIXTURES=false (post-augusti
+# tier-upgrade). Static-mode behöver ingen schedule eftersom payload-filer
+# inte ändras — manuell trigger via /admin/trigger/sportmonks-sync/{id}-endpoint
+# används istället.
+#
+# Live-schedule design:
+#   - Pre-match (kickoff +/- 24h): var 6:e h
+#   - In-play (status=IN_PLAY): var 15:e min
+#   - Post-match (status=FINISHED): single sync inom 30 min av FT
+#
+# Dessa entries läggs in när live-mode aktiveras + sportmonks_sync_live_fixtures
+# meta-task implementeras (Phase 7.5 / launch-prep).
+if not settings.sportmonks_use_static_fixtures:
+    celery_app.conf.beat_schedule.update(
+        {
+            # Placeholder — implementeras när SportMonks live-mode aktiveras
+            # "sportmonks-sync-inplay": {
+            #     "task": "app.services.tasks.sportmonks_sync_live_fixtures",
+            #     "schedule": crontab(minute="*/15"),
+            # },
+        }
+    )
 
 # Auto-discover tasks from services module
 celery_app.autodiscover_tasks(["app.services"])
