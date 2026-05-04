@@ -320,18 +320,44 @@ class SportMonksProvider:
         )
 
     def _parse_lineup_player(
-        self, raw: dict[str, Any]
+        self,
+        raw: dict[str, Any],
+        num_rows: int = 0,
+        max_col_in_row: dict[int, int] | None = None,
     ) -> NormalizedLineupPlayer:
         player = raw.get("player") or {}
         formation_field: str | None = raw.get("formation_field")
         grid_x = grid_y = None
+        row_n: int | None = None
         if formation_field and ":" in formation_field:
             try:
-                row, col = formation_field.split(":", 1)
-                grid_y = int(row)
-                grid_x = int(col)
-            except ValueError:
+                rr, cc = formation_field.split(":", 1)
+                row_n = int(rr)
+                col_n = int(cc)
+                # Skala 1-N row, 1-M col → 0-100 percent (UI förväntar percent).
+                if num_rows > 0 and max_col_in_row:
+                    max_c = max_col_in_row.get(row_n, 1) or 1
+                    grid_x = int(round((col_n - 0.5) / max_c * 100))
+                    grid_y = int(round((row_n - 0.5) / num_rows * 100))
+                else:
+                    grid_x = col_n
+                    grid_y = row_n
+            except (ValueError, TypeError):
                 grid_x = grid_y = None
+                row_n = None
+        # Position-code: prefer payload, fallback derivation från row-index.
+        position_code = (raw.get("position") or {}).get("code") or raw.get(
+            "position_name"
+        )
+        if not position_code and row_n is not None:
+            if row_n == 1:
+                position_code = "GK"
+            elif row_n == num_rows and num_rows > 1:
+                position_code = "FWD"
+            elif row_n == 2:
+                position_code = "DEF"
+            else:
+                position_code = "MID"
         details = raw.get("details") or []
         rating = None
         is_captain = False
@@ -359,8 +385,7 @@ class SportMonksProvider:
                 or player.get("common_name")
                 or ""
             ),
-            position_code=(raw.get("position") or {}).get("code")
-            or raw.get("position_name"),
+            position_code=position_code,
             shirt_number=raw.get("jersey_number"),
             is_starter=bool(raw.get("type_id") == 11 or raw.get("formation_position")),
             is_captain=is_captain,
@@ -375,6 +400,14 @@ class SportMonksProvider:
         self, payload: dict[str, Any], fixture_external_id: str
     ) -> list[NormalizedLineup]:
         lineups_raw = payload.get("lineups") or []
+        coaches_raw = payload.get("coaches") or []
+        coach_by_team: dict[int, str] = {}
+        for c in coaches_raw:
+            tid = (c.get("meta") or {}).get("participant_id")
+            name = c.get("display_name") or c.get("name")
+            if tid and name:
+                coach_by_team[int(tid)] = name
+
         # SportMonks: rader per spelare; gruppera på participant_id
         by_team: dict[int, list[dict[str, Any]]] = {}
         for row in lineups_raw:
@@ -383,21 +416,42 @@ class SportMonksProvider:
                 continue
             by_team.setdefault(int(team_id), []).append(row)
 
-        # Formation per lag — SportMonks lägger formation_code på participant
-        # eller på första lineup-rad. Försök first-row.formation_code → fallback None.
         out: list[NormalizedLineup] = []
         for team_id, rows in by_team.items():
-            formation = next(
-                (r.get("formation") for r in rows if r.get("formation")), None
+            # Härled formation från starters: count per row, format "{def}-{mid}-{fwd}".
+            row_counts: dict[int, int] = {}
+            max_col_in_row: dict[int, int] = {}
+            for r in rows:
+                ff = r.get("formation_field")
+                if not ff or ":" not in ff:
+                    continue
+                try:
+                    rr, cc = ff.split(":", 1)
+                    rr_i, cc_i = int(rr), int(cc)
+                except (ValueError, TypeError):
+                    continue
+                row_counts[rr_i] = row_counts.get(rr_i, 0) + 1
+                max_col_in_row[rr_i] = max(max_col_in_row.get(rr_i, 0), cc_i)
+
+            formation: str | None = None
+            num_rows = max(row_counts.keys()) if row_counts else 0
+            if num_rows >= 2:
+                # Hoppa över row 1 (GK) — formation skrivs på defenders/onwards.
+                formation = "-".join(
+                    str(row_counts[rr]) for rr in sorted(row_counts) if rr > 1
+                ) or None
+
+            players = tuple(
+                self._parse_lineup_player(r, num_rows, max_col_in_row)
+                for r in rows
             )
-            players = tuple(self._parse_lineup_player(r) for r in rows)
             out.append(
                 NormalizedLineup(
                     fixture_external_id=fixture_external_id,
                     team_external_id=str(team_id),
                     formation=formation,
                     state="CONFIRMED",  # SportMonks ger bara confirmed lineups
-                    manager_name=None,
+                    manager_name=coach_by_team.get(team_id),
                     players=players,
                 )
             )
@@ -628,7 +682,7 @@ class SportMonksProvider:
         data = await self._fetch_live(
             f"/fixtures/{fixture_external_id}",
             params={
-                "include": "lineups.player;lineups.details.type;lineups.position"
+                "include": "lineups.player;lineups.details.type;lineups.position;coaches"
             },
         )
         return self._parse_lineups(data.get("data") or {}, fixture_external_id)
