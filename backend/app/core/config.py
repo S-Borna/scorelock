@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     football_data_base_url: str = "https://api.football-data.org/v4"
     the_odds_api_key: str = ""
     the_odds_api_base_url: str = "https://api.the-odds-api.com/v4"
+    sportmonks_api_token: str = ""
+    sportmonks_base_url: str = "https://api.sportmonks.com/v3/football"
+    # Static-fixture-mode: read from JSON-payloads i competitor-ref/sportmonks/payloads/
+    # istället för live-API. Aktiveras pre-augusti när vi designar Phase 7-9 mot
+    # befintlig payload-shape utan tier-upgrade.
+    sportmonks_use_static_fixtures: bool = True
+    sportmonks_static_payload_dir: str = (
+        "/competitor-ref/sportmonks/payloads"
+    )
 
     # ── Stripe ─────────────────────────────────────────────
     stripe_secret_key: str = ""

@@ -138,9 +138,21 @@ def test_default_retry_policy_shape() -> None:
         assert non_retry_cls in DEFAULT_RETRY_POLICY.non_retryable
 
 
-def test_normalized_placeholder_instantiates() -> None:
-    """Placeholder `NormalizedFixture` instantiates with no fields."""
-    assert NormalizedFixture() is not None
+def test_normalized_fixture_instantiates() -> None:
+    """`NormalizedFixture` instantiates with required Phase 7.2-fields."""
+    from datetime import datetime, timezone
+
+    fix = NormalizedFixture(
+        external_id="1",
+        league_external_id="1",
+        season_external_id=None,
+        home_team_external_id="2",
+        away_team_external_id="3",
+        name="Home vs Away",
+        kickoff=datetime.now(timezone.utc),
+        status="SCHEDULED",
+    )
+    assert fix.external_id == "1"
 
 
 def test_scope_global_factory() -> None:
