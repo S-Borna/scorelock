@@ -21,17 +21,28 @@ from datetime import date, datetime, timedelta, timezone
 
 import structlog
 from app.core.celery_app import celery_app
-from app.core.database import async_session
+from app.core.database import async_session, engine
 
 logger = structlog.get_logger()
 
 
 def run_async(coro):
-    """Helper to run async code inside sync Celery tasks."""
+    """Helper to run async code inside sync Celery tasks.
+
+    Disposes the SQLAlchemy engine pool after each run så att asyncpg-
+    connections inte överlever event-loop-bytet mellan Celery-task-anrop
+    (som annars ger "InterfaceError: another operation in progress" när
+    pool-cachade connections är bundna till en stängd event loop).
+    """
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(coro)
     finally:
+        # Dispose pool oavsett success/fail så nästa task får ny event-loop-bunden pool.
+        try:
+            loop.run_until_complete(engine.dispose())
+        except Exception:
+            pass
         loop.close()
 
 
