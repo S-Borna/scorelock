@@ -519,7 +519,11 @@ class SportMonksProvider:
         per_team: dict[int, dict[int, Any]] = {}
         as_of: dict[int, int] = {}
         for (participant_id, type_id), row in latest.items():
-            per_team.setdefault(participant_id, {})[type_id] = row.get("value")
+            # Live-API lägger värdet i nästlad `data.value`; trends/components
+            # använder platt `value`. Acceptera båda.
+            data = row.get("data")
+            value = data.get("value") if isinstance(data, dict) else row.get("value")
+            per_team.setdefault(participant_id, {})[type_id] = value
             minute = row.get("minute") or 0
             if minute > as_of.get(participant_id, 0):
                 as_of[participant_id] = minute
