@@ -1239,3 +1239,96 @@ def sportmonks_sync_fixture(self, fixture_external_id: str):
                 await provider.aclose()
 
     return run_async(_sync())
+
+
+@celery_app.task(
+    name="app.services.tasks.sportmonks_sync_live_fixtures",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=120,
+    max_retries=2,
+)
+def sportmonks_sync_live_fixtures(self):
+    """Realtids-spine: pollar SportMonks /livescores/inplay → WS.
+
+    Lager 1 (denna task): ETT API-anrop per cykel oavsett antal live-matcher.
+    Uppdaterar score/minut/status på befintliga fixtures + publish_score_update.
+    Lager 2: vid mål (score-ändring) eller okänd live-match köas
+    sportmonks_sync_fixture för full event-/timeline-refresh — håller timeline
+    färsk utan att bränna kvot (1 anrop/cykel istället för N×4).
+    """
+
+    async def _sync():
+        from app.api.websocket import publish_score_update
+        from app.core.config import get_settings
+        from app.models.models import Fixture, MatchStatus
+        from app.providers.sportmonks import SportMonksProvider
+        from app.services.sportmonks_normalizer import get_canonical_id
+
+        provider = SportMonksProvider(get_settings())
+        try:
+            live = await provider.fetch_live_fixtures()
+        except Exception:
+            await provider.aclose()
+            raise
+
+        if not live:
+            await provider.aclose()
+            return {"status": "ok", "live": 0, "published": 0}
+
+        published = 0
+        async with async_session() as session:
+            try:
+                for nf in live:
+                    mapped_id = await get_canonical_id(
+                        session, "fixture", nf.external_id
+                    )
+                    fixture = (
+                        await session.get(Fixture, mapped_id)
+                        if mapped_id is not None
+                        else None
+                    )
+
+                    # Okänd live-match → köa full skapande-sync, hoppa denna cykel
+                    if fixture is None:
+                        sportmonks_sync_fixture.delay(nf.external_id)
+                        continue
+
+                    score_changed = (
+                        fixture.home_goals != nf.home_score
+                        or fixture.away_goals != nf.away_score
+                    )
+
+                    fixture.home_goals = nf.home_score
+                    fixture.away_goals = nf.away_score
+                    fixture.live_minute = nf.live_minute
+                    fixture.live_stoppage = nf.live_stoppage
+                    try:
+                        fixture.status = MatchStatus[nf.status]
+                    except KeyError:
+                        logger.warning("sportmonks_live_unknown_status", status=nf.status)
+
+                    publish_score_update(
+                        fixture_id=fixture.id,
+                        home_goals=nf.home_score or 0,
+                        away_goals=nf.away_score or 0,
+                        status=fixture.status.value,
+                        minute=nf.live_minute,
+                    )
+                    published += 1
+
+                    # Mål → refresha events/timeline (lager 2)
+                    if score_changed:
+                        sportmonks_sync_fixture.delay(nf.external_id)
+
+                await session.commit()
+            finally:
+                await provider.aclose()
+
+        logger.info(
+            "sportmonks_live_synced", live=len(live), published=published
+        )
+        return {"status": "ok", "live": len(live), "published": published}
+
+    return run_async(_sync())

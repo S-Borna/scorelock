@@ -105,22 +105,25 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.score_user_predictions",
         "schedule": crontab(minute="*/15", hour="14-23"),
     },
-    # ── Social Distribution (M8) ─────────────────────────────
-    # Distribute match previews — 10:30 UTC (after content generation at 10:00)
-    "distribute-previews": {
-        "task": "app.services.tasks.distribute_match_previews",
-        "schedule": crontab(hour=10, minute=30),
-    },
-    # Distribute value bet alerts — 09:30 UTC (after value bet articles at 09:00)
-    "distribute-value-bets": {
-        "task": "app.services.tasks.distribute_value_bet_alerts",
-        "schedule": crontab(hour=9, minute=30),
-    },
-    # Push match results — every hour during match hours
-    "distribute-match-results": {
-        "task": "app.services.tasks.distribute_match_results",
-        "schedule": crontab(minute=45, hour="14-23"),
-    },
+    # ── Social Distribution (M8) — GATED 2026-05-25 ──────────
+    # Avstängda: alla tre refererar en borttagen ValueBet-modell + fältnamn
+    # som inte längre finns (fixture.home_team som sträng, fixture.league_name,
+    # Article.article_type/.created_at, Fixture.home_score). De kraschade tyst
+    # vid varje körning. Task-funktionerna finns kvar i tasks.py oförändrade.
+    # Strategiskt: detta är outbound auto-posting; vår riktning är in-app hangout.
+    # Återaktivera först när tasks + ValueBet-källa är ombyggda mot rätt schema.
+    # "distribute-previews": {
+    #     "task": "app.services.tasks.distribute_match_previews",
+    #     "schedule": crontab(hour=10, minute=30),
+    # },
+    # "distribute-value-bets": {
+    #     "task": "app.services.tasks.distribute_value_bet_alerts",
+    #     "schedule": crontab(hour=9, minute=30),
+    # },
+    # "distribute-match-results": {
+    #     "task": "app.services.tasks.distribute_match_results",
+    #     "schedule": crontab(minute=45, hour="14-23"),
+    # },
 }
 
 # ── SportMonks sync (Phase 7.4) ────────────────────────────
@@ -139,11 +142,14 @@ celery_app.conf.beat_schedule = {
 if not settings.sportmonks_use_static_fixtures:
     celery_app.conf.beat_schedule.update(
         {
-            # Placeholder — implementeras när SportMonks live-mode aktiveras
-            # "sportmonks-sync-inplay": {
-            #     "task": "app.services.tasks.sportmonks_sync_live_fixtures",
-            #     "schedule": crontab(minute="*/15"),
-            # },
+            # Realtids-spine: 1 API-anrop/cykel mot /livescores/inplay.
+            # 30s = 120 anrop/h, väl under SportMonks-gränsen 2000/h/entity.
+            # Tom respons när inget spelas → cheap no-op. Lager 2 (events) köas
+            # av tasken själv vid mål, inte på schema.
+            "sportmonks-sync-inplay": {
+                "task": "app.services.tasks.sportmonks_sync_live_fixtures",
+                "schedule": 30.0,
+            },
         }
     )
 
