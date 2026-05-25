@@ -40,6 +40,10 @@ def generate(
         )
     except subprocess.TimeoutExpired as exc:
         raise ClaudeCLIError(f"claude -p timeout efter {timeout}s") from exc
+    except FileNotFoundError as exc:
+        # claude-binären finns inte (Docker/prod) — signalera så orkestratorn
+        # kan falla tillbaka på Anthropic-API i stället för att krascha.
+        raise ClaudeCLIError("claude-binär saknas (ej host/box-miljö)") from exc
     if proc.returncode != 0:
         raise ClaudeCLIError(
             f"claude -p exit {proc.returncode}: {proc.stderr.strip()[:200]}"

@@ -710,16 +710,15 @@ async def trigger_intelligence_generation(
             detail=f"Invalid kind. Choose from: {[k.value for k in IntelligenceKind]}",
         )
 
-    from app.services.intelligence import get_intelligence_generator
+    from app.services.intelligence_orchestrator import generate_intelligence
 
-    generator = get_intelligence_generator()
     try:
-        row = await generator.generate(
+        row = await generate_intelligence(
             db,
             fixture_id=fixture_id,
             kind=kind_enum,
             language=language,
-            force_regenerate=force,
+            force=force,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

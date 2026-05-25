@@ -50,6 +50,10 @@ class Settings(BaseSettings):
 
     # ── LLM ────────────────────────────────────────────────
     anthropic_api_key: str = ""
+    # Intelligens-motor: True på host/box (claude -p mot Max-subben, platt kostnad),
+    # False på prod/Docker (gå direkt på Anthropic-API utan att försöka subprocess).
+    # Orkestratorn faller ändå tillbaka på API om CLI:t failar när detta är True.
+    intelligence_use_cli: bool = True
 
     # ── Error Monitoring ───────────────────────────────────
     sentry_dsn: str = ""
