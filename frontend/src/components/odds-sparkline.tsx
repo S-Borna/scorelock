@@ -28,6 +28,9 @@ interface BestSeriesPoint {
 }
 
 function buildBestSeries(snapshots: OddsSnapshot[]): BestSeriesPoint[] {
+    // Guard: fixtures utan odds-snapshots ger undefined/null → kraschar annars
+    // hela match-detaljsidan (TypeError: snapshots is not iterable).
+    if (!Array.isArray(snapshots) || snapshots.length === 0) return [];
     const byTimestamp = new Map<string, OddsSnapshot[]>();
     for (const s of snapshots) {
         const arr = byTimestamp.get(s.taken_at) ?? [];
