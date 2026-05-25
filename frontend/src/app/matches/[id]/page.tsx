@@ -16,7 +16,7 @@ import { CommentaryFeedCard } from "@/components/commentary-feed";
 import { MomentumGraph } from "@/components/momentum-graph";
 import { MOTMPoll } from "@/components/motm-poll";
 import { MatchRoom } from "@/components/match-room";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, ApiError } from "@/lib/api";
 import type { Article, ArticleList, Broadcast, CommentaryFeed, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MOTMTally, MatchInfo, MatchIntelligenceBundle, MomentumSeries, OddsSnapshotsBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -46,8 +46,12 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
     try {
         fixture = await fetchApi<FixtureDetail>(`/api/v1/fixtures/${id}`);
-    } catch {
-        notFound();
+    } catch (err) {
+        // Bara genuin 404 (matchen finns inte) → not-found-sida. Transienta fel
+        // (timeout/nätverk) ska INTE bli en cachad hård 404 — låt dem bubbla
+        // till en retrybar error-boundary istället.
+        if (err instanceof ApiError && err.status === 404) notFound();
+        throw err;
     }
 
     // Fetch related articles for this fixture
