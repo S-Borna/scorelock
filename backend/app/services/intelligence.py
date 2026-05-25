@@ -212,8 +212,18 @@ def _build_user_prompt(kind: IntelligenceKind, ctx: dict[str, Any]) -> str:
 
 def _parse_response(text: str) -> tuple[str, str]:
     """Extract summary + body from the JSON the model returned."""
+    cleaned = text.strip()
+    # Claude wrappar ofta JSON i ```json ... ``` — strippa fence före parsning,
+    # annars failar json.loads och råtexten (med fence) hamnar i body.
+    if cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+        if cleaned[:4].lower() == "json":
+            cleaned = cleaned[4:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
     try:
-        payload = json.loads(text)
+        payload = json.loads(cleaned)
     except json.JSONDecodeError:
         # Last-resort: treat the full output as the body.
         return (text[:120], text)
