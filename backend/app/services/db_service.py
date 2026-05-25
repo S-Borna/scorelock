@@ -370,7 +370,7 @@ async def upsert_odds(
             fetched_at=datetime.utcnow(),
         )
         .on_conflict_do_update(
-            constraint="ix_odds_fixture_bookmaker",
+            index_elements=["fixture_id", "bookmaker", "market"],
             set_={
                 "home_odds": home_odds,
                 "draw_odds": draw_odds,

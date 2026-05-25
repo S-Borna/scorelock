@@ -250,7 +250,14 @@ class Odds(Base):
     # Relationships
     fixture: Mapped["Fixture"] = relationship(back_populates="odds")
 
-    __table_args__ = (Index("ix_odds_fixture_bookmaker", "fixture_id", "bookmaker"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "fixture_id",
+            "bookmaker",
+            "market",
+            name="uq_odds_fixture_bookmaker_market",
+        ),
+    )
 
 
 # ── ML Predictions ─────────────────────────────────────────

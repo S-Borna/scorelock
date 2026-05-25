@@ -258,22 +258,26 @@ class OddsAPIClient:
         Returns:
             fixture_id if matched, None otherwise.
         """
-        home = event.get("home_team", "").lower().strip()
-        away = event.get("away_team", "").lower().strip()
+        import unicodedata
 
-        # Try exact match
-        key = f"{home} vs {away}"
-        if key in fixture_name_map:
-            return fixture_name_map[key]
+        def _norm(s: str) -> str:
+            # Lowercase + fold diakriter (ö→o, ä→a, å→a) så lagnamn matchar
+            # över providers (SportMonks "Häcken" vs Odds API "BK Hacken").
+            s = unicodedata.normalize("NFKD", (s or "").lower().strip())
+            return "".join(c for c in s if not unicodedata.combining(c))
 
-        # Try partial match (team name in fixture key)
+        home = _norm(event.get("home_team", ""))
+        away = _norm(event.get("away_team", ""))
+
         for fixture_key, fixture_id in fixture_name_map.items():
             parts = fixture_key.split(" vs ")
-            if len(parts) == 2:
-                if (home in parts[0] or parts[0] in home) and (
-                    away in parts[1] or parts[1] in away
-                ):
-                    return fixture_id
+            if len(parts) != 2:
+                continue
+            fh, fa = _norm(parts[0]), _norm(parts[1])
+            home_ok = home == fh or (home and (home in fh or fh in home))
+            away_ok = away == fa or (away and (away in fa or fa in away))
+            if home_ok and away_ok:
+                return fixture_id
 
         return None
 
