@@ -1318,9 +1318,34 @@ def sportmonks_sync_live_fixtures(self):
                     )
                     published += 1
 
-                    # Mål → refresha events/timeline (lager 2)
+                    # Mål → refresha events/timeline (lager 2) + pusha explosion
+                    # till matchrummet (Steg 4)
                     if score_changed:
                         sportmonks_sync_fixture.delay(nf.external_id)
+                        try:
+                            import json as _json
+                            import redis as _redis
+                            from app.core.config import get_settings as _gs
+                            from app.core.room_realtime import room_channel
+
+                            _rc = _redis.from_url(
+                                _gs().redis_url, decode_responses=True
+                            )
+                            _rc.publish(
+                                room_channel(fixture.id),
+                                _json.dumps(
+                                    {
+                                        "type": "goal",
+                                        "fixture_id": fixture.id,
+                                        "home_goals": nf.home_score or 0,
+                                        "away_goals": nf.away_score or 0,
+                                        "minute": nf.live_minute,
+                                    }
+                                ),
+                            )
+                            _rc.close()
+                        except Exception as exc:
+                            logger.warning("room_goal_publish_failed", error=str(exc))
 
                 await session.commit()
             finally:

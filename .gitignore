@@ -44,6 +44,7 @@ celerybeat-schedule.db
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 .turbo/
 
 # ── Testing & coverage ────────────────────────────────────

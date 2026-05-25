@@ -12,6 +12,7 @@ import redis.asyncio as aioredis
 import structlog
 
 from app.core.config import get_settings
+from app.core import room_realtime as rt
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -133,3 +134,92 @@ def publish_score_update(
     )
     r.publish("scorelock:live", payload)
     r.close()
+
+
+# ── Matchrum WS (hangout / Steg 4) ──────────────────────────
+
+
+class RoomManager:
+    """Per-fixture WebSocket-rum med en Redis-pubsub-prenumeration per aktivt rum.
+
+    Prenumerationen startas när första klienten ansluter till en fixture och
+    avslutas när den sista lämnar — så vi håller bara öppna kanaler för rum
+    som faktiskt har folk i sig.
+    """
+
+    def __init__(self):
+        self._rooms: dict[int, set[WebSocket]] = {}
+        self._tasks: dict[int, asyncio.Task] = {}
+
+    async def connect(self, fixture_id: int, ws: WebSocket):
+        await ws.accept()
+        self._rooms.setdefault(fixture_id, set()).add(ws)
+        if fixture_id not in self._tasks or self._tasks[fixture_id].done():
+            self._tasks[fixture_id] = asyncio.create_task(self._listen(fixture_id))
+        logger.info(
+            "room_connect", fixture_id=fixture_id, total=len(self._rooms[fixture_id])
+        )
+
+    def disconnect(self, fixture_id: int, ws: WebSocket):
+        room = self._rooms.get(fixture_id)
+        if not room:
+            return
+        room.discard(ws)
+        if not room:
+            self._rooms.pop(fixture_id, None)
+            task = self._tasks.pop(fixture_id, None)
+            if task:
+                task.cancel()
+
+    async def _broadcast(self, fixture_id: int, payload: str):
+        gone: list[WebSocket] = []
+        for ws in self._rooms.get(fixture_id, set()):
+            try:
+                await ws.send_text(payload)
+            except Exception:
+                gone.append(ws)
+        for ws in gone:
+            self.disconnect(fixture_id, ws)
+
+    async def _listen(self, fixture_id: int):
+        r = aioredis.from_url(settings.redis_url, decode_responses=True)
+        pubsub = r.pubsub()
+        await pubsub.subscribe(rt.room_channel(fixture_id))
+        try:
+            async for msg in pubsub.listen():
+                if msg["type"] == "message":
+                    await self._broadcast(fixture_id, msg["data"])
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await pubsub.unsubscribe(rt.room_channel(fixture_id))
+            await r.aclose()
+
+
+room_manager = RoomManager()
+
+
+@router.websocket("/ws/room/{fixture_id}")
+async def match_room(ws: WebSocket, fixture_id: int):
+    """Live matchrum: meddelanden, reaktioner och mål-events för en fixture + närvaro.
+
+    Klienten håller närvaron vid liv genom att skicka valfri text (heartbeat);
+    utan heartbeat faller man ur närvaro-räkningen via TTL.
+    """
+    await room_manager.connect(fixture_id, ws)
+    user_key = f"ws:{id(ws)}"
+    try:
+        count = await rt.mark_present(fixture_id, user_key)
+        await ws.send_text(json.dumps({"type": "presence", "count": count}))
+        await rt.publish_room_event(fixture_id, {"type": "presence", "count": count})
+        while True:
+            await ws.receive_text()  # heartbeat
+            await rt.mark_present(fixture_id, user_key)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        room_manager.disconnect(fixture_id, ws)
+        new_count = await rt.mark_absent(fixture_id, user_key)
+        await rt.publish_room_event(
+            fixture_id, {"type": "presence", "count": new_count}
+        )

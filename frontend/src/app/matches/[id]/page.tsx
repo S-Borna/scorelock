@@ -15,6 +15,7 @@ import { OddsSparkline } from "@/components/odds-sparkline";
 import { CommentaryFeedCard } from "@/components/commentary-feed";
 import { MomentumGraph } from "@/components/momentum-graph";
 import { MOTMPoll } from "@/components/motm-poll";
+import { MatchRoom } from "@/components/match-room";
 import { fetchApi } from "@/lib/api";
 import type { Article, ArticleList, Broadcast, CommentaryFeed, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MOTMTally, MatchInfo, MatchIntelligenceBundle, MomentumSeries, OddsSnapshotsBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
@@ -286,6 +287,9 @@ export default async function MatchDetailPage({ params }: PageProps) {
                             </Link>
                         </div>
                     </div>
+
+                    {/* Matchrum (hangout / Steg 4) — oskinnad funktionell prototyp */}
+                    <MatchRoom fixtureId={fixture.id} />
 
                     {/* Gambling disclaimer */}
                     <GamblingDisclaimer compact />

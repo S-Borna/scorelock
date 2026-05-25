@@ -1384,3 +1384,29 @@ class FixtureStatistics(Base):
             name="uq_fixture_stats_team_provider",
         ),
     )
+
+
+# ── Matchrum (hangout / Steg 4) ────────────────────────────
+
+
+class MatchRoomMessage(Base):
+    """Ett chattmeddelande i en matchs hangout-rum. Rummet = fixture.
+
+    Reaktioner och närvaro är ephemeral (Redis) — bara textmeddelanden
+    persisteras här. Append-only; moderation via is_deleted (soft-delete).
+    """
+
+    __tablename__ = "match_room_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fixture_id: Mapped[int] = mapped_column(ForeignKey("fixtures.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
+
+    __table_args__ = (
+        Index("ix_room_messages_fixture_created", "fixture_id", "created_at"),
+    )
