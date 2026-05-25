@@ -56,7 +56,9 @@ export function useMatchRoom(fixtureId: number) {
         fetchApi<RoomMessage[]>(`/api/v1/fixtures/${fixtureId}/room/messages?limit=50`)
             .then((rows) => {
                 if (!cancelled) {
-                    setState((s) => ({ ...s, messages: [...rows].reverse() }));
+                    // Guard: misslyckad/CORS-blockad fetch ger non-array → [...rows] kraschar
+                    const arr = Array.isArray(rows) ? rows : [];
+                    setState((s) => ({ ...s, messages: [...arr].reverse() }));
                 }
             })
             .catch(() => {

@@ -126,6 +126,38 @@ export default async function MatchDetailPage({ params }: PageProps) {
         motm = await fetchApi<MOTMTally>(`/api/v1/fixtures/${fixture.id}/motm-tally`);
     } catch { /* not critical */ }
 
+    // Härda mot tunn/saknad data (Big-5 via football-data + mock-fallback):
+    // fetchApi kan returnera null/fel form → garantera väldefinierade bundles
+    // så komponenterna aldrig kraschar på .map/.length av undefined.
+    events = Array.isArray(events) ? events : [];
+    broadcasts = Array.isArray(broadcasts) ? broadcasts : [];
+    affiliateLinks = Array.isArray(affiliateLinks) ? affiliateLinks : [];
+    homeSentiment = Array.isArray(homeSentiment) ? homeSentiment : [];
+    awaySentiment = Array.isArray(awaySentiment) ? awaySentiment : [];
+    articles = Array.isArray(articles) ? articles : [];
+    statistics = { home: statistics?.home ?? null, away: statistics?.away ?? null };
+    lineups = { home: lineups?.home ?? null, away: lineups?.away ?? null };
+    matchInfo = { venue: matchInfo?.venue ?? null, referee: matchInfo?.referee ?? null };
+    oddsBundle = {
+        fixture_id: fixture.id,
+        market_code: oddsBundle?.market_code ?? "h2h",
+        snapshots: Array.isArray(oddsBundle?.snapshots) ? oddsBundle.snapshots : [],
+    };
+    commentary = {
+        fixture_id: fixture.id,
+        entries: Array.isArray(commentary?.entries) ? commentary.entries : [],
+    };
+    momentum = {
+        fixture_id: fixture.id,
+        points: Array.isArray(momentum?.points) ? momentum.points : [],
+    };
+    motm = {
+        fixture_id: fixture.id,
+        total_votes: motm?.total_votes ?? 0,
+        user_voted_player_id: motm?.user_voted_player_id ?? null,
+        tally: Array.isArray(motm?.tally) ? motm.tally : [],
+    };
+
     const motmCandidates = [
         ...(lineups.home?.starters ?? []).map((p) => ({
             player_id: p.player_id,
@@ -144,6 +176,15 @@ export default async function MatchDetailPage({ params }: PageProps) {
     try {
         intelligence = await fetchApi<MatchIntelligenceBundle>(`/api/v1/fixtures/${fixture.id}/intelligence?language=sv`);
     } catch { /* not critical */ }
+
+    intelligence =
+        intelligence && typeof intelligence === "object"
+            ? {
+                  pre_match: intelligence.pre_match ?? null,
+                  in_match: intelligence.in_match ?? null,
+                  post_match: intelligence.post_match ?? null,
+              }
+            : { pre_match: null, in_match: null, post_match: null };
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

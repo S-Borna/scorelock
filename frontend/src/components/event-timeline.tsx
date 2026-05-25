@@ -38,7 +38,7 @@ export function EventTimeline({
 }) {
     const { t } = useLocale();
 
-    if (events.length === 0) return null;
+    if (!Array.isArray(events) || events.length === 0) return null;
 
     return (
         <div className="card">

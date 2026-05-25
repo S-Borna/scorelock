@@ -26,6 +26,9 @@ export function formatKickoff(dateStr: string): string {
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        // Fast tidszon → server (UTC) och klient (lokal) ger identisk sträng,
+        // annars hydration-mismatch för matcher nära dygnsgränsen.
+        timeZone: "Europe/Stockholm",
     });
 }
 
@@ -44,7 +47,7 @@ export function timeAgo(dateStr: string): string {
     if (minutes < 60) return `${minutes} min sedan`;
     if (hours < 24) return `${hours} tim sedan`;
     if (days < 7) return `${days} dagar sedan`;
-    return new Date(dateStr).toLocaleDateString("sv-SE", { day: "numeric", month: "short" });
+    return new Date(dateStr).toLocaleDateString("sv-SE", { day: "numeric", month: "short", timeZone: "Europe/Stockholm" });
 }
 
 /**
