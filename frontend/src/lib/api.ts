@@ -1,9 +1,8 @@
 /**
  * API client for ScoreLock backend.
- * Falls back to mock data when the backend is unreachable (offline dev mode).
+ * Vid fel bubblar felet — anroparen visar tom-/fel-state. INGEN mock-fallback:
+ * fabricerad data (fejk-matcher/tabeller) är värre än ärlig tomhet.
  */
-
-import { getMockData } from "./mock-data";
 
 // SSR (inside frontend container) reaches backend via docker-network hostname.
 // Browser (on user's host) reaches backend via mapped localhost port.
@@ -31,7 +30,7 @@ export async function fetchApi<T>(
 
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
+        const timeout = setTimeout(() => controller.abort(), 8000);
 
         const response = await fetch(url, {
             ...options,
@@ -51,12 +50,8 @@ export async function fetchApi<T>(
 
         return response.json();
     } catch (error) {
-        // If backend is unreachable, try mock data
-        const mock = getMockData(path);
-        if (mock !== null) {
-            console.log(`[ScoreLock] API offline — using mock data for ${path}`);
-            return mock as T;
-        }
+        // Ingen mock-fallback: låt felet bubbla så anroparen visar tom-/fel-state
+        // i stället för fabricerade matcher/tabeller.
         throw error;
     }
 }
