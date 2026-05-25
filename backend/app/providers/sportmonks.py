@@ -295,6 +295,10 @@ class SportMonksProvider:
             )
         scores = payload.get("scores") or []
         venue = payload.get("venue") or {}
+        # Live-minut: perioden med ticking=True bär aktuell minut (periods-include)
+        ticking = next(
+            (p for p in (payload.get("periods") or []) if p.get("ticking")), None
+        )
         return NormalizedFixture(
             external_id=str(payload["id"]),
             league_external_id=str(payload.get("league_id") or ""),
@@ -314,7 +318,7 @@ class SportMonksProvider:
             venue_external_id=str(venue["id"]) if venue.get("id") else None,
             referee_external_id=None,  # populated when /referees include är aktiv
             attendance=None,
-            live_minute=None,
+            live_minute=ticking.get("minutes") if ticking else None,
             live_stoppage=None,
             raw_payload=payload,
         )
@@ -660,7 +664,7 @@ class SportMonksProvider:
             return []
         data = await self._fetch_live(
             "/livescores/inplay",
-            params={"include": "participants;league;state;scores"},
+            params={"include": "participants;league;state;scores;periods"},
         )
         items = data.get("data") or []
         return [self._parse_fixture(item) for item in items]
