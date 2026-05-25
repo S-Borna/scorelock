@@ -16,11 +16,14 @@ settings = get_settings()
 
 # ── Rate Limits (requests per minute) ──────────────────────
 
+# OBS: match-detaljsidan fan-out:ar ~13 API-anrop per laddning, så gränserna
+# måste rymma flera sidladdningar/min. Riktig fix = konsolidera fan-outen till
+# ett bundlat endpoint (nästa milstolpe); detta är realistisk browsing-headroom.
 TIER_LIMITS: dict[str, int] = {
-    "free": 30,
-    "pro": 120,
-    "elite": 300,
-    "anonymous": 20,
+    "free": 120,
+    "pro": 300,
+    "elite": 600,
+    "anonymous": 60,
 }
 
 # Paths exempt from rate limiting
