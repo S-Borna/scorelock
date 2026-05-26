@@ -105,6 +105,16 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.score_user_predictions",
         "schedule": crontab(minute="*/15", hour="14-23"),
     },
+    # ── Match-intelligens ───────────────────────────────────
+    # SHELVED: Max-primär-genereringen kör på alltid-på-boxen (claude -p, platt
+    # kostnad). Den HÄR beat-tasken kör i Docker/prod UTAN claude → faller på
+    # Anthropic-API (metered). Aktivera FÖRST när boxen är i drift som primär,
+    # som rent skyddsnät — annars genereras allt via betal-API:t. Task-koden i
+    # services/tasks.py är intakt och re-arms vid uncomment.
+    # "generate-intelligence-batch": {
+    #     "task": "app.services.tasks.generate_match_intelligence_batch",
+    #     "schedule": crontab(minute="*/30", hour="12-23"),
+    # },
     # ── Social Distribution (M8) — GATED 2026-05-25 ──────────
     # Avstängda: alla tre refererar en borttagen ValueBet-modell + fältnamn
     # som inte längre finns (fixture.home_team som sträng, fixture.league_name,

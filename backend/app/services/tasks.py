@@ -1357,3 +1357,42 @@ def sportmonks_sync_live_fixtures(self):
         return {"status": "ok", "live": len(live), "published": published}
 
     return run_async(_sync())
+
+
+@celery_app.task(name="app.services.tasks.generate_match_intelligence_batch")
+def generate_match_intelligence_batch(limit: int = 25):
+    """API-fallback-generering av match-analys (prod-skyddsnät).
+
+    OBS: Max-primär-genereringen sker på alltid-på-boxen via claude -p (platt kostnad).
+    Den HÄR tasken kör i Docker/prod UTAN claude → orkestratorn faller på Anthropic-API
+    (metered). Den är ett skyddsnät för matcher boxen missade och är SHELVED i beat-
+    schemat tills boxen är i drift — annars skulle allt genereras via betal-API:t.
+    """
+
+    async def _gen():
+        from app.services.intelligence_orchestrator import (
+            generate_intelligence,
+            select_pending_jobs,
+        )
+
+        async with async_session() as session:
+            jobs = await select_pending_jobs(session, limit)
+
+        generated = 0
+        for fid, kind, force in jobs:
+            async with async_session() as session:
+                try:
+                    await generate_intelligence(session, fid, kind, force=force)
+                    generated += 1
+                except Exception as exc:  # noqa: BLE001 — logga + fortsätt nästa match
+                    logger.warning(
+                        "intel_batch_item_failed",
+                        fixture=fid,
+                        kind=kind.value,
+                        error=str(exc),
+                    )
+
+        logger.info("intel_batch_done", jobs=len(jobs), generated=generated)
+        return {"status": "ok", "jobs": len(jobs), "generated": generated}
+
+    return run_async(_gen())

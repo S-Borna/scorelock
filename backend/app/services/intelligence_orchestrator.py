@@ -15,15 +15,21 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import structlog
 from anthropic import AsyncAnthropic
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.models.models import IntelligenceKind, MatchIntelligence
+from app.models.models import (
+    Fixture,
+    FixtureEvent,
+    IntelligenceKind,
+    MatchIntelligence,
+    MatchStatus,
+)
 from app.services import claude_cli
 from app.services.dossier import (
     build_inmatch_dossier,
@@ -244,3 +250,110 @@ async def generate_intelligence(
         provider=provider,
     )
     return row
+
+
+_LIVE_STATUSES = (
+    MatchStatus.LIVE,
+    MatchStatus.HALFTIME,
+    MatchStatus.IN_PLAY,
+    MatchStatus.IN_PROGRESS_EXTRA_TIME,
+    MatchStatus.IN_PROGRESS_PENALTIES,
+)
+
+
+async def _live_minute_now(session: AsyncSession, fixture: Fixture) -> int | None:
+    """Live-minut: fixturens parsade minut, annars senaste händelsens minut."""
+    if fixture.live_minute is not None:
+        return fixture.live_minute
+    return (
+        await session.execute(
+            select(func.max(FixtureEvent.minute)).where(
+                FixtureEvent.fixture_id == fixture.id
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def _stored_minute(session: AsyncSession, fixture_id: int) -> int | None:
+    return (
+        await session.execute(
+            select(MatchIntelligence.as_of_minute).where(
+                MatchIntelligence.fixture_id == fixture_id,
+                MatchIntelligence.kind == IntelligenceKind.IN_MATCH,
+                MatchIntelligence.language == DEFAULT_LANGUAGE,
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def _has(session: AsyncSession, fixture_id: int, kind: IntelligenceKind) -> bool:
+    return (
+        await session.execute(
+            select(MatchIntelligence.id).where(
+                MatchIntelligence.fixture_id == fixture_id,
+                MatchIntelligence.kind == kind,
+                MatchIntelligence.language == DEFAULT_LANGUAGE,
+            )
+        )
+    ).scalar_one_or_none() is not None
+
+
+async def select_pending_jobs(
+    session: AsyncSession, limit: int = 25
+) -> list[tuple[int, IntelligenceKind, bool]]:
+    """Plocka matcher som behöver analys: (fixture_id, fas, force).
+
+    Delad av host-workern och Celery-tasken. Idempotent — live regenereras bara
+    när minuten gått framåt sedan lagrad analys; pre/post genereras bara om de saknas.
+    """
+    jobs: list[tuple[int, IntelligenceKind, bool]] = []
+    now = datetime.utcnow()
+
+    live = (
+        (await session.execute(select(Fixture).where(Fixture.status.in_(_LIVE_STATUSES))))
+        .scalars()
+        .all()
+    )
+    for f in live:
+        stored = await _stored_minute(session, f.id)
+        if stored is None:
+            jobs.append((f.id, IntelligenceKind.IN_MATCH, False))
+        else:
+            current = await _live_minute_now(session, f)
+            if current is not None and current > stored:
+                jobs.append((f.id, IntelligenceKind.IN_MATCH, True))
+
+    finished = (
+        (
+            await session.execute(
+                select(Fixture.id).where(
+                    Fixture.status == MatchStatus.FINISHED,
+                    Fixture.kickoff >= now - timedelta(hours=24),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for fid in finished:
+        if not await _has(session, fid, IntelligenceKind.POST_MATCH):
+            jobs.append((fid, IntelligenceKind.POST_MATCH, False))
+
+    upcoming = (
+        (
+            await session.execute(
+                select(Fixture.id).where(
+                    Fixture.status == MatchStatus.SCHEDULED,
+                    Fixture.kickoff >= now,
+                    Fixture.kickoff <= now + timedelta(hours=48),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for fid in upcoming:
+        if not await _has(session, fid, IntelligenceKind.PRE_MATCH):
+            jobs.append((fid, IntelligenceKind.PRE_MATCH, False))
+
+    return jobs[:limit]
