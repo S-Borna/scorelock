@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { fetchApiAuth } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth-token";
 import { useMatchRoom } from "@/lib/use-match-room";
 
-const REACTIONS = ["🔥", "😱", "💚", "😤"];
+// 💩 ingår alltid — community-krok. Reagera + kommentera kräver inloggning.
+const REACTIONS = ["🔥", "😱", "💚", "😤", "💩"];
 
 /**
  * Matchrummet (hangout) — OSKINNAD funktionell prototyp. Design kommer sist;
@@ -17,6 +19,9 @@ export function MatchRoom({ fixtureId }: { fixtureId: number }) {
     const [draft, setDraft] = useState("");
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Hydration-säkert: server + första klient-render = false, sätts post-mount.
+    const [loggedIn, setLoggedIn] = useState(false);
+    useEffect(() => setLoggedIn(!!getAccessToken()), []);
 
     async function send() {
         const token = getAccessToken();
@@ -93,23 +98,29 @@ export function MatchRoom({ fixtureId }: { fixtureId: number }) {
                 ))}
             </ul>
 
-            <div className="flex gap-2">
-                <input
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && send()}
-                    placeholder="Skriv i rummet…"
-                    maxLength={500}
-                    className="flex-1 rounded border px-2 py-1 text-sm"
-                />
-                <button
-                    onClick={send}
-                    disabled={sending}
-                    className="rounded border px-3 py-1 text-sm"
-                >
-                    Skicka
-                </button>
-            </div>
+            {loggedIn ? (
+                <div className="flex gap-2">
+                    <input
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && send()}
+                        placeholder="Skriv i rummet…"
+                        maxLength={500}
+                        className="flex-1 rounded border px-2 py-1 text-sm"
+                    />
+                    <button
+                        onClick={send}
+                        disabled={sending}
+                        className="rounded border px-3 py-1 text-sm"
+                    >
+                        Skicka
+                    </button>
+                </div>
+            ) : (
+                <Link href="/login" className="btn-primary w-full justify-center">
+                    🔒 Logga in för att kommentera & reagera
+                </Link>
+            )}
             {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
         </section>
     );
