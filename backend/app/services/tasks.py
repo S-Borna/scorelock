@@ -406,8 +406,10 @@ def run_daily_predictions():
             computer = FeatureComputer()
             computer.populate_from_fixtures(finished)
 
-            # 3. Get upcoming fixtures without predictions
-            upcoming = await get_upcoming_fixtures_for_prediction(session)
+            # 3. Get upcoming fixtures without predictions.
+            # 7 dgr fönster: vecko-ligor (Allsvenskan ~1 omgång/vecka) ryms inom en
+            # matchvecka — 2 dgr missade nästan alla kommande matcher.
+            upcoming = await get_upcoming_fixtures_for_prediction(session, days_ahead=7)
             if not upcoming:
                 logger.info("no_upcoming_fixtures")
                 await session.commit()
