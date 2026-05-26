@@ -28,89 +28,74 @@ export function LiveMatchHeader({ fixture }: LiveMatchHeaderProps) {
 
     return (
         <div
-            className={`card mb-8 relative overflow-hidden transition-all duration-500 ${goalJustScored ? "animate-goal-flash" : ""
-                }`}
+            className={`relative mb-8 overflow-hidden rounded-2xl border border-white/[0.07] bg-surface-900/80 backdrop-blur-sm shadow-elevated transition-all duration-500 ${goalJustScored ? "animate-goal-flash" : ""}`}
         >
-            {/* Goal flash overlay */}
+            {/* Atmosfär — subtil radial som ger kortet tyngd */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_130%_at_50%_-20%,rgba(9,206,95,0.10),transparent_55%)]" />
             {goalJustScored && (
                 <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent animate-goal-wave pointer-events-none z-10" />
             )}
 
-            <div className="flex items-center justify-between mb-2">
-                <a
-                    href="/standings"
-                    className="text-sm text-gray-500 hover:text-scorelock-400"
-                >
-                    {fixture.league.name} · {fixture.round}
-                </a>
-                <div className="flex items-center gap-2">
-                    {isLive && minute !== null && (
-                        <span className="font-mono text-sm text-red-400 animate-minute-tick">
-                            {minute}&apos;
-                        </span>
-                    )}
-                    <span className={getStatusClass(status)}>
-                        {isLive && status !== "halftime" && "● "}
-                        {status === "halftime" ? "HT" : status.toUpperCase()}
-                    </span>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between py-6">
-                <TeamDisplay
-                    name={fixture.home_team.name}
-                    logoUrl={fixture.home_team.logo_url}
-                    goalScored={goalJustScored && goalSide === "home"}
-                />
-                <div className="text-center">
-                    {homeGoals !== null && awayGoals !== null ? (
-                        <div
-                            className={`text-4xl font-bold font-mono tabular-nums transition-all duration-300 ${goalJustScored
-                                    ? "text-green-400 animate-score-pop"
-                                    : ""
-                                }`}
-                        >
-                            {homeGoals} – {awayGoals}
-                        </div>
-                    ) : (
-                        <div className="text-2xl text-gray-500">vs</div>
-                    )}
-                    <div className="text-xs text-gray-500 mt-2">
-                        {formatKickoff(fixture.kickoff)}
-                    </div>
-                    {/* Halftime score */}
-                    {fixture.home_goals_ht !== null &&
-                        fixture.away_goals_ht !== null && (
-                            <div className="text-xs text-gray-600 mt-1">
-                                HT: {fixture.home_goals_ht} – {fixture.away_goals_ht}
-                            </div>
+            <div className="relative p-6 sm:p-8">
+                {/* Liga-rad med logga + status */}
+                <div className="flex items-center justify-between mb-7">
+                    <a href="/standings" className="flex items-center gap-2 text-sm text-gray-400 hover:text-scorelock-400 transition-colors">
+                        {fixture.league.logo_url && (
+                            <img src={fixture.league.logo_url} alt="" className="w-5 h-5 object-contain" />
                         )}
+                        <span className="font-medium text-gray-300">{fixture.league.name}</span>
+                        {fixture.round && <span className="text-gray-600">· {fixture.round}</span>}
+                    </a>
+                    <div className="flex items-center gap-2">
+                        {isLive && minute !== null && (
+                            <span className="font-mono text-sm font-bold text-red-400 animate-minute-tick">{minute}&apos;</span>
+                        )}
+                        <span className={isLive ? "badge-live" : `badge ${getStatusClass(status)}`}>
+                            {status === "halftime" ? "HT" : status === "finished" ? "Slut" : status === "scheduled" ? "Kommande" : status.toUpperCase()}
+                        </span>
+                    </div>
                 </div>
-                <TeamDisplay
-                    name={fixture.away_team.name}
-                    logoUrl={fixture.away_team.logo_url}
-                    goalScored={goalJustScored && goalSide === "away"}
-                />
-            </div>
 
-            {/* Live match progress bar */}
-            {isLive && minute !== null && (
-                <div className="mt-2">
-                    <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-1000"
-                            style={{
-                                width: `${Math.min(((minute ?? 0) / 90) * 100, 100)}%`,
-                            }}
-                        />
+                {/* Scoreboard — stora crests, fet scoreline */}
+                <div className="flex items-start justify-between gap-2">
+                    <TeamDisplay
+                        name={fixture.home_team.short_name ?? fixture.home_team.name}
+                        logoUrl={fixture.home_team.logo_url}
+                        goalScored={goalJustScored && goalSide === "home"}
+                    />
+                    <div className="text-center px-1 pt-3">
+                        {homeGoals !== null && awayGoals !== null ? (
+                            <div className={`text-5xl sm:text-6xl font-bold font-mono tabular-nums leading-none transition-all duration-300 ${goalJustScored ? "text-green-400 animate-score-pop" : "text-white"}`}>
+                                {homeGoals}<span className="text-gray-600 mx-2">–</span>{awayGoals}
+                            </div>
+                        ) : (
+                            <div className="text-3xl font-display italic text-gray-500">vs</div>
+                        )}
+                        <div className="text-xs text-gray-500 mt-3 font-mono">{formatKickoff(fixture.kickoff)}</div>
+                        {fixture.home_goals_ht !== null && fixture.away_goals_ht !== null && (
+                            <div className="text-[11px] text-gray-600 mt-1">HT {fixture.home_goals_ht}–{fixture.away_goals_ht}</div>
+                        )}
                     </div>
-                    <div className="flex justify-between text-[10px] text-gray-600 mt-1">
-                        <span>0&apos;</span>
-                        <span>45&apos;</span>
-                        <span>90&apos;</span>
-                    </div>
+                    <TeamDisplay
+                        name={fixture.away_team.short_name ?? fixture.away_team.name}
+                        logoUrl={fixture.away_team.logo_url}
+                        goalScored={goalJustScored && goalSide === "away"}
+                    />
                 </div>
-            )}
+
+                {/* Live-progress */}
+                {isLive && minute !== null && (
+                    <div className="mt-7">
+                        <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-1000"
+                                style={{ width: `${Math.min(((minute ?? 0) / 90) * 100, 100)}%` }} />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-600 mt-1 font-mono">
+                            <span>0&apos;</span><span>45&apos;</span><span>90&apos;</span>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -125,23 +110,15 @@ function TeamDisplay({
     goalScored?: boolean;
 }) {
     return (
-        <div className="flex flex-col items-center gap-2 w-28 sm:w-32">
-            {logoUrl ? (
-                <img
-                    src={logoUrl}
-                    alt={name}
-                    className={`w-14 h-14 sm:w-16 sm:h-16 object-contain transition-transform duration-500 ${goalScored ? "scale-110" : ""
-                        }`}
-                />
-            ) : (
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/[0.04] rounded-full flex items-center justify-center text-2xl">
-                    ⚽
-                </div>
-            )}
-            <span
-                className={`text-sm font-medium text-center transition-colors duration-300 ${goalScored ? "text-green-400 font-semibold" : ""
-                    }`}
-            >
+        <div className="flex flex-col items-center gap-3 w-28 sm:w-36">
+            <div className={`flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/[0.03] border border-white/[0.05] transition-transform duration-500 ${goalScored ? "scale-110" : ""}`}>
+                {logoUrl ? (
+                    <img src={logoUrl} alt={name} className="w-14 h-14 sm:w-16 sm:h-16 object-contain" />
+                ) : (
+                    <span className="text-3xl">⚽</span>
+                )}
+            </div>
+            <span className={`text-sm sm:text-base font-semibold text-center leading-tight transition-colors duration-300 ${goalScored ? "text-green-400" : "text-gray-200"}`}>
                 {name}
             </span>
         </div>
