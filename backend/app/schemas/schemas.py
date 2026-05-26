@@ -719,3 +719,25 @@ class MOTMTallyResponse(BaseModel):
 
 # Rebuild models for forward references
 FixtureDetail.model_rebuild()
+
+
+class FixtureDetailBundle(BaseModel):
+    """Allt match-detaljsidan behöver i ETT svar — ersätter ~15 separata fetch:ar
+    (fan-out som drev rate-limit-tryck + skörhet). Sub-delar degraderar till tomma
+    defaults precis som de enskilda endpointsen."""
+
+    fixture: FixtureDetail
+    match_info: MatchInfoResponse
+    broadcasts: list[BroadcastResponse]
+    events: list[FixtureEventResponse]
+    statistics: FixtureStatisticsBundle
+    lineups: FixtureLineupsBundle
+    odds_snapshots: OddsSnapshotsBundle
+    commentary: CommentaryFeedResponse
+    momentum: MomentumSeriesResponse
+    motm: MOTMTallyResponse
+    intelligence: MatchIntelligenceBundle
+    articles: list[ArticleResponse]
+    home_sentiment: list[SentimentResponse]
+    away_sentiment: list[SentimentResponse]
+    affiliate_links: list[AffiliateLinkResponse]

@@ -42,6 +42,7 @@ from app.schemas.schemas import (
     FixtureLineupsBundle,
     MatchIntelligenceResponse,
     MatchIntelligenceBundle,
+    FixtureDetailBundle,
     VenueResponse,
     RefereeResponse,
     MatchInfoResponse,
@@ -191,6 +192,50 @@ async def get_fixture_detail(fixture_id: int, db: AsyncSession = Depends(get_db)
         if prediction
         else None,
         odds=[OddsResponse.model_validate(o) for o in fixture.odds],
+    )
+
+
+@router.get("/fixtures/{fixture_id}/detail", response_model=FixtureDetailBundle)
+async def get_fixture_detail_bundle(
+    fixture_id: int, db: AsyncSession = Depends(get_db)
+):
+    """Bundlad match-detalj — allt sidan behöver i ETT svar.
+
+    Ersätter ~15 separata fan-out-anrop (en HTTP-runda i stället för 15 → bort med
+    rate-limit-trycket + skörheten). Sub-resurserna hämtas in-process i samma session;
+    saknade delar degraderar till tomma defaults precis som de enskilda endpointsen.
+    get_fixture_detail 404:ar om matchen inte finns.
+    """
+    fixture = await get_fixture_detail(fixture_id, db)
+
+    articles_resp = await list_articles(
+        article_type=None, league_id=None, language=None, limit=5, offset=0, db=db
+    )
+    home_name = fixture.home_team.name
+    away_name = fixture.away_team.name
+    articles = [
+        a
+        for a in articles_resp.articles
+        if a.fixture_id == fixture.id
+        or (a.tags and (home_name in a.tags or away_name in a.tags))
+    ][:3]
+
+    return FixtureDetailBundle(
+        fixture=fixture,
+        match_info=await get_fixture_match_info(fixture_id, db),
+        broadcasts=await get_fixture_broadcasts(fixture_id, "SE", db),
+        events=await get_fixture_events(fixture_id, db),
+        statistics=await get_fixture_statistics(fixture_id, db),
+        lineups=await get_fixture_lineups(fixture_id, db),
+        odds_snapshots=await get_fixture_odds_snapshots(fixture_id, "h2h", 240, db),
+        commentary=await get_fixture_commentary(fixture_id, db),
+        momentum=await get_fixture_momentum(fixture_id, db),
+        motm=await get_motm_tally(fixture_id, None, db),
+        intelligence=await get_fixture_intelligence(fixture_id, "sv", db),
+        articles=articles,
+        home_sentiment=await get_team_sentiment(fixture.home_team.id, days=7, db=db),
+        away_sentiment=await get_team_sentiment(fixture.away_team.id, days=7, db=db),
+        affiliate_links=await get_affiliate_links(country="SE", bookmaker=None, db=db),
     )
 
 

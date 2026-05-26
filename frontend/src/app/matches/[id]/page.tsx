@@ -17,7 +17,7 @@ import { MomentumGraph } from "@/components/momentum-graph";
 import { MOTMPoll } from "@/components/motm-poll";
 import { MatchRoom } from "@/components/match-room";
 import { fetchApi, ApiError } from "@/lib/api";
-import type { Article, ArticleList, Broadcast, CommentaryFeed, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MOTMTally, MatchInfo, MatchIntelligenceBundle, MomentumSeries, OddsSnapshotsBundle, Sentiment } from "@/lib/types";
+import type { Article, Broadcast, CommentaryFeed, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MOTMTally, MatchInfo, MatchIntelligenceBundle, MomentumSeries, OddsSnapshotsBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -25,6 +25,25 @@ import Link from "next/link";
 
 interface PageProps {
     params: Promise<{ id: string }>;
+}
+
+// Bundlat svar från /fixtures/{id}/detail — allt sidan behöver i ETT anrop.
+interface FixtureDetailBundle {
+    fixture: FixtureDetail;
+    match_info: MatchInfo;
+    broadcasts: Broadcast[];
+    events: FixtureEvent[];
+    statistics: FixtureStatisticsBundle;
+    lineups: FixtureLineupsBundle;
+    odds_snapshots: OddsSnapshotsBundle;
+    commentary: CommentaryFeed;
+    momentum: MomentumSeries;
+    motm: MOTMTally;
+    intelligence: MatchIntelligenceBundle;
+    articles: Article[];
+    home_sentiment: Sentiment[];
+    away_sentiment: Sentiment[];
+    affiliate_links: AffiliateLink[];
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -42,10 +61,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function MatchDetailPage({ params }: PageProps) {
     const { id } = await params;
-    let fixture: FixtureDetail;
-
+    // ETT bundlat anrop i stället för ~15 sekventiella fetch:ar (fan-out som drev
+    // rate-limit-tryck + skörhet). Servern aggregerar allt in-process.
+    let bundle: FixtureDetailBundle;
     try {
-        fixture = await fetchApi<FixtureDetail>(`/api/v1/fixtures/${id}`);
+        bundle = await fetchApi<FixtureDetailBundle>(`/api/v1/fixtures/${id}/detail`);
     } catch (err) {
         // Bara genuin 404 (matchen finns inte) → not-found-sida. Transienta fel
         // (timeout/nätverk) ska INTE bli en cachad hård 404 — låt dem bubbla
@@ -54,113 +74,46 @@ export default async function MatchDetailPage({ params }: PageProps) {
         throw err;
     }
 
-    // Fetch related articles for this fixture
-    let articles: Article[] = [];
-    try {
-        const res = await fetchApi<ArticleList>(`/api/v1/articles?limit=5`);
-        articles = res.articles.filter(
-            (a) => a.fixture_id === fixture.id ||
-                (a.tags && (a.tags.includes(fixture.home_team.name) || a.tags.includes(fixture.away_team.name)))
-        ).slice(0, 3);
-    } catch { /* not critical */ }
+    const fixture = bundle.fixture;
 
-    // Fetch sentiment
-    let homeSentiment: Sentiment[] = [];
-    let awaySentiment: Sentiment[] = [];
-    try {
-        homeSentiment = await fetchApi<Sentiment[]>(`/api/v1/sentiment/${fixture.home_team.id}`);
-    } catch { /* not critical */ }
-    try {
-        awaySentiment = await fetchApi<Sentiment[]>(`/api/v1/sentiment/${fixture.away_team.id}`);
-    } catch { /* not critical */ }
-
-    // Fetch affiliate links
-    let affiliateLinks: AffiliateLink[] = [];
-    try {
-        affiliateLinks = await fetchApi<AffiliateLink[]>("/api/v1/affiliate/links?country=SE");
-    } catch { /* not critical */ }
-
-    // Fetch broadcasts (SE)
-    let broadcasts: Broadcast[] = [];
-    try {
-        broadcasts = await fetchApi<Broadcast[]>(`/api/v1/fixtures/${fixture.id}/broadcasts?country=SE`);
-    } catch { /* not critical */ }
-
-    // Fetch events
-    let events: FixtureEvent[] = [];
-    try {
-        events = await fetchApi<FixtureEvent[]>(`/api/v1/fixtures/${fixture.id}/events`);
-    } catch { /* not critical */ }
-
-    // Fetch statistics
-    let statistics: FixtureStatisticsBundle = { home: null, away: null };
-    try {
-        statistics = await fetchApi<FixtureStatisticsBundle>(`/api/v1/fixtures/${fixture.id}/statistics`);
-    } catch { /* not critical */ }
-
-    // Fetch lineups
-    let lineups: FixtureLineupsBundle = { home: null, away: null };
-    try {
-        lineups = await fetchApi<FixtureLineupsBundle>(`/api/v1/fixtures/${fixture.id}/lineups`);
-    } catch { /* not critical */ }
-
-    // Fetch match info (venue + referee)
-    let matchInfo: MatchInfo = { venue: null, referee: null };
-    try {
-        matchInfo = await fetchApi<MatchInfo>(`/api/v1/fixtures/${fixture.id}/match-info`);
-    } catch { /* not critical */ }
-
-    // Fetch odds snapshots (movement sparkline)
-    let oddsBundle: OddsSnapshotsBundle = { fixture_id: fixture.id, market_code: "h2h", snapshots: [] };
-    try {
-        oddsBundle = await fetchApi<OddsSnapshotsBundle>(`/api/v1/fixtures/${fixture.id}/odds/snapshots?market=h2h&since_hours=240`);
-    } catch { /* not critical */ }
-
-    // Fetch commentary, momentum, MOTM tally (Phase 10)
-    let commentary: CommentaryFeed = { fixture_id: fixture.id, entries: [] };
-    try {
-        commentary = await fetchApi<CommentaryFeed>(`/api/v1/fixtures/${fixture.id}/commentary`);
-    } catch { /* not critical */ }
-    let momentum: MomentumSeries = { fixture_id: fixture.id, points: [] };
-    try {
-        momentum = await fetchApi<MomentumSeries>(`/api/v1/fixtures/${fixture.id}/momentum`);
-    } catch { /* not critical */ }
-    let motm: MOTMTally = { fixture_id: fixture.id, total_votes: 0, user_voted_player_id: null, tally: [] };
-    try {
-        motm = await fetchApi<MOTMTally>(`/api/v1/fixtures/${fixture.id}/motm-tally`);
-    } catch { /* not critical */ }
-
-    // Härda mot tunn/saknad data (Big-5 via football-data + mock-fallback):
-    // fetchApi kan returnera null/fel form → garantera väldefinierade bundles
-    // så komponenterna aldrig kraschar på .map/.length av undefined.
-    events = Array.isArray(events) ? events : [];
-    broadcasts = Array.isArray(broadcasts) ? broadcasts : [];
-    affiliateLinks = Array.isArray(affiliateLinks) ? affiliateLinks : [];
-    homeSentiment = Array.isArray(homeSentiment) ? homeSentiment : [];
-    awaySentiment = Array.isArray(awaySentiment) ? awaySentiment : [];
-    articles = Array.isArray(articles) ? articles : [];
-    statistics = { home: statistics?.home ?? null, away: statistics?.away ?? null };
-    lineups = { home: lineups?.home ?? null, away: lineups?.away ?? null };
-    matchInfo = { venue: matchInfo?.venue ?? null, referee: matchInfo?.referee ?? null };
-    oddsBundle = {
+    // Härda mot tunn/saknad data — garantera väldefinierade bundles så komponenterna
+    // aldrig kraschar på .map/.length av undefined (sub-delar kan vara null/tomma).
+    const events: FixtureEvent[] = Array.isArray(bundle.events) ? bundle.events : [];
+    const broadcasts: Broadcast[] = Array.isArray(bundle.broadcasts) ? bundle.broadcasts : [];
+    const affiliateLinks: AffiliateLink[] = Array.isArray(bundle.affiliate_links) ? bundle.affiliate_links : [];
+    const homeSentiment: Sentiment[] = Array.isArray(bundle.home_sentiment) ? bundle.home_sentiment : [];
+    const awaySentiment: Sentiment[] = Array.isArray(bundle.away_sentiment) ? bundle.away_sentiment : [];
+    const articles: Article[] = Array.isArray(bundle.articles) ? bundle.articles : [];
+    const statistics: FixtureStatisticsBundle = { home: bundle.statistics?.home ?? null, away: bundle.statistics?.away ?? null };
+    const lineups: FixtureLineupsBundle = { home: bundle.lineups?.home ?? null, away: bundle.lineups?.away ?? null };
+    const matchInfo: MatchInfo = { venue: bundle.match_info?.venue ?? null, referee: bundle.match_info?.referee ?? null };
+    const oddsBundle: OddsSnapshotsBundle = {
         fixture_id: fixture.id,
-        market_code: oddsBundle?.market_code ?? "h2h",
-        snapshots: Array.isArray(oddsBundle?.snapshots) ? oddsBundle.snapshots : [],
+        market_code: bundle.odds_snapshots?.market_code ?? "h2h",
+        snapshots: Array.isArray(bundle.odds_snapshots?.snapshots) ? bundle.odds_snapshots.snapshots : [],
     };
-    commentary = {
+    const commentary: CommentaryFeed = {
         fixture_id: fixture.id,
-        entries: Array.isArray(commentary?.entries) ? commentary.entries : [],
+        entries: Array.isArray(bundle.commentary?.entries) ? bundle.commentary.entries : [],
     };
-    momentum = {
+    const momentum: MomentumSeries = {
         fixture_id: fixture.id,
-        points: Array.isArray(momentum?.points) ? momentum.points : [],
+        points: Array.isArray(bundle.momentum?.points) ? bundle.momentum.points : [],
     };
-    motm = {
+    const motm: MOTMTally = {
         fixture_id: fixture.id,
-        total_votes: motm?.total_votes ?? 0,
-        user_voted_player_id: motm?.user_voted_player_id ?? null,
-        tally: Array.isArray(motm?.tally) ? motm.tally : [],
+        total_votes: bundle.motm?.total_votes ?? 0,
+        user_voted_player_id: bundle.motm?.user_voted_player_id ?? null,
+        tally: Array.isArray(bundle.motm?.tally) ? bundle.motm.tally : [],
     };
+    const intelligence: MatchIntelligenceBundle =
+        bundle.intelligence && typeof bundle.intelligence === "object"
+            ? {
+                  pre_match: bundle.intelligence.pre_match ?? null,
+                  in_match: bundle.intelligence.in_match ?? null,
+                  post_match: bundle.intelligence.post_match ?? null,
+              }
+            : { pre_match: null, in_match: null, post_match: null };
 
     const motmCandidates = [
         ...(lineups.home?.starters ?? []).map((p) => ({
@@ -174,21 +127,6 @@ export default async function MatchDetailPage({ params }: PageProps) {
             team_label: fixture.away_team.short_name ?? fixture.away_team.name.slice(0, 3).toUpperCase(),
         })),
     ];
-
-    // Fetch AI intelligence
-    let intelligence: MatchIntelligenceBundle = { pre_match: null, in_match: null, post_match: null };
-    try {
-        intelligence = await fetchApi<MatchIntelligenceBundle>(`/api/v1/fixtures/${fixture.id}/intelligence?language=sv`);
-    } catch { /* not critical */ }
-
-    intelligence =
-        intelligence && typeof intelligence === "object"
-            ? {
-                  pre_match: intelligence.pre_match ?? null,
-                  in_match: intelligence.in_match ?? null,
-                  post_match: intelligence.post_match ?? null,
-              }
-            : { pre_match: null, in_match: null, post_match: null };
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
