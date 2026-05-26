@@ -1,21 +1,10 @@
-import { PredictionBar } from "@/components/prediction-bar";
-import { ArticleCard } from "@/components/article-card";
-import { AffiliateCTA } from "@/components/affiliate-cta";
 import type { AffiliateLink } from "@/components/affiliate-cta";
 import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
 import { MatchTipSection } from "@/components/match-tip-section";
-import { LiveMatchHeader, LiveMatchStats } from "@/components/live-match-header";
-import { BroadcastCard } from "@/components/broadcast-card";
-import { EventTimeline } from "@/components/event-timeline";
-import { StatsPanel } from "@/components/stats-panel";
-import { LineupsPitch } from "@/components/lineups-pitch";
-import { IntelligenceCard } from "@/components/intelligence-card";
+import { LiveMatchHeader } from "@/components/live-match-header";
 import { MatchInfoStrip } from "@/components/match-info-strip";
-import { OddsSparkline } from "@/components/odds-sparkline";
-import { CommentaryFeedCard } from "@/components/commentary-feed";
-import { MomentumGraph } from "@/components/momentum-graph";
-import { MOTMPoll } from "@/components/motm-poll";
 import { MatchRoom } from "@/components/match-room";
+import { MatchTabs } from "@/components/match-tabs";
 import { fetchApi, ApiError } from "@/lib/api";
 import type { Article, Broadcast, CommentaryFeed, FixtureDetail, FixtureEvent, FixtureLineupsBundle, FixtureStatisticsBundle, MOTMTally, MatchInfo, MatchIntelligenceBundle, MomentumSeries, OddsSnapshotsBundle, Sentiment } from "@/lib/types";
 import { formatKickoff, getStatusClass } from "@/lib/utils";
@@ -144,101 +133,22 @@ export default async function MatchDetailPage({ params }: PageProps) {
             <MatchInfoStrip info={matchInfo} />
 
             <div className="grid gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-6 stagger">
-                    {/* Live match stats (auto-refreshing) */}
-                    <LiveMatchStats fixtureId={fixture.id} />
-                    {/* AI narrative cards (pre/in/post-match) */}
-                    <IntelligenceCard bundle={intelligence} />
-                    {/* Event timeline */}
-                    <EventTimeline events={events} homeTeamId={fixture.home_team.id} />
-                    {/* Lineups + pitch view */}
-                    <LineupsPitch
+                <div className="lg:col-span-2">
+                    <MatchTabs
+                        fixture={fixture}
+                        intelligence={intelligence}
+                        events={events}
                         lineups={lineups}
-                        homeTeamName={fixture.home_team.name}
-                        awayTeamName={fixture.away_team.name}
+                        statistics={statistics}
+                        oddsBundle={oddsBundle}
+                        momentum={momentum}
+                        commentary={commentary}
+                        motm={motm}
+                        motmCandidates={motmCandidates}
+                        articles={articles}
+                        affiliateLinks={affiliateLinks}
+                        broadcasts={broadcasts}
                     />
-                    {/* Stats panel */}
-                    <StatsPanel stats={statistics} />
-                    {/* Odds movement sparkline */}
-                    <OddsSparkline bundle={oddsBundle} />
-                    {/* Momentum graph */}
-                    <MomentumGraph series={momentum} />
-                    {/* Live commentary */}
-                    <CommentaryFeedCard feed={commentary} locale="sv" />
-                    {/* MOTM poll */}
-                    {motmCandidates.length > 0 && (
-                        <MOTMPoll
-                            fixtureId={fixture.id}
-                            candidates={motmCandidates}
-                            initialTally={motm}
-                        />
-                    )}
-                    {/* Prediction */}
-                    {fixture.prediction && (
-                        <div className="card">
-                            <h2 className="text-base font-semibold mb-4 text-white">🤖 ML-prediktion</h2>
-                            <PredictionBar prediction={fixture.prediction} />
-                            <p className="text-xs text-gray-600 mt-3">
-                                Modell: {fixture.prediction.model_version}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Odds */}
-                    {fixture.odds.length > 0 && (
-                        <div className="card">
-                            <h2 className="text-base font-semibold mb-4 text-white">📊 Odds</h2>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="table-header">
-                                            <th className="text-left py-2">Bookmaker</th>
-                                            <th className="text-center py-2">Hemma</th>
-                                            <th className="text-center py-2">Oavgjort</th>
-                                            <th className="text-center py-2">Borta</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {fixture.odds
-                                            .filter((o) => o.market === "1X2")
-                                            .map((o, i) => (
-                                                <tr key={i} className="table-row">
-                                                    <td className="py-2">{o.bookmaker}</td>
-                                                    <td className="text-center font-mono">{o.home_odds?.toFixed(2)}</td>
-                                                    <td className="text-center font-mono">{o.draw_odds?.toFixed(2)}</td>
-                                                    <td className="text-center font-mono">{o.away_odds?.toFixed(2)}</td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Where to watch (SE) */}
-                    <BroadcastCard broadcasts={broadcasts} />
-
-                    {/* Related articles */}
-                    {articles.length > 0 && (
-                        <div>
-                            <h2 className="text-base font-semibold mb-4 text-white">📝 Artiklar</h2>
-                            <div className="space-y-4">
-                                {articles.map((a) => (
-                                    <ArticleCard key={a.id} article={a} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Affiliate CTA after odds + articles */}
-                    {affiliateLinks.length > 0 && (
-                        <AffiliateCTA
-                            links={affiliateLinks}
-                            variant="banner"
-                            fixtureId={fixture.id}
-                            pageSource={`match-${fixture.id}`}
-                        />
-                    )}
                 </div>
 
                 {/* Sidebar */}
