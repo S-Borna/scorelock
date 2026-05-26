@@ -144,7 +144,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
             <MatchInfoStrip info={matchInfo} />
 
             <div className="grid gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-2 space-y-6 stagger">
                     {/* Live match stats (auto-refreshing) */}
                     <LiveMatchStats fixtureId={fixture.id} />
                     {/* AI narrative cards (pre/in/post-match) */}
@@ -242,7 +242,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
                 </div>
 
                 {/* Sidebar */}
-                <div className="space-y-6">
+                <div className="space-y-6 stagger">
                     {/* Tipping */}
                     <MatchTipSection fixture={fixture} />
 
