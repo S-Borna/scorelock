@@ -26,6 +26,13 @@
         color: rgb(var(--foreground));
     }
 
+    /* Editorial display-serif på rubriker site-wide (Fraunces) — premium, distinkt. */
+    h1, h2, h3 {
+        font-family: var(--font-display);
+        letter-spacing: -0.02em;
+        font-weight: 600;
+    }
+
     /* Custom scrollbar */
     ::-webkit-scrollbar {
         width: 6px;
@@ -156,7 +163,7 @@
     }
 
     .section-title {
-        @apply text-display-sm text-white;
+        @apply text-display-sm text-white font-display;
     }
 
     .section-subtitle {

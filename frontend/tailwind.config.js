@@ -44,9 +44,9 @@ module.exports = {
                 },
             },
             fontFamily: {
-                sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-                display: ["Inter", "system-ui", "sans-serif"],
-                mono: ["JetBrains Mono", "Fira Code", "monospace"],
+                sans: ["var(--font-sans)", "system-ui", "-apple-system", "sans-serif"],
+                display: ["var(--font-display)", "Georgia", "serif"],
+                mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
             },
             fontSize: {
                 "display-xl": ["3.75rem", { lineHeight: "1", letterSpacing: "-0.02em", fontWeight: "800" }],

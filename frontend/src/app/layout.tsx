@@ -3,12 +3,27 @@ import { Header, Footer } from "@/components/layout-shell";
 import { LocaleProvider } from "@/components/locale-provider";
 import { SentryProvider } from "@/components/sentry-provider";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Fraunces, Schibsted_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+// Nordisk intelligens-editorial: karaktärsfull display-serif + skandinavisk
+// grotesk-body + mono för data — bort från generiska Inter.
+const display = Fraunces({
     subsets: ["latin"],
-    variable: "--font-inter",
+    variable: "--font-display",
+    display: "swap",
+});
+
+const sans = Schibsted_Grotesk({
+    subsets: ["latin"],
+    variable: "--font-sans",
+    display: "swap",
+});
+
+const mono = JetBrains_Mono({
+    subsets: ["latin"],
+    variable: "--font-mono",
+    display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -40,7 +55,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="sv" className="dark">
-            <body className={`${inter.variable} font-sans bg-surface text-gray-100 antialiased`}>
+            <body className={`${display.variable} ${sans.variable} ${mono.variable} font-sans bg-surface text-gray-100 antialiased`}>
                 <div className="min-h-screen flex flex-col">
                     <SentryProvider>
                         <LocaleProvider>
