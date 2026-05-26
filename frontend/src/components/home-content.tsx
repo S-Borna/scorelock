@@ -76,9 +76,20 @@ export function HomeContent({
                         {t("hero.title.prefix")}{" "}
                         <span className="text-gradient">{t("hero.title.highlight")}</span>
                     </h1>
-                    <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto mb-6">
+                    <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto mb-4">
                         {t("hero.subtitle")}
                     </p>
+                    {/* Levande puls — dagens slate + moaten (AI-tips) */}
+                    <div className="flex items-center justify-center gap-4 text-xs font-mono text-gray-500 mb-6">
+                        {liveFixtures.length > 0 && (
+                            <span className="text-red-400 inline-flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                {liveFixtures.length} live nu
+                            </span>
+                        )}
+                        <span>{upcoming.length} kommande</span>
+                        <span className="text-scorelock-400">{predictions.length} AI-tips</span>
+                    </div>
                     <div className="flex items-center justify-center gap-3">
                         <Link href="/matches" className="btn-primary text-sm">
                             {t("hero.cta.primary")}
@@ -132,7 +143,7 @@ export function HomeContent({
                                     {/* Match rows */}
                                     <div className="border-t border-white/[0.04]">
                                         {groupFixtures.map((f) => (
-                                            <CompactMatchRow key={f.id} fixture={f} />
+                                            <CompactMatchRow key={f.id} fixture={f} prediction={predMap.get(f.id)} />
                                         ))}
                                     </div>
                                 </div>
@@ -222,7 +233,7 @@ export function HomeContent({
 
 /* ── Compact match row for homepage ───────────────────── */
 
-function CompactMatchRow({ fixture }: { fixture: Fixture }) {
+function CompactMatchRow({ fixture, prediction }: { fixture: Fixture; prediction?: Prediction }) {
     const isLive = fixture.status === "live" || fixture.status === "halftime";
     const isFinished = fixture.status === "finished";
     const homeWin = isFinished && (fixture.home_goals ?? 0) > (fixture.away_goals ?? 0);
@@ -230,6 +241,15 @@ function CompactMatchRow({ fixture }: { fixture: Fixture }) {
 
     const kickoff = new Date(fixture.kickoff);
     const timeStr = kickoff.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+
+    // Moaten på front-dörren: modellens favorit + konfidens.
+    const pick = prediction
+        ? prediction.home_win_prob >= prediction.draw_prob && prediction.home_win_prob >= prediction.away_win_prob
+            ? { label: "1", prob: prediction.home_win_prob }
+            : prediction.away_win_prob >= prediction.draw_prob
+                ? { label: "2", prob: prediction.away_win_prob }
+                : { label: "X", prob: prediction.draw_prob }
+        : null;
 
     return (
         <a
@@ -285,6 +305,13 @@ function CompactMatchRow({ fixture }: { fixture: Fixture }) {
                 <div className="w-8 flex-shrink-0 text-right">
                     <span className="text-[10px] text-gray-600">—</span>
                 </div>
+            )}
+
+            {/* AI-tips — moaten, även på startsidan */}
+            {pick && (
+                <span className="hidden sm:inline-flex badge bg-scorelock-500/10 text-scorelock-400 border border-scorelock-500/20 font-mono tabular-nums ml-2 flex-shrink-0">
+                    {pick.label} {Math.round(pick.prob * 100)}%
+                </span>
             )}
         </a>
     );
