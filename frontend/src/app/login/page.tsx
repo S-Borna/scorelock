@@ -22,14 +22,21 @@ export default function LoginPage() {
                 `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`,
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({ username: email, password }),
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
                 }
             );
 
             if (!res.ok) {
                 const data = await res.json().catch(() => null);
-                throw new Error(data?.detail || "Invalid credentials");
+                // Pydantic-validation kommer som array — extract msg så användaren ser något läsbart
+                const detail = data?.detail;
+                const msg = Array.isArray(detail)
+                    ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(", ")
+                    : typeof detail === "string"
+                      ? detail
+                      : "Invalid credentials";
+                throw new Error(msg || "Invalid credentials");
             }
 
             const data = await res.json();

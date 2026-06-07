@@ -159,7 +159,17 @@ async def get_fixtures(
     limit: int = Query(100, ge=1, le=500, description="Max antal rader"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get fixtures with optional filters."""
+    """Get fixtures with optional filters.
+
+    Smart default: om INGET datumfilter ges (match_date/date_from/date_to),
+    defaultar vi date_from=today så konsumentlistor visar kommande matcher
+    i stället för historiska. ASC-sort + this default = framsidan ser VM-
+    matcherna istället för 2023-säsongens spegelbild.
+    """
+    if match_date is None and date_from is None and date_to is None:
+        from datetime import date as _date
+        date_from = _date.today()
+
     fixtures = await db_service.get_fixtures(
         db,
         match_date=match_date,
@@ -1116,7 +1126,7 @@ async def get_value_bets(
 ):
     """Get matches where our model identifies value vs bookmaker odds."""
     from sqlalchemy import select, or_
-    from app.models.models import Prediction, Fixture
+    from app.models.models import MatchStatus, Prediction, Fixture
 
     query = (
         select(Prediction)
@@ -1128,7 +1138,7 @@ async def get_value_bets(
                 Prediction.is_value_away.is_(True),
             ),
             Prediction.value_edge >= min_edge,
-            Fixture.status == "scheduled",
+            Fixture.status == MatchStatus.SCHEDULED,
         )
     )
     if league_id:
@@ -1479,7 +1489,11 @@ async def get_match_sentiment(fixture_id: int, db: AsyncSession = Depends(get_db
 
 # ── Admin — manual task triggers ───────────────────────────
 
-ADMIN_EMAILS: set[str] = {"REDACTED-EMAIL", "admin@scorelock.saidborna.com"}
+ADMIN_EMAILS: set[str] = {
+    "REDACTED-EMAIL",
+    "REDACTED-EMAIL",
+    "admin@scorelock.saidborna.com",
+}
 
 
 @router.post("/admin/trigger/{task_name}")

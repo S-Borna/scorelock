@@ -400,7 +400,11 @@ class Article(Base):
     __tablename__ = "articles"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    type: Mapped[ArticleType] = mapped_column(SAEnum(ArticleType), index=True)
+    # NOTE: lagras som VARCHAR i DB (inte PG-enum). ArticleType-värdena används i
+    # appen för typsäkerhet, men SAEnum cast:ade i DB skapade drift mellan
+    # kod-enum-värden ('round_summary') och DB-enum-typ → ProgrammingError vid
+    # filtrering. String är säkrare och idempotent vid värde-tillägg.
+    type: Mapped[str] = mapped_column(String(50), index=True)
     slug: Mapped[str] = mapped_column(String(300), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(300))
     summary: Mapped[str | None] = mapped_column(Text)

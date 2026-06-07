@@ -22,6 +22,11 @@ settings = get_settings()
 # ── Sport key mapping → our internal API-Football league IDs ──
 
 ODDS_SPORT_KEYS: dict[str, dict] = {
+    # VM 2026 — högsta prio inför launch 11 juni
+    "soccer_fifa_world_cup": {
+        "api_football_id": 1,
+        "name": "world_cup",
+    },
     "soccer_epl": {
         "api_football_id": 39,
         "name": "premier_league",

@@ -279,7 +279,13 @@ async def get_fixtures(
     date_to: date | None = None,
     limit: int = 100,
 ) -> list[Fixture]:
-    """Query fixtures with optional filters."""
+    """Query fixtures with optional filters.
+
+    Default-sort = kickoff ASC (närmaste matchen först) eftersom konsumenten
+    förväntar sig "kommande matcher" på framsidan. Tidigare DESC kombinerat
+    med limit=100 cherry-pickade slut-av-säsong-matcher och dolde VM-fönstret
+    helt — Sverige-Tunisia 15 jun hamnade utanför skopet.
+    """
     query = (
         select(Fixture)
         .options(
@@ -287,7 +293,7 @@ async def get_fixtures(
             selectinload(Fixture.home_team),
             selectinload(Fixture.away_team),
         )
-        .order_by(Fixture.kickoff.desc())
+        .order_by(Fixture.kickoff.asc())
         .limit(limit)
     )
 

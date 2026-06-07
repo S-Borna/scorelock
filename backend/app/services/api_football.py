@@ -49,6 +49,7 @@ LEAGUE_IDS = {
 }
 
 PHASE_1_LEAGUES = [
+    "world_cup",      # VM 2026 — högsta prio inför launch 11 juni
     "premier_league",
     "la_liga",
     "serie_a",

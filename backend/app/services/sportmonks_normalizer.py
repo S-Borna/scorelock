@@ -441,15 +441,48 @@ async def find_or_create_season(
     season_external_id: str | None,
     league_id: int,
 ) -> Season | None:
-    """Mappa SportMonks season_id → Season-rad. Skapa om saknas."""
+    """Mappa SportMonks season_id → Season-rad. Skapa om saknas.
+
+    Race-skydd: om mappingen saknas men en Season-rad finns för (league_id,
+    year_start) — t.ex. seedad av bootstrap-skriptet — adopterar vi den och
+    skriver mapping istället för att INSERT:a en kollidande rad
+    (UniqueConstraint uq_season_league_year). Annars kraschar varje
+    SportMonks-sync mot ligor som bootstrapats utanför normalizer-flödet.
+    """
     if not season_external_id:
         return None
     mapped_id = await get_canonical_id(session, "season", season_external_id)
     if mapped_id is not None:
         return await session.get(Season, mapped_id)
 
-    # Skapa minimal season-rad — year_start/label kan uppdateras vid Calendar-fetch
     year_start = datetime.utcnow().year
+
+    # Race-skydd: finns redan en season för (league_id, year_start)?
+    existing = (
+        await session.execute(
+            select(Season).where(
+                Season.league_id == league_id,
+                Season.year_start == year_start,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        # Adoptera + slå på mapping så framtida lookups hittar den
+        existing.external_ids = {
+            **(existing.external_ids or {}),
+            "sportmonks": str(season_external_id),
+        }
+        await session.flush()
+        await record_mapping(
+            session,
+            entity_type="season",
+            external_id=str(season_external_id),
+            canonical_table="seasons",
+            canonical_id=existing.id,
+            source="sportmonks_adopt",
+        )
+        return existing
+
     season = Season(
         league_id=league_id,
         year_start=year_start,
