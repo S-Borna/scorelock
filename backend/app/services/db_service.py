@@ -275,6 +275,8 @@ async def get_fixtures(
     match_date: date | None = None,
     league_id: int | None = None,
     status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     limit: int = 100,
 ) -> list[Fixture]:
     """Query fixtures with optional filters."""
@@ -293,6 +295,11 @@ async def get_fixtures(
         start = datetime.combine(match_date, datetime.min.time())
         end = datetime.combine(match_date, datetime.max.time())
         query = query.where(Fixture.kickoff.between(start, end))
+
+    if date_from:
+        query = query.where(Fixture.kickoff >= datetime.combine(date_from, datetime.min.time()))
+    if date_to:
+        query = query.where(Fixture.kickoff <= datetime.combine(date_to, datetime.max.time()))
 
     if league_id:
         query = query.where(Fixture.league_id == league_id)

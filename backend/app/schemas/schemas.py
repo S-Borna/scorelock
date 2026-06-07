@@ -68,6 +68,8 @@ class FixtureResponse(BaseModel):
     home_goals: int | None
     away_goals: int | None
     round: str | None
+    stage_name: str | None = None
+    group_letter: str | None = None
 
     model_config = {"from_attributes": True}
 

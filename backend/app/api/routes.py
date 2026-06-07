@@ -149,11 +149,20 @@ async def get_fixtures(
     ),
     league_id: int | None = Query(None, description="Filter by league"),
     status: str | None = Query(None, description="Filter by status"),
+    date_from: date | None = Query(None, description="Inkl. fr.o.m. (YYYY-MM-DD)"),
+    date_to: date | None = Query(None, description="Inkl. t.o.m. (YYYY-MM-DD)"),
+    limit: int = Query(100, ge=1, le=500, description="Max antal rader"),
     db: AsyncSession = Depends(get_db),
 ):
     """Get fixtures with optional filters."""
     fixtures = await db_service.get_fixtures(
-        db, match_date=match_date, league_id=league_id, status=status
+        db,
+        match_date=match_date,
+        league_id=league_id,
+        status=status,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
     )
     return fixtures
 
