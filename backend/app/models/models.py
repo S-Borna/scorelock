@@ -178,6 +178,8 @@ class Fixture(Base):
     league_id: Mapped[int] = mapped_column(ForeignKey("leagues.id"), index=True)
     season: Mapped[int] = mapped_column(Integer)
     round: Mapped[str | None] = mapped_column(String(50))
+    stage_name: Mapped[str | None] = mapped_column(String(50))
+    group_letter: Mapped[str | None] = mapped_column(String(2))
 
     home_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
     away_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
