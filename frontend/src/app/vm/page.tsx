@@ -76,6 +76,14 @@ export default async function VMPage() {
                     {nextSwedenMatch && (
                         <CountdownCallout fixture={nextSwedenMatch} />
                     )}
+                    <div className="mt-8">
+                        <Link
+                            href="/landslag/sverige"
+                            className="inline-flex items-center gap-2 text-sm text-yellow-200 hover:text-yellow-100 transition font-semibold border-b border-yellow-300/40 hover:border-yellow-200 pb-0.5"
+                        >
+                            🇸🇪 Hela Sveriges VM-resa →
+                        </Link>
+                    </div>
                 </div>
             </section>
 
