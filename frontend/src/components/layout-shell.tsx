@@ -7,10 +7,10 @@ import Link from "next/link";
 /* ── Navigation items ─────────────────────────────────── */
 const NAV_ITEMS = [
     { href: "/vm", labelKey: "nav.vm" },
+    { href: "/landslag/sverige", labelKey: "nav.sverige" },
     { href: "/matches", labelKey: "nav.matches" },
     { href: "/value-bets", labelKey: "nav.valueBets" },
     { href: "/standings", labelKey: "nav.standings" },
-    { href: "/predictions", labelKey: "nav.predictions" },
     { href: "/articles", labelKey: "nav.articles" },
     { href: "/leaderboard", labelKey: "nav.tipping" },
 ];
