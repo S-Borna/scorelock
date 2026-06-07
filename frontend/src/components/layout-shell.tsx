@@ -6,12 +6,12 @@ import Link from "next/link";
 
 /* ── Navigation items ─────────────────────────────────── */
 const NAV_ITEMS = [
+    { href: "/vm", labelKey: "nav.vm" },
     { href: "/matches", labelKey: "nav.matches" },
     { href: "/value-bets", labelKey: "nav.valueBets" },
     { href: "/standings", labelKey: "nav.standings" },
     { href: "/predictions", labelKey: "nav.predictions" },
     { href: "/", labelKey: "nav.articles" },
-    { href: "/sentiment", labelKey: "nav.sentiment" },
     { href: "/leaderboard", labelKey: "nav.tipping" },
 ];
 

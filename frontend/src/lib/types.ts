@@ -29,6 +29,40 @@ export interface Fixture {
     home_goals: number | null;
     away_goals: number | null;
     round: string | null;
+    stage_name?: string | null;
+    group_letter?: string | null;
+}
+
+export interface TournamentGroupStanding {
+    team: Team;
+    points: number;
+    played: number;
+    won: number;
+    drawn: number;
+    lost: number;
+    goals_for: number;
+    goals_against: number;
+    goal_diff: number;
+}
+
+export interface TournamentGroup {
+    letter: string;
+    standings: TournamentGroupStanding[];
+    fixtures: Fixture[];
+}
+
+export interface TournamentKnockoutStage {
+    stage_name: string;
+    fixtures: Fixture[];
+}
+
+export interface TournamentStructure {
+    league: League;
+    season_label: string;
+    season_start: string | null;
+    season_end: string | null;
+    groups: TournamentGroup[];
+    knockouts: TournamentKnockoutStage[];
 }
 
 export interface FixtureDetail extends Fixture {
