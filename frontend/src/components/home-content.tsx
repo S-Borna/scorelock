@@ -14,6 +14,7 @@ interface HomeContentProps {
 }
 
 const LEAGUE_ORDER: Record<string, number> = {
+    "World Cup": 0, "world_cup": 0,  // VM 2026 — överst under VM-fönstret
     "Premier League": 1, "premier_league": 1,
     "La Liga": 2, "la_liga": 2,
     "Serie A": 3, "serie_a": 3,
@@ -22,6 +23,8 @@ const LEAGUE_ORDER: Record<string, number> = {
     "Champions League": 6, "champions_league": 6,
     "Allsvenskan": 7, "allsvenskan": 7,
 };
+
+const SWEDEN_TEAM_ID = 1021;
 
 export function HomeContent({
     articles,
@@ -35,6 +38,17 @@ export function HomeContent({
 
     const predMap = new Map(predictions.map((p) => [p.fixture_id, p]));
     const vbMap = new Map(valueBets.map((vb) => [vb.fixture.id, vb]));
+
+    // Sverige-VM: nästa Sverige-match som inte är spelad
+    const nextSwedenMatch = allFixtures
+        .filter(
+            (f) =>
+                (f.home_team.id === SWEDEN_TEAM_ID ||
+                    f.away_team.id === SWEDEN_TEAM_ID) &&
+                f.league.id === 12 &&
+                (f.status === "scheduled" || f.status === "live"),
+        )
+        .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime())[0];
 
     // Live matches
     const liveFixtures = allFixtures.filter((f) => f.status === "live" || f.status === "halftime");
@@ -65,6 +79,9 @@ export function HomeContent({
 
     return (
         <div>
+            {/* VM-hero — överst ovanför fold när Sverige har kommande VM-match */}
+            {nextSwedenMatch && <VMHeroBanner match={nextSwedenMatch} />}
+
             {/* Compact hero */}
             <section className="border-b border-white/[0.04] bg-gradient-to-b from-white/[0.02] to-transparent">
                 <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14 text-center">
@@ -88,14 +105,16 @@ export function HomeContent({
                             </span>
                         )}
                         <span>{upcoming.length} kommande</span>
-                        <span className="text-scorelock-400">{predictions.length} AI-tips</span>
+                        {predictions.length > 0 && (
+                            <span className="text-scorelock-400">{predictions.length} AI-tips</span>
+                        )}
                     </div>
                     <div className="flex items-center justify-center gap-3">
-                        <Link href="/matches" className="btn-primary text-sm">
-                            {t("hero.cta.primary")}
+                        <Link href="/vm" className="btn-primary text-sm">
+                            VM 2026 → Forza Sverige
                         </Link>
-                        <Link href="/standings" className="btn-secondary text-sm">
-                            Tabeller
+                        <Link href="/matches" className="btn-secondary text-sm">
+                            {t("hero.cta.primary")}
                         </Link>
                     </div>
                 </div>
@@ -228,6 +247,79 @@ export function HomeContent({
                 </section>
             </div>
         </div>
+    );
+}
+
+/* ── VM-Hero — Sverige-spektakel ovanför fold ───────── */
+
+function VMHeroBanner({ match }: { match: Fixture }) {
+    const isSwedenHome = match.home_team.id === SWEDEN_TEAM_ID;
+    const opponent = isSwedenHome ? match.away_team : match.home_team;
+    const kickoff = new Date(match.kickoff);
+
+    // Pre-calculated days/hours till kickoff för stabilitet vid SSR
+    const now = new Date();
+    const msToKickoff = kickoff.getTime() - now.getTime();
+    const daysToKickoff = Math.max(0, Math.floor(msToKickoff / (1000 * 60 * 60 * 24)));
+    const hoursToKickoff = Math.max(
+        0,
+        Math.floor((msToKickoff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+    );
+
+    return (
+        <Link
+            href={`/matches/${match.id}`}
+            className="block relative overflow-hidden border-b border-yellow-500/15 group"
+        >
+            {/* Sverige-flagg-bakgrund: blå-bas + gult kors */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-950 to-blue-900" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(252,211,77,0.18),transparent_55%)]" />
+            <div className="absolute top-0 bottom-0 left-1/3 w-px bg-yellow-300/30" />
+
+            <div className="relative max-w-5xl mx-auto px-4 py-8 sm:py-10">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-4">
+                        <div className="text-5xl sm:text-6xl">🇸🇪</div>
+                        <div>
+                            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] text-yellow-300 mb-1">
+                                VM 2026 · GRUPP F · NÄSTA MATCH
+                            </div>
+                            <div className="font-serif text-2xl sm:text-3xl text-white leading-tight">
+                                Sverige vs {opponent.name}
+                            </div>
+                            <div className="text-sm text-blue-100/80 mt-1">
+                                {kickoff.toLocaleDateString("sv-SE", {
+                                    weekday: "long",
+                                    day: "numeric",
+                                    month: "long",
+                                })}{" "}
+                                kl.{" "}
+                                {kickoff.toLocaleTimeString("sv-SE", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-widest text-yellow-200/70 mb-1">
+                                Spark om
+                            </div>
+                            <div className="font-mono text-xl sm:text-2xl text-yellow-300 font-bold tabular-nums">
+                                {daysToKickoff > 0
+                                    ? `${daysToKickoff}d ${hoursToKickoff}h`
+                                    : `${hoursToKickoff}h`}
+                            </div>
+                        </div>
+                        <div className="text-yellow-300/50 group-hover:text-yellow-300 group-hover:translate-x-1 transition-transform text-2xl">
+                            →
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Link>
     );
 }
 
