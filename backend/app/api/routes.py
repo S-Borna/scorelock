@@ -1168,6 +1168,7 @@ async def get_value_bets(
             confidence=pred.confidence,
             over_25_prob=pred.over_25_prob or 0.5,
             expected_goals=pred.expected_goals or 2.5,
+            model_version=pred.model_version,
         )
 
         kelly = 0.0
