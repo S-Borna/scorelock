@@ -20,10 +20,10 @@ settings = get_settings()
 # måste rymma flera sidladdningar/min. Riktig fix = konsolidera fan-outen till
 # ett bundlat endpoint (nästa milstolpe); detta är realistisk browsing-headroom.
 TIER_LIMITS: dict[str, int] = {
-    "free": 120,
-    "pro": 300,
-    "elite": 600,
-    "anonymous": 60,
+    "free": 240,
+    "pro": 600,
+    "elite": 1200,
+    "anonymous": 180,
 }
 
 # Paths exempt from rate limiting
