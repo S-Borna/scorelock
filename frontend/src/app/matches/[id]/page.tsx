@@ -1,6 +1,7 @@
 import type { AffiliateLink } from "@/components/affiliate-cta";
 import { GamblingDisclaimer } from "@/components/gambling-disclaimer";
 import { MatchTipSection } from "@/components/match-tip-section";
+import { IntelligenceCard } from "@/components/intelligence-card";
 import { LiveMatchHeader } from "@/components/live-match-header";
 import { MatchInfoStrip } from "@/components/match-info-strip";
 import { MatchRoom } from "@/components/match-room";
@@ -131,6 +132,13 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
             {/* Match info-rad: venue + referee */}
             <MatchInfoStrip info={matchInfo} />
+
+            {/* AI som matchsidans MITTPUNKT — alltid synlig oavsett flik */}
+            {(intelligence.pre_match || intelligence.in_match || intelligence.post_match) && (
+                <div className="mb-8">
+                    <IntelligenceCard bundle={intelligence} variant="hero" />
+                </div>
+            )}
 
             <div className="grid gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2">

@@ -52,8 +52,10 @@ function Body({ text }: { text: string }) {
 
 export function IntelligenceCard({
     bundle,
+    variant = "default",
 }: {
     bundle: MatchIntelligenceBundle;
+    variant?: "default" | "hero";
 }) {
     const { t } = useLocale();
     const [active, setActive] = useState<IntelligenceKind | null>(() =>
@@ -68,6 +70,69 @@ export function IntelligenceCard({
         current.kind === "in_match" && current.as_of_minute !== null
             ? ` · ${current.as_of_minute}' ${t("intelligence.minute_short")}`
             : "";
+
+    if (variant === "hero") {
+        return (
+            <section className="relative overflow-hidden rounded-2xl border border-scorelock-500/15 bg-gradient-to-br from-scorelock-500/[0.06] via-surface-900/40 to-transparent p-6 md:p-8">
+                <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full bg-scorelock-500/[0.08] blur-3xl pointer-events-none" />
+                <div className="relative">
+                    <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+                        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-scorelock-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-scorelock-400 animate-pulse" />
+                            ScoreLock AI-analys
+                        </div>
+                        <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
+                            {current.model_version} · {current.provider}
+                        </span>
+                    </div>
+
+                    <div className="flex gap-1 mb-5 border-b border-white/[0.06]">
+                        {TAB_ORDER.map((kind) => {
+                            const exists = !!bundle[kind];
+                            const isActive = kind === active;
+                            return (
+                                <button
+                                    key={kind}
+                                    type="button"
+                                    disabled={!exists}
+                                    onClick={() => exists && setActive(kind)}
+                                    className={
+                                        "px-4 py-2.5 text-xs uppercase tracking-wider transition-colors " +
+                                        (isActive
+                                            ? "text-white border-b-2 border-scorelock-400"
+                                            : exists
+                                              ? "text-gray-400 hover:text-gray-200"
+                                              : "text-gray-700 cursor-not-allowed")
+                                    }
+                                >
+                                    {t(TAB_LABEL_KEY[kind])}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <p className="font-serif text-2xl md:text-3xl tracking-tight leading-tight text-white mb-5">
+                        {current.summary}
+                    </p>
+
+                    <div className="text-[15px] leading-relaxed text-gray-200 space-y-3">
+                        {current.body
+                            .split(/\n\s*\n/)
+                            .map((p) => p.trim())
+                            .filter(Boolean)
+                            .map((p, i) => (
+                                <p key={i}>{p}</p>
+                            ))}
+                    </div>
+
+                    <p className="text-[10px] text-gray-600 mt-6 font-mono uppercase tracking-widest">
+                        Genererad {formatGeneratedAt(current.generated_at)}
+                        {minuteLabel}
+                    </p>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <div className="card">

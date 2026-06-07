@@ -76,7 +76,8 @@ export function MatchTabs(props: MatchTabsProps) {
                 {tab === "oversikt" && (
                     <>
                         <LiveMatchStats fixtureId={fixture.id} />
-                        <IntelligenceCard bundle={props.intelligence} />
+                        {/* IntelligenceCard renderas nu som hero ovanför flikarna — */}
+                        {/* visa inte här igen för att undvika dubblering. */}
                         {fixture.prediction && (
                             <div className="card-glow">
                                 <h2 className="text-base font-semibold mb-4 text-white">🤖 ScoreLock AI — prediktion</h2>
