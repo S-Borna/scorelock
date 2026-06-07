@@ -168,6 +168,47 @@ class StandingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Tournament (cup) structure ─────────────────────────────
+
+
+class TournamentGroupStanding(BaseModel):
+    """Beräknad ställning för ETT lag i en grupp.
+
+    Beräknad on-the-fly från färdiga group-stage-fixtures (FT/AET-status), inte
+    från standings-tabellen — turneringen är kort + vi vill inte dubbel-lagra.
+    """
+
+    team: TeamResponse
+    points: int
+    played: int
+    won: int
+    drawn: int
+    lost: int
+    goals_for: int
+    goals_against: int
+    goal_diff: int
+
+
+class TournamentGroup(BaseModel):
+    letter: str  # "A".."L"
+    standings: list[TournamentGroupStanding]
+    fixtures: list[FixtureResponse]
+
+
+class TournamentKnockoutStage(BaseModel):
+    stage_name: str  # "Round of 32" | "Round of 16" | "Quarter-finals" | …
+    fixtures: list[FixtureResponse]
+
+
+class TournamentStructureResponse(BaseModel):
+    league: LeagueResponse
+    season_label: str
+    season_start: date | None
+    season_end: date | None
+    groups: list[TournamentGroup]
+    knockouts: list[TournamentKnockoutStage]
+
+
 # ── Articles ───────────────────────────────────────────────
 
 

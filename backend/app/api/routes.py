@@ -8,6 +8,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import get_current_user, get_optional_user
@@ -57,6 +58,10 @@ from app.schemas.schemas import (
     MOTMVoteRequest,
     MOTMTallyEntry,
     MOTMTallyResponse,
+    TournamentGroupStanding,
+    TournamentGroup,
+    TournamentKnockoutStage,
+    TournamentStructureResponse,
 )
 from app.services import db_service
 from app.models.models import (
@@ -1237,6 +1242,172 @@ async def get_standings(
         )
 
     return result
+
+
+# ── Tournament structure (cup-format som VM) ───────────────
+
+
+@router.get(
+    "/tournaments/{league_id}/structure",
+    response_model=TournamentStructureResponse,
+)
+async def get_tournament_structure(
+    league_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Hela turneringen i ETT svar: grupper med beräknade ställningar + alla knockout-stages.
+
+    Designat för cup-typ-ligor (VM, EM, CL). Returnerar 404 om ligan inte finns.
+    Group-standings beräknas on-the-fly från färdigspelade group-stage-fixtures.
+    """
+    from app.models.models import Fixture, League, MatchStatus, Season, Team
+
+    league_row = await db.execute(select(League).where(League.id == league_id))
+    league = league_row.scalar_one_or_none()
+    if league is None:
+        raise HTTPException(status_code=404, detail="League not found")
+
+    season_row = await db.execute(
+        select(Season)
+        .where(Season.league_id == league_id)
+        .order_by(Season.year_start.desc())
+        .limit(1)
+    )
+    season = season_row.scalar_one_or_none()
+
+    fixtures_row = await db.execute(
+        select(Fixture)
+        .where(Fixture.league_id == league_id)
+        .options(
+            selectinload(Fixture.league),
+            selectinload(Fixture.home_team),
+            selectinload(Fixture.away_team),
+        )
+        .order_by(Fixture.kickoff.asc())
+    )
+    fixtures = list(fixtures_row.scalars().all())
+
+    # ── Group-stage: bygg grupp-ställningar from färdiga matcher ──
+    group_fixtures: dict[str, list[Fixture]] = {}
+    for f in fixtures:
+        if f.group_letter:
+            group_fixtures.setdefault(f.group_letter, []).append(f)
+
+    def _empty_row(team: Team) -> dict:
+        return {
+            "team": team,
+            "points": 0,
+            "played": 0,
+            "won": 0,
+            "drawn": 0,
+            "lost": 0,
+            "goals_for": 0,
+            "goals_against": 0,
+        }
+
+    groups: list[TournamentGroup] = []
+    for letter in sorted(group_fixtures.keys()):
+        gfix = group_fixtures[letter]
+        # alla unika lag i gruppen (4 i ett vanligt VM-format)
+        teams_by_id: dict[int, dict] = {}
+        for f in gfix:
+            for t in (f.home_team, f.away_team):
+                if t.id not in teams_by_id:
+                    teams_by_id[t.id] = _empty_row(t)
+        # räkna spelade matcher
+        finished = (MatchStatus.FINISHED, MatchStatus.AWARDED)
+        for f in gfix:
+            if f.status not in finished:
+                continue
+            if f.home_goals is None or f.away_goals is None:
+                continue
+            h = teams_by_id[f.home_team_id]
+            a = teams_by_id[f.away_team_id]
+            h["played"] += 1
+            a["played"] += 1
+            h["goals_for"] += f.home_goals
+            h["goals_against"] += f.away_goals
+            a["goals_for"] += f.away_goals
+            a["goals_against"] += f.home_goals
+            if f.home_goals > f.away_goals:
+                h["won"] += 1
+                h["points"] += 3
+                a["lost"] += 1
+            elif f.home_goals < f.away_goals:
+                a["won"] += 1
+                a["points"] += 3
+                h["lost"] += 1
+            else:
+                h["drawn"] += 1
+                a["drawn"] += 1
+                h["points"] += 1
+                a["points"] += 1
+
+        rows = list(teams_by_id.values())
+        for r in rows:
+            r["goal_diff"] = r["goals_for"] - r["goals_against"]
+        rows.sort(
+            key=lambda r: (
+                -r["points"],
+                -r["goal_diff"],
+                -r["goals_for"],
+                r["team"].name,
+            )
+        )
+        standings = [
+            TournamentGroupStanding(
+                team=TeamResponse.model_validate(r["team"]),
+                points=r["points"],
+                played=r["played"],
+                won=r["won"],
+                drawn=r["drawn"],
+                lost=r["lost"],
+                goals_for=r["goals_for"],
+                goals_against=r["goals_against"],
+                goal_diff=r["goal_diff"],
+            )
+            for r in rows
+        ]
+        groups.append(
+            TournamentGroup(
+                letter=letter,
+                standings=standings,
+                fixtures=[FixtureResponse.model_validate(f) for f in gfix],
+            )
+        )
+
+    # ── Knockouts: gruppera per stage_name, sortera enligt naturlig progression ──
+    _KO_ORDER = {
+        "Round of 32": 1,
+        "Round of 16": 2,
+        "Quarter-finals": 3,
+        "Semi-finals": 4,
+        "3rd Place Final": 5,
+        "Final": 6,
+    }
+    knockout_buckets: dict[str, list[Fixture]] = {}
+    for f in fixtures:
+        if f.stage_name and f.stage_name in _KO_ORDER:
+            knockout_buckets.setdefault(f.stage_name, []).append(f)
+
+    knockouts = [
+        TournamentKnockoutStage(
+            stage_name=name,
+            fixtures=[FixtureResponse.model_validate(f) for f in sorted(kfix, key=lambda x: x.kickoff)],
+        )
+        for name, kfix in sorted(
+            knockout_buckets.items(), key=lambda kv: _KO_ORDER[kv[0]]
+        )
+    ]
+
+    return TournamentStructureResponse(
+        league=LeagueResponse.model_validate(league),
+        season_label=season.label if season else "",
+        season_start=season.start_date if season else None,
+        season_end=season.end_date if season else None,
+        groups=groups,
+        knockouts=knockouts,
+    )
 
 
 # ── Sentiment ──────────────────────────────────────────────
