@@ -124,8 +124,28 @@ export function MatchesClient({ initialFixtures, predictions, valueBets }: Match
         .sort((a, b) => new Date(b.kickoff).getTime() - new Date(a.kickoff).getTime());
     const roundGroups = groupRounds(leagueFixtures);
 
+    // VM-banner: pre-tournament-vyer är glesa eftersom liga-säsongerna pausas
+    // under VM-fönstret. Visa banner som peker användaren till /vm.
+    const todayInVMWindow = today.getTime() >= new Date("2026-06-01").getTime()
+        && today.getTime() <= new Date("2026-07-31").getTime();
+
     return (
         <div className="max-w-3xl mx-auto px-4 py-6">
+            {todayInVMWindow && (
+                <a
+                    href="/vm"
+                    className="flex items-center justify-between mb-5 rounded-xl border border-yellow-500/20 bg-gradient-to-r from-yellow-500/[0.06] to-blue-900/20 px-4 py-3 hover:border-yellow-400/40 transition group"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="text-2xl">🇸🇪</div>
+                        <div>
+                            <div className="text-[10px] uppercase tracking-[0.25em] text-yellow-300 font-bold">VM 2026 pågår</div>
+                            <div className="text-sm text-blue-100">Hela turneringen + Sveriges 3 matcher</div>
+                        </div>
+                    </div>
+                    <div className="text-yellow-300 group-hover:translate-x-1 transition text-xl">→</div>
+                </a>
+            )}
             <div className="mb-5 flex items-end justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-bold mb-1">Matcher</h1>
