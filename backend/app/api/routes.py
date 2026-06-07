@@ -967,10 +967,35 @@ async def get_fixture_events(
 
 
 @router.get("/predictions/today", response_model=list[PredictionResponse])
-async def get_todays_predictions(db: AsyncSession = Depends(get_db)):
-    """Get ML predictions for today's matches."""
-    predictions = await db_service.get_predictions_for_date(db, date.today())
-    return predictions
+async def get_todays_predictions(
+    days_ahead: int = Query(0, ge=0, le=30, description="Inkludera N dagar framåt"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Predictions för idag + valfritt N dagar framåt.
+
+    Default days_ahead=0 = bara idag (back-compat). /predictions-sidan kallar
+    med days_ahead=14 så listan visar kommande matcher när inga spelas idag.
+    """
+    from datetime import timedelta as _td
+
+    start = date.today()
+    end = start + _td(days=days_ahead)
+    if days_ahead == 0:
+        return await db_service.get_predictions_for_date(db, start)
+    # Multi-dag: fetch alla predictions där fixture.kickoff är inom fönstret
+    from sqlalchemy import select as _sel
+    from datetime import datetime as _dt
+    from app.models.models import Fixture as _F, Prediction as _P
+
+    start_dt = _dt.combine(start, _dt.min.time())
+    end_dt = _dt.combine(end, _dt.max.time())
+    result = await db.execute(
+        _sel(_P)
+        .join(_F)
+        .where(_F.kickoff.between(start_dt, end_dt))
+        .order_by(_F.kickoff.asc())
+    )
+    return list(result.scalars().all())
 
 
 @router.get("/predictions/accuracy")
