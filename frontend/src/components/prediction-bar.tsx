@@ -78,6 +78,20 @@ export function PredictionBar({ prediction }: PredictionBarProps) {
                     )}
                 </div>
             )}
+
+            {/* Låg-konfidens disclaimer — modellen tränades på klubblag och har
+                  ej sett VM-knockout-format. Var transparent när siffrorna är
+                  preliminära så användaren inte väger dem för tungt. */}
+            {prediction.confidence < 0.2 && (
+                <div className="pt-2 border-t border-white/[0.04]">
+                    <p className="text-[11px] text-amber-300/80 leading-snug">
+                        ⚠ Modell-konfidens låg ({formatProb(prediction.confidence)}).
+                        ScoreLocks ML-modell är tränad på klubbmatcher och har inte sett
+                        landslagsformatet. Behandla siffrorna som preliminära — AI-analysen
+                        i match-toppen är grundad i odds + form-data och är trovärdigare.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }
