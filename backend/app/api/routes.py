@@ -796,6 +796,33 @@ async def trigger_intelligence_generation(
     )
 
 
+@router.post("/admin/intelligence/prewarm-tournament/{league_id}")
+async def trigger_tournament_prewarm(
+    league_id: int,
+    limit: int = Query(200, ge=1, le=500, description="Max antal matcher per körning"),
+    user: User = Depends(get_current_user),
+):
+    """Köa pre-match-generering för alla SCHEDULED-matcher i en cup-liga (VM/EM/CL).
+
+    Skickar uppgiften till Celery-workern som kör det offline. Returnerar
+    omedelbart med task-ID. Använd FÖRE turneringen startar för att fylla
+    cachen med analyser så ingen besökare träffar cold-start.
+    """
+    if user.email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from app.services.tasks import prewarm_tournament_intelligence
+
+    async_result = prewarm_tournament_intelligence.delay(league_id=league_id, limit=limit)
+    return {
+        "status": "queued",
+        "task_id": async_result.id,
+        "league_id": league_id,
+        "limit": limit,
+        "hint": "Spåra resultatet via celery-worker-loggarna eller GET /admin/intelligence/{fixture_id}/...",
+    }
+
+
 @router.get(
     "/fixtures/{fixture_id}/lineups",
     response_model=FixtureLineupsBundle,

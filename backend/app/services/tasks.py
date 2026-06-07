@@ -1398,3 +1398,102 @@ def generate_match_intelligence_batch(limit: int = 25):
         return {"status": "ok", "jobs": len(jobs), "generated": generated}
 
     return run_async(_gen())
+
+
+@celery_app.task(name="app.services.tasks.prewarm_tournament_intelligence")
+def prewarm_tournament_intelligence(league_id: int, limit: int = 200):
+    """Massgenerera pre-match-analys för en hel cup-turnering (VM, EM, CL …).
+
+    Skiljer sig från generate_match_intelligence_batch genom att IGNORERA
+    kickoff-window (select_pending_jobs tar bara fixtures inom 48h pre-match).
+    Behövs för att fylla turneringsvyn med analyser INNAN gruppspelet börjar.
+    Iterear alla SCHEDULED fixtures i ligan som saknar PRE_MATCH-rad och kör
+    generate_intelligence (CLI primär, API fallback) per match.
+    """
+
+    async def _prewarm():
+        from sqlalchemy import select
+
+        from app.models.models import Fixture, IntelligenceKind, MatchIntelligence, MatchStatus
+        from app.services.intelligence_orchestrator import generate_intelligence
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Fixture.id, Fixture.home_team_id, Fixture.away_team_id)
+                .where(
+                    Fixture.league_id == league_id,
+                    Fixture.status == MatchStatus.SCHEDULED,
+                )
+                .order_by(Fixture.kickoff.asc())
+            )
+            all_fixtures = result.all()
+
+            # Filtrera bort matcher som redan har pre-match-analys
+            existing = await session.execute(
+                select(MatchIntelligence.fixture_id).where(
+                    MatchIntelligence.kind == IntelligenceKind.PRE_MATCH,
+                    MatchIntelligence.fixture_id.in_(
+                        [f.id for f in all_fixtures]
+                    ),
+                )
+            )
+            existing_ids = {row[0] for row in existing.all()}
+
+            # Filtrera bort placeholder-fixtures (Winner of X) — modellen
+            # ska INTE analysera när vi inte vet vilka lag det blir.
+            placeholder_team_ids = set()
+            from app.models.models import Team
+
+            team_result = await session.execute(
+                select(Team.id, Team.name).where(
+                    Team.name.ilike("Winner %") | Team.name.ilike("Loser %")
+                )
+            )
+            for tid, _ in team_result.all():
+                placeholder_team_ids.add(tid)
+
+            pending: list[int] = []
+            for f in all_fixtures:
+                if f.id in existing_ids:
+                    continue
+                if (
+                    f.home_team_id in placeholder_team_ids
+                    or f.away_team_id in placeholder_team_ids
+                ):
+                    continue
+                pending.append(f.id)
+
+        pending = pending[:limit]
+        generated = failed = 0
+        for fid in pending:
+            async with async_session() as session:
+                try:
+                    await generate_intelligence(
+                        session, fid, IntelligenceKind.PRE_MATCH, force=False
+                    )
+                    generated += 1
+                except Exception as exc:  # noqa: BLE001
+                    failed += 1
+                    logger.warning(
+                        "prewarm_failed",
+                        fixture=fid,
+                        league=league_id,
+                        error=str(exc),
+                    )
+
+        logger.info(
+            "prewarm_done",
+            league=league_id,
+            pending=len(pending),
+            generated=generated,
+            failed=failed,
+        )
+        return {
+            "status": "ok",
+            "league_id": league_id,
+            "pending": len(pending),
+            "generated": generated,
+            "failed": failed,
+        }
+
+    return run_async(_prewarm())

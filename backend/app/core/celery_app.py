@@ -106,15 +106,16 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/15", hour="14-23"),
     },
     # ── Match-intelligens ───────────────────────────────────
-    # SHELVED: Max-primär-genereringen kör på alltid-på-boxen (claude -p, platt
-    # kostnad). Den HÄR beat-tasken kör i Docker/prod UTAN claude → faller på
-    # Anthropic-API (metered). Aktivera FÖRST när boxen är i drift som primär,
-    # som rent skyddsnät — annars genereras allt via betal-API:t. Task-koden i
-    # services/tasks.py är intakt och re-arms vid uncomment.
-    # "generate-intelligence-batch": {
-    #     "task": "app.services.tasks.generate_match_intelligence_batch",
-    #     "schedule": crontab(minute="*/30", hour="12-23"),
-    # },
+    # AKTIV under VM-fönstret (juni-juli 2026). Genereringen försöker CLI först
+    # (claude -p, platt kostnad via Max-sub) och faller på Anthropic-API om
+    # claude-binären saknas (vilket den gör i Docker/prod). På host-boxen blir
+    # det Max → API används bara när boxen är offline. Var 30:e min mellan
+    # 12–23 UTC räcker för pre-match (48h-fönster) + post-match (24h-fönster)
+    # — in-match-uppdateringar triggas separat av Fixture-watcher.
+    "generate-intelligence-batch": {
+        "task": "app.services.tasks.generate_match_intelligence_batch",
+        "schedule": crontab(minute="*/30"),
+    },
     # ── Social Distribution (M8) — GATED 2026-05-25 ──────────
     # Avstängda: alla tre refererar en borttagen ValueBet-modell + fältnamn
     # som inte längre finns (fixture.home_team som sträng, fixture.league_name,
