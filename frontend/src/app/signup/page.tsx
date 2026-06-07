@@ -40,28 +40,24 @@ export default function SignupPage() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => null);
-                throw new Error(data?.detail || "Registration failed");
+                // Pydantic 422 — extract first validation message
+                if (res.status === 422 && Array.isArray(data?.detail)) {
+                    const first = data.detail[0];
+                    throw new Error(first?.msg || "Ogiltig inmatning");
+                }
+                throw new Error(data?.detail || "Registreringen misslyckades");
             }
 
-            // Auto-login after registration
-            const loginRes = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({ username: email, password }),
-                }
-            );
-
-            if (loginRes.ok) {
-                const data = await loginRes.json();
+            // Register returnerar nu Token direkt — ingen separat login-round-trip
+            const data = await res.json();
+            if (data?.access_token) {
                 setAccessToken(data.access_token);
             }
 
             router.push("/");
             router.refresh();
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Registration failed");
+            setError(err instanceof Error ? err.message : "Registreringen misslyckades");
         } finally {
             setLoading(false);
         }

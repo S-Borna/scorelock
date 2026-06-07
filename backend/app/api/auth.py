@@ -18,10 +18,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post(
-    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+    "/register", response_model=Token, status_code=status.HTTP_201_CREATED
 )
 async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
-    """Create a new user account."""
+    """Create a new user account and return access token (auto-login)."""
     # Check if email already exists
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none():
@@ -38,7 +38,9 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.flush()
     await db.refresh(user)
-    return user
+
+    token = create_access_token(user.id, user.email)
+    return Token(access_token=token)
 
 
 @router.post("/login", response_model=Token)

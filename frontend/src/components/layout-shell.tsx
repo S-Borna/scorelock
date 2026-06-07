@@ -11,7 +11,7 @@ const NAV_ITEMS = [
     { href: "/value-bets", labelKey: "nav.valueBets" },
     { href: "/standings", labelKey: "nav.standings" },
     { href: "/predictions", labelKey: "nav.predictions" },
-    { href: "/", labelKey: "nav.articles" },
+    { href: "/articles", labelKey: "nav.articles" },
     { href: "/leaderboard", labelKey: "nav.tipping" },
 ];
 
@@ -123,7 +123,7 @@ export function Footer() {
                     ]} />
                     <FooterCol title={t("footer.analysis")} links={[
                         { href: "/predictions", label: t("nav.predictions") },
-                        { href: "/", label: t("nav.articles") },
+                        { href: "/articles", label: t("nav.articles") },
                         { href: "/sentiment", label: t("nav.sentiment") },
                     ]} />
                     <FooterCol title={t("footer.account")} links={[

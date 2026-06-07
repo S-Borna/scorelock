@@ -36,19 +36,19 @@ export function LiveMatchHeader({ fixture }: LiveMatchHeaderProps) {
                 <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent animate-goal-wave pointer-events-none z-10" />
             )}
 
-            <div className="relative p-6 sm:p-8">
+            <div className="relative p-4 sm:p-6 md:p-8 overflow-hidden">
                 {/* Liga-rad med logga + status */}
-                <div className="flex items-center justify-between mb-7">
-                    <a href="/standings" className="flex items-center gap-2 text-sm text-gray-400 hover:text-scorelock-400 transition-colors">
+                <div className="flex items-center justify-between mb-5 sm:mb-7 gap-2">
+                    <a href="/standings" className="flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-scorelock-400 transition-colors min-w-0">
                         {fixture.league.logo_url && (
-                            <img src={fixture.league.logo_url} alt="" className="w-5 h-5 object-contain" />
+                            <img src={fixture.league.logo_url} alt="" className="w-4 h-4 sm:w-5 sm:h-5 object-contain flex-shrink-0" />
                         )}
-                        <span className="font-medium text-gray-300">{fixture.league.name}</span>
-                        {fixture.round && <span className="text-gray-600">· {fixture.round}</span>}
+                        <span className="font-medium text-gray-300 truncate">{fixture.league.name}</span>
+                        {fixture.round && <span className="text-gray-600 truncate">· {fixture.round}</span>}
                     </a>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         {isLive && minute !== null && (
-                            <span className="font-mono text-sm font-bold text-red-400 animate-minute-tick">{minute}&apos;</span>
+                            <span className="font-mono text-xs sm:text-sm font-bold text-red-400 animate-minute-tick">{minute}&apos;</span>
                         )}
                         <span className={isLive ? "badge-live" : `badge ${getStatusClass(status)}`}>
                             {status === "halftime" ? "HT" : status === "finished" ? "Slut" : status === "scheduled" ? "Kommande" : status.toUpperCase()}
@@ -57,23 +57,23 @@ export function LiveMatchHeader({ fixture }: LiveMatchHeaderProps) {
                 </div>
 
                 {/* Scoreboard — stora crests, fet scoreline */}
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-1 sm:gap-2">
                     <TeamDisplay
                         name={fixture.home_team.short_name ?? fixture.home_team.name}
                         logoUrl={fixture.home_team.logo_url}
                         goalScored={goalJustScored && goalSide === "home"}
                     />
-                    <div className="text-center px-1 pt-3">
+                    <div className="text-center px-0 sm:px-1 pt-2 sm:pt-3 flex-shrink-0">
                         {homeGoals !== null && awayGoals !== null ? (
-                            <div className={`text-5xl sm:text-6xl font-bold font-mono tabular-nums leading-none transition-all duration-300 ${goalJustScored ? "text-green-400 animate-score-pop" : "text-white"}`}>
-                                {homeGoals}<span className="text-gray-600 mx-2">–</span>{awayGoals}
+                            <div className={`text-4xl sm:text-5xl md:text-6xl font-bold font-mono tabular-nums leading-none transition-all duration-300 ${goalJustScored ? "text-green-400 animate-score-pop" : "text-white"}`}>
+                                {homeGoals}<span className="text-gray-600 mx-1 sm:mx-2">–</span>{awayGoals}
                             </div>
                         ) : (
-                            <div className="text-3xl font-display italic text-gray-500">vs</div>
+                            <div className="text-2xl sm:text-3xl font-display italic text-gray-500">vs</div>
                         )}
-                        <div className="text-xs text-gray-500 mt-3 font-mono">{formatKickoff(fixture.kickoff)}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500 mt-2 sm:mt-3 font-mono whitespace-nowrap">{formatKickoff(fixture.kickoff)}</div>
                         {fixture.home_goals_ht !== null && fixture.away_goals_ht !== null && (
-                            <div className="text-[11px] text-gray-600 mt-1">HT {fixture.home_goals_ht}–{fixture.away_goals_ht}</div>
+                            <div className="text-[10px] sm:text-[11px] text-gray-600 mt-1">HT {fixture.home_goals_ht}–{fixture.away_goals_ht}</div>
                         )}
                     </div>
                     <TeamDisplay
@@ -110,15 +110,15 @@ function TeamDisplay({
     goalScored?: boolean;
 }) {
     return (
-        <div className="flex flex-col items-center gap-3 w-28 sm:w-36">
-            <div className={`flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/[0.03] border border-white/[0.05] transition-transform duration-500 ${goalScored ? "scale-110" : ""}`}>
+        <div className="flex flex-col items-center gap-2 sm:gap-3 w-20 sm:w-28 md:w-36 min-w-0 flex-shrink">
+            <div className={`flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl bg-white/[0.03] border border-white/[0.05] transition-transform duration-500 ${goalScored ? "scale-110" : ""}`}>
                 {logoUrl ? (
-                    <img src={logoUrl} alt={name} className="w-14 h-14 sm:w-16 sm:h-16 object-contain" />
+                    <img src={logoUrl} alt={name} className="w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain" />
                 ) : (
-                    <span className="text-3xl">⚽</span>
+                    <span className="text-2xl sm:text-3xl">⚽</span>
                 )}
             </div>
-            <span className={`text-sm sm:text-base font-semibold text-center leading-tight transition-colors duration-300 ${goalScored ? "text-green-400" : "text-gray-200"}`}>
+            <span className={`text-xs sm:text-sm md:text-base font-semibold text-center leading-tight transition-colors duration-300 break-words ${goalScored ? "text-green-400" : "text-gray-200"}`}>
                 {name}
             </span>
         </div>

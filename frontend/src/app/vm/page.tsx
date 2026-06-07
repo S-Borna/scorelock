@@ -247,95 +247,100 @@ function SwedenMatchCard({
 function SwedenGroupTableLarge({ group }: { group: TournamentGroup }) {
     const anyPlayed = group.standings.some((s) => s.played > 0);
     return (
-        <div className="rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-blue-950/40 to-surface-900/40 p-6">
-            <table className="w-full">
-                <thead>
-                    <tr className="text-[11px] uppercase tracking-[0.2em] text-yellow-200/70 border-b border-yellow-500/15 font-bold">
-                        <th className="text-left py-3 font-normal">#</th>
-                        <th className="text-left py-3 font-normal">Lag</th>
-                        <th className="text-center py-3 font-normal w-12">Sp</th>
-                        <th className="text-center py-3 font-normal w-10">V</th>
-                        <th className="text-center py-3 font-normal w-10">O</th>
-                        <th className="text-center py-3 font-normal w-10">F</th>
-                        <th className="text-center py-3 font-normal w-14">Mskill</th>
-                        <th className="text-center py-3 font-normal w-12">P</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {group.standings.map((s, idx) => {
-                        const isSweden = s.team.id === SWEDEN_TEAM_ID;
-                        return (
-                            <tr
-                                key={s.team.id}
-                                className={
-                                    "border-b border-white/[0.04] " +
-                                    (isSweden
-                                        ? "bg-yellow-500/[0.06]"
-                                        : "")
-                                }
-                            >
-                                <td
+        <div className="rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-blue-950/40 to-surface-900/40 p-3 sm:p-6">
+            <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+                <table className="w-full min-w-[420px]">
+                    <thead>
+                        <tr className="text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.2em] text-yellow-200/70 border-b border-yellow-500/15 font-bold">
+                            <th className="text-left py-3 font-normal w-6 sm:w-8">#</th>
+                            <th className="text-left py-3 font-normal">Lag</th>
+                            <th className="text-center py-3 font-normal w-10 sm:w-12">Sp</th>
+                            <th className="text-center py-3 font-normal w-8 sm:w-10">V</th>
+                            <th className="text-center py-3 font-normal w-8 sm:w-10">O</th>
+                            <th className="text-center py-3 font-normal w-8 sm:w-10">F</th>
+                            <th className="text-center py-3 font-normal w-12 sm:w-14">Mskill</th>
+                            <th className="text-center py-3 font-normal w-10 sm:w-12">P</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {group.standings.map((s, idx) => {
+                            const isSweden = s.team.id === SWEDEN_TEAM_ID;
+                            return (
+                                <tr
+                                    key={s.team.id}
                                     className={
-                                        "py-3 font-mono text-sm " +
-                                        (idx < 2
-                                            ? "text-yellow-300 font-bold"
-                                            : "text-gray-500")
+                                        "border-b border-white/[0.04] " +
+                                        (isSweden
+                                            ? "bg-yellow-500/[0.06]"
+                                            : "")
                                     }
                                 >
-                                    {idx + 1}
-                                </td>
-                                <td className="py-3 flex items-center gap-3">
-                                    {s.team.logo_url && (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                            src={s.team.logo_url}
-                                            alt=""
-                                            className="w-6 h-6 rounded-sm"
-                                        />
-                                    )}
-                                    <span
+                                    <td
                                         className={
-                                            isSweden
-                                                ? "font-serif text-lg text-yellow-200"
-                                                : "text-gray-200"
+                                            "py-3 font-mono text-xs sm:text-sm " +
+                                            (idx < 2
+                                                ? "text-yellow-300 font-bold"
+                                                : "text-gray-500")
                                         }
                                     >
-                                        {isSweden ? `🇸🇪 ${s.team.name}` : s.team.name}
-                                    </span>
-                                </td>
-                                <td className="text-center py-3 text-sm">{anyPlayed ? s.played : "—"}</td>
-                                <td className="text-center py-3 text-sm">{anyPlayed ? s.won : "—"}</td>
-                                <td className="text-center py-3 text-sm">{anyPlayed ? s.drawn : "—"}</td>
-                                <td className="text-center py-3 text-sm">{anyPlayed ? s.lost : "—"}</td>
-                                <td
-                                    className={
-                                        "text-center py-3 text-sm " +
-                                        (anyPlayed
-                                            ? s.goal_diff > 0
-                                                ? "text-emerald-400"
-                                                : s.goal_diff < 0
-                                                  ? "text-rose-400"
-                                                  : "text-gray-400"
-                                            : "text-gray-600")
-                                    }
-                                >
-                                    {anyPlayed
-                                        ? `${s.goal_diff > 0 ? "+" : ""}${s.goal_diff}`
-                                        : "—"}
-                                </td>
-                                <td
-                                    className={
-                                        "text-center py-3 font-bold " +
-                                        (isSweden ? "text-yellow-300" : "text-white")
-                                    }
-                                >
-                                    {anyPlayed ? s.points : "—"}
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+                                        {idx + 1}
+                                    </td>
+                                    <td className="py-3">
+                                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                                            {s.team.logo_url && (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img
+                                                    src={s.team.logo_url}
+                                                    alt=""
+                                                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-sm flex-shrink-0"
+                                                />
+                                            )}
+                                            <span
+                                                className={
+                                                    "truncate " +
+                                                    (isSweden
+                                                        ? "font-serif text-base sm:text-lg text-yellow-200"
+                                                        : "text-sm sm:text-base text-gray-200")
+                                                }
+                                            >
+                                                {isSweden ? `🇸🇪 ${s.team.name}` : s.team.name}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="text-center py-3 text-xs sm:text-sm">{anyPlayed ? s.played : "—"}</td>
+                                    <td className="text-center py-3 text-xs sm:text-sm">{anyPlayed ? s.won : "—"}</td>
+                                    <td className="text-center py-3 text-xs sm:text-sm">{anyPlayed ? s.drawn : "—"}</td>
+                                    <td className="text-center py-3 text-xs sm:text-sm">{anyPlayed ? s.lost : "—"}</td>
+                                    <td
+                                        className={
+                                            "text-center py-3 text-xs sm:text-sm " +
+                                            (anyPlayed
+                                                ? s.goal_diff > 0
+                                                    ? "text-emerald-400"
+                                                    : s.goal_diff < 0
+                                                      ? "text-rose-400"
+                                                      : "text-gray-400"
+                                                : "text-gray-600")
+                                        }
+                                    >
+                                        {anyPlayed
+                                            ? `${s.goal_diff > 0 ? "+" : ""}${s.goal_diff}`
+                                            : "—"}
+                                    </td>
+                                    <td
+                                        className={
+                                            "text-center py-3 text-xs sm:text-sm font-bold " +
+                                            (isSweden ? "text-yellow-300" : "text-white")
+                                        }
+                                    >
+                                        {anyPlayed ? s.points : "—"}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
             {!anyPlayed && (
                 <p className="text-xs text-blue-200/60 mt-4 italic">
                     Gruppspelet startar 11 juni — tabellen fylls allt eftersom matcher avgörs.

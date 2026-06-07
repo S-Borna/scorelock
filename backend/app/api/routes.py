@@ -1246,38 +1246,151 @@ async def get_head_to_head(
 async def get_standings(
     league_id: int, season: int | None = None, db: AsyncSession = Depends(get_db)
 ):
-    """Get league standings with xG data."""
+    """Get league standings with xG data.
+
+    Cup-fallback: när standings-tabellen är tom OCH ligan är en cup
+    (VM, EM, CL etc.) beräknar vi group-standings on-the-fly från
+    färdigspelade group-stage-fixtures och returnerar dem som en
+    plattad lista (alla grupper × alla lag). Saknar cup-ligan helt
+    grupp-fixtures returnerar vi tom lista istället för 404 så
+    frontend kan rendra en empty-state.
+    """
     standings = await db_service.get_standings(db, league_id, season)
-    if not standings:
+    if standings:
+        # Vanlig league-väg: returnera persisted standings
+        result = []
+        for s in standings:
+            team_result = await db.execute(select(Team).where(Team.id == s.team_id))
+            team = team_result.scalar_one_or_none()
+            if not team:
+                continue
+            result.append(
+                StandingResponse(
+                    position=s.position,
+                    team=TeamResponse.model_validate(team),
+                    points=s.points,
+                    played=s.played,
+                    won=s.won,
+                    drawn=s.drawn,
+                    lost=s.lost,
+                    goals_for=s.goals_for,
+                    goals_against=s.goals_against,
+                    goal_diff=s.goal_diff,
+                    form=s.form,
+                    xg_for=s.xg_for,
+                    xg_against=s.xg_against,
+                )
+            )
+        return result
+
+    # ── Cup-fallback: ingen persisted standing-tabell ──
+    league_row = await db.execute(select(League).where(League.id == league_id))
+    league = league_row.scalar_one_or_none()
+    if league is None:
         raise HTTPException(status_code=404, detail="Standings not found")
 
-    # We need to load the team for each standing
-    result = []
-    for s in standings:
-        from sqlalchemy import select
-        from app.models.models import Team
+    if league.type != "cup":
+        raise HTTPException(status_code=404, detail="Standings not found")
 
-        team_result = await db.execute(select(Team).where(Team.id == s.team_id))
-        team = team_result.scalar_one_or_none()
-        if not team:
-            continue
-        result.append(
-            StandingResponse(
-                position=s.position,
-                team=TeamResponse.model_validate(team),
-                points=s.points,
-                played=s.played,
-                won=s.won,
-                drawn=s.drawn,
-                lost=s.lost,
-                goals_for=s.goals_for,
-                goals_against=s.goals_against,
-                goal_diff=s.goal_diff,
-                form=s.form,
-                xg_for=s.xg_for,
-                xg_against=s.xg_against,
+    # Cup-liga utan persisted standings → beräkna group-standings on-the-fly
+    from app.models.models import MatchStatus
+
+    fixtures_row = await db.execute(
+        select(Fixture)
+        .where(Fixture.league_id == league_id)
+        .options(
+            selectinload(Fixture.home_team),
+            selectinload(Fixture.away_team),
+        )
+    )
+    fixtures = list(fixtures_row.scalars().all())
+
+    group_fixtures: dict[str, list[Fixture]] = {}
+    for f in fixtures:
+        if f.group_letter:
+            group_fixtures.setdefault(f.group_letter, []).append(f)
+
+    # Inga grupper alls → returnera tom lista (frontend rendrar empty state)
+    if not group_fixtures:
+        return []
+
+    finished = (MatchStatus.FINISHED, MatchStatus.AWARDED)
+    result: list[StandingResponse] = []
+
+    for letter in sorted(group_fixtures.keys()):
+        gfix = group_fixtures[letter]
+        teams_by_id: dict[int, dict] = {}
+        for f in gfix:
+            for t in (f.home_team, f.away_team):
+                if t.id not in teams_by_id:
+                    teams_by_id[t.id] = {
+                        "team": t,
+                        "points": 0,
+                        "played": 0,
+                        "won": 0,
+                        "drawn": 0,
+                        "lost": 0,
+                        "goals_for": 0,
+                        "goals_against": 0,
+                    }
+
+        for f in gfix:
+            if f.status not in finished:
+                continue
+            if f.home_goals is None or f.away_goals is None:
+                continue
+            h = teams_by_id[f.home_team_id]
+            a = teams_by_id[f.away_team_id]
+            h["played"] += 1
+            a["played"] += 1
+            h["goals_for"] += f.home_goals
+            h["goals_against"] += f.away_goals
+            a["goals_for"] += f.away_goals
+            a["goals_against"] += f.home_goals
+            if f.home_goals > f.away_goals:
+                h["won"] += 1
+                h["points"] += 3
+                a["lost"] += 1
+            elif f.home_goals < f.away_goals:
+                a["won"] += 1
+                a["points"] += 3
+                h["lost"] += 1
+            else:
+                h["drawn"] += 1
+                a["drawn"] += 1
+                h["points"] += 1
+                a["points"] += 1
+
+        rows = list(teams_by_id.values())
+        for r in rows:
+            r["goal_diff"] = r["goals_for"] - r["goals_against"]
+        rows.sort(
+            key=lambda r: (
+                -r["points"],
+                -r["goal_diff"],
+                -r["goals_for"],
+                r["team"].name,
             )
         )
+
+        for idx, r in enumerate(rows, start=1):
+            result.append(
+                StandingResponse(
+                    position=idx,
+                    team=TeamResponse.model_validate(r["team"]),
+                    points=r["points"],
+                    played=r["played"],
+                    won=r["won"],
+                    drawn=r["drawn"],
+                    lost=r["lost"],
+                    goals_for=r["goals_for"],
+                    goals_against=r["goals_against"],
+                    goal_diff=r["goal_diff"],
+                    form=None,
+                    xg_for=None,
+                    xg_against=None,
+                )
+            )
 
     return result
 

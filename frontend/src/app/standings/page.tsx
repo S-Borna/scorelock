@@ -1,6 +1,7 @@
 import { fetchApi } from "@/lib/api";
 import type { League, Standing } from "@/lib/types";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
     title: "Tabeller",
@@ -9,26 +10,53 @@ export const metadata: Metadata = {
 
 export const revalidate = 300;
 
-// League display order
+// Slug → human-readable display name
+const LEAGUE_DISPLAY_NAMES: Record<string, string> = {
+    premier_league: "Premier League",
+    la_liga: "La Liga",
+    serie_a: "Serie A",
+    bundesliga: "Bundesliga",
+    ligue_1: "Ligue 1",
+    allsvenskan: "Allsvenskan",
+    champions_league: "Champions League",
+    europa_league: "Europa League",
+    conference_league: "Conference League",
+    world_cup: "VM 2026",
+};
+
+// Country code/slug → human-readable
+const COUNTRY_DISPLAY: Record<string, string> = {
+    premier_league: "England",
+    la_liga: "Spanien",
+    serie_a: "Italien",
+    bundesliga: "Tyskland",
+    ligue_1: "Frankrike",
+    allsvenskan: "Sverige",
+    champions_league: "Europa",
+    europa_league: "Europa",
+    conference_league: "Europa",
+};
+
+function displayLeagueName(league: League): string {
+    return LEAGUE_DISPLAY_NAMES[league.name] ?? league.name;
+}
+
+function displayCountry(league: League): string {
+    return COUNTRY_DISPLAY[league.country] ?? COUNTRY_DISPLAY[league.name] ?? league.country;
+}
+
+// League display order — by display name
 const LEAGUE_ORDER: Record<string, number> = {
     "Premier League": 1,
-    "premier_league": 1,
     "La Liga": 2,
-    "la_liga": 2,
     "Serie A": 3,
-    "serie_a": 3,
     "Bundesliga": 4,
-    "bundesliga": 4,
     "Ligue 1": 5,
-    "ligue_1": 5,
     "Allsvenskan": 6,
-    "allsvenskan": 6,
     "Champions League": 10,
-    "champions_league": 10,
     "Europa League": 11,
-    "europa_league": 11,
     "Conference League": 12,
-    "conference_league": 12,
+    "VM 2026": 20,
 };
 
 export default async function StandingsPage() {
@@ -40,27 +68,73 @@ export default async function StandingsPage() {
         // Handled in UI
     }
 
-    // Sort leagues by display order, filter out cups (no standings for CL etc.)
-    const sortedLeagues = leagues
-        .filter((l) => l.type !== "cup")
-        .sort((a, b) => (LEAGUE_ORDER[a.name] ?? 99) - (LEAGUE_ORDER[b.name] ?? 99));
+    // Sort by display name order
+    const sortedLeagues = leagues.sort(
+        (a, b) =>
+            (LEAGUE_ORDER[displayLeagueName(a)] ?? 99) -
+            (LEAGUE_ORDER[displayLeagueName(b)] ?? 99)
+    );
+
+    const leagueTables = sortedLeagues.filter((l) => l.type !== "cup");
+    const cups = sortedLeagues.filter((l) => l.type === "cup");
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-6">
             <h1 className="text-2xl font-bold mb-6">Tabeller</h1>
 
-            {sortedLeagues.length === 0 ? (
+            {leagueTables.length === 0 && cups.length === 0 ? (
                 <div className="text-center py-16 rounded-xl border border-white/[0.06] bg-white/[0.02]">
                     <div className="w-14 h-14 rounded-2xl bg-white/[0.03] flex items-center justify-center text-2xl mx-auto mb-3">🏆</div>
                     <p className="text-gray-500 text-sm">Inga ligor tillgängliga.</p>
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {sortedLeagues.map((league) => (
+                    {leagueTables.map((league) => (
                         <LeagueTable key={league.id} league={league} />
                     ))}
+                    {cups.length > 0 && <CupLinks cups={cups} />}
                 </div>
             )}
+        </div>
+    );
+}
+
+function CupLinks({ cups }: { cups: League[] }) {
+    return (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.01]">
+                <h2 className="font-semibold text-white">Cuper</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                    Cuper har ingen seriebordstabell — följ gruppspel och slutspel direkt.
+                </p>
+            </div>
+            <ul className="divide-y divide-white/[0.03]">
+                {cups.map((cup) => {
+                    const isWorldCup = cup.name === "World Cup" || cup.name === "world_cup";
+                    const href = isWorldCup ? "/vm" : `/?league=${cup.id}`;
+                    const label = isWorldCup ? displayLeagueName({ ...cup, name: "world_cup" } as League) : displayLeagueName(cup);
+                    return (
+                        <li key={cup.id}>
+                            <Link
+                                href={href}
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors"
+                            >
+                                {cup.logo_url ? (
+                                    <img src={cup.logo_url} alt="" className="w-6 h-6 object-contain" />
+                                ) : (
+                                    <div className="w-6 h-6 rounded bg-white/[0.06] flex items-center justify-center">
+                                        <span className="text-xs">🏆</span>
+                                    </div>
+                                )}
+                                <span className="font-medium text-white">{label}</span>
+                                <span className="ml-auto text-xs text-scorelock-accent">
+                                    {isWorldCup ? "Till VM →" : "Visa matcher →"}
+                                </span>
+                            </Link>
+                        </li>
+                    );
+                })}
+            </ul>
         </div>
     );
 }
@@ -87,8 +161,8 @@ async function LeagueTable({ league }: { league: League }) {
                         <span className="text-xs">🏆</span>
                     </div>
                 )}
-                <h2 className="font-semibold text-white">{league.name}</h2>
-                <span className="text-xs text-gray-500">{league.country}</span>
+                <h2 className="font-semibold text-white">{displayLeagueName(league)}</h2>
+                <span className="text-xs text-gray-500">{displayCountry(league)}</span>
             </div>
 
             {/* Table */}
