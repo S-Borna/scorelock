@@ -94,9 +94,26 @@ _KIND_INSTRUCTION = {
 }
 
 
+_KNOCKOUT_STAGES = {
+    "Round of 32",
+    "Round of 16",
+    "Quarter-finals",
+    "Semi-finals",
+    "Final",
+    "3rd Place Final",
+}
+
+
 def pick_model(kind: IntelligenceKind, dossier: dict) -> str:
-    """Modell-routing: live/post + stormatch → Sonnet; rutin-pre-match → Haiku."""
+    """Modell-routing: live/post + stormatch + cup-knockout → Sonnet; annars Haiku.
+
+    Cup-knockouts (slutspels-matcher) får Sonnet oavsett tabelläge — turnerings-
+    matcher förtjänar full analys-tyngd.
+    """
     if kind in (IntelligenceKind.IN_MATCH, IntelligenceKind.POST_MATCH):
+        return "sonnet"
+    turnering = (dossier.get("match") or {}).get("turnering") or {}
+    if turnering.get("stage") in _KNOCKOUT_STAGES:
         return "sonnet"
     tabell = dossier.get("tabell", {})
     for side in ("hemmalag", "bortalag"):

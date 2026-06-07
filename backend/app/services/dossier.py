@@ -17,6 +17,7 @@ from app.models.models import (
     Fixture,
     FixtureEvent,
     FixtureStatistics,
+    League,
     MatchStatus,
     Odds,
     Prediction,
@@ -97,6 +98,7 @@ async def build_prematch_dossier(session: AsyncSession, fixture_id: int) -> dict
 
     home_name = await _team_name(session, fixture.home_team_id)
     away_name = await _team_name(session, fixture.away_team_id)
+    league = await session.get(League, fixture.league_id) if fixture.league_id else None
 
     # ScoreLock AI:s prediktion
     pred = (
@@ -144,11 +146,22 @@ async def build_prematch_dossier(session: AsyncSession, fixture_id: int) -> dict
         else None
     )
 
+    # Turnerings-kontext: liga + ev. stage/grupp så LLM:n vet om det är gruppspel,
+    # slutspelsmatch eller liga-omgång och kan justera resonemanget därefter.
+    turnering = {
+        "liga_namn": league.name if league else None,
+        "liga_typ": league.type if league else None,
+        "format": "cup" if league and league.type == "cup" else "league",
+        "stage": fixture.stage_name,
+        "grupp": fixture.group_letter,
+    }
+
     return {
         "match": {
             "hemmalag": home_name,
             "bortalag": away_name,
             "liga_id": fixture.league_id,
+            "turnering": turnering,
             "omgång": fixture.round,
             "avspark": fixture.kickoff.isoformat() if fixture.kickoff else None,
         },
