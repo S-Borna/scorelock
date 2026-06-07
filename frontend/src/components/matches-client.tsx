@@ -58,7 +58,22 @@ export function MatchesClient({ initialFixtures, predictions, valueBets }: Match
     const [fixtures, setFixtures] = useState(initialFixtures);
     const { getLiveState } = useLiveScores(initialFixtures);
     const [today] = useState(() => startOfDay(new Date()));
-    const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
+    // Default: hoppa till första dagen med fixtures om "idag" är tomt. Pre-VM
+    // hade default "idag" 7 jun (0 fixtures) → tom EmptyState dolde alla
+    // kommande VM-matcher från användaren.
+    const [selectedDate, setSelectedDate] = useState<Date>(() => {
+        const startToday = startOfDay(new Date());
+        const future = initialFixtures
+            .map((f) => startOfDay(new Date(f.kickoff)).getTime())
+            .filter((t) => t >= startToday.getTime())
+            .sort((a, b) => a - b);
+        const todayHas = initialFixtures.some((f) =>
+            sameDay(new Date(f.kickoff), startToday),
+        );
+        return todayHas || future.length === 0
+            ? startToday
+            : new Date(future[0]);
+    });
     const [mode, setMode] = useState<ViewMode>("day");
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -136,12 +151,12 @@ export function MatchesClient({ initialFixtures, predictions, valueBets }: Match
                     <div className="flex items-center gap-2 mb-5" suppressHydrationWarning>
                         <button onClick={() => setSelectedDate(addDays(selectedDate, -1))} className="btn-ghost px-2 py-2" aria-label="Föregående dag">‹</button>
                         <div className="flex gap-1 flex-1 overflow-x-auto">
-                            {[-1, 0, 1].map((offset) => {
+                            {[-1, 0, 1, 2, 3, 4, 5, 6, 7].map((offset) => {
                                 const d = addDays(today, offset);
                                 const active = sameDay(d, selectedDate);
                                 return (
                                     <button key={offset} onClick={() => setSelectedDate(d)}
-                                        className={`flex-1 min-w-[5rem] px-3 py-2 rounded-lg text-sm font-medium transition-all ${active ? "bg-white/[0.08] text-white shadow-sm" : "text-gray-400 hover:text-gray-300 hover:bg-white/[0.03]"}`}>
+                                        className={`flex-shrink-0 min-w-[5rem] px-3 py-2 rounded-lg text-sm font-medium transition-all ${active ? "bg-white/[0.08] text-white shadow-sm" : "text-gray-400 hover:text-gray-300 hover:bg-white/[0.03]"}`}>
                                         {dayLabel(d, today)}
                                     </button>
                                 );
