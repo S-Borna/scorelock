@@ -24,7 +24,17 @@ const LEAGUE_ORDER: Record<string, number> = {
     "Allsvenskan": 7, "allsvenskan": 7,
 };
 
-const SWEDEN_TEAM_ID = 1021;
+// Sverige + VM identifieras via NAMN (stabilt från providern) — aldrig
+// lokala auto-increment-id:n som skiljer mellan dev- och prod-DB.
+const SWEDEN_NAME = "Sweden";
+
+function isSwedenTeam(t: { name: string }): boolean {
+    return t.name === SWEDEN_NAME;
+}
+
+function isWorldCupLeague(l: { name: string }): boolean {
+    return l.name.toLowerCase().replace(/[_\s]/g, " ").includes("world cup");
+}
 
 export function HomeContent({
     articles,
@@ -43,9 +53,8 @@ export function HomeContent({
     const nextSwedenMatch = allFixtures
         .filter(
             (f) =>
-                (f.home_team.id === SWEDEN_TEAM_ID ||
-                    f.away_team.id === SWEDEN_TEAM_ID) &&
-                f.league.id === 12 &&
+                (isSwedenTeam(f.home_team) || isSwedenTeam(f.away_team)) &&
+                isWorldCupLeague(f.league) &&
                 (f.status === "scheduled" || f.status === "live"),
         )
         .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime())[0];
@@ -253,7 +262,7 @@ export function HomeContent({
 /* ── VM-Hero — Sverige-spektakel ovanför fold ───────── */
 
 function VMHeroBanner({ match }: { match: Fixture }) {
-    const isSwedenHome = match.home_team.id === SWEDEN_TEAM_ID;
+    const isSwedenHome = isSwedenTeam(match.home_team);
     const opponent = isSwedenHome ? match.away_team : match.home_team;
     const kickoff = new Date(match.kickoff);
 
@@ -282,7 +291,7 @@ function VMHeroBanner({ match }: { match: Fixture }) {
                         <div className="text-5xl sm:text-6xl">🇸🇪</div>
                         <div>
                             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] text-yellow-300 mb-1">
-                                VM 2026 · GRUPP F · NÄSTA MATCH
+                                VM 2026{match.group_letter ? ` · GRUPP ${match.group_letter}` : ""} · NÄSTA MATCH
                             </div>
                             <div className="font-serif text-2xl sm:text-3xl text-white leading-tight">
                                 Sverige vs {opponent.name}

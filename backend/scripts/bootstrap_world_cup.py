@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Any
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.core.database import async_session
 from app.models.models import Fixture, League, MatchStatus, Season
@@ -276,13 +276,53 @@ async def run() -> None:
     }
 
     async with async_session() as session:
-        # 1) League
-        league = await find_or_create_league(session, WC_LEAGUE_EXT, league_payload)
+        # 1) League — PROD-SÄKER ADOPTION: prod kan ha en gammal world_cup-rad
+        # (från api_football-seedning, name='world_cup', api_football_id=1) som
+        # find_or_create_league:s exakta ILIKE-match missar → dubblettrad +
+        # unique-konflikt på api_football_id. Leta brett FÖRST och adoptera.
+        existing_row = await session.execute(
+            select(League).where(
+                or_(
+                    League.external_ids["sportmonks"].astext == WC_LEAGUE_EXT,
+                    League.api_football_id == 1,  # api-football world_cup-id
+                    League.name.ilike("world%cup%"),
+                    League.name.ilike("%world cup%"),
+                )
+            )
+        )
+        league = existing_row.scalars().first()
+        if league is not None:
+            league.external_ids = {
+                **(league.external_ids or {}),
+                "sportmonks": WC_LEAGUE_EXT,
+            }
+            await record_mapping(
+                session,
+                entity_type="league",
+                external_id=WC_LEAGUE_EXT,
+                canonical_table="leagues",
+                canonical_id=league.id,
+                source="bootstrap_world_cup_adopt",
+            )
+        else:
+            league = await find_or_create_league(
+                session, WC_LEAGUE_EXT, league_payload
+            )
+
+        # Normalisera — frontend matchar på namnet, odds-sync på api_football_id
         league.type = "cup"
-        if league.name in (None, "", "sportmonks-league-732"):
-            league.name = "FIFA World Cup"
+        league.name = "World Cup"
+        if league.api_football_id != 1:
+            # Sätt 1 bara om ingen annan rad redan äger det (unique-constraint)
+            taken = await session.execute(
+                select(League.id).where(
+                    League.api_football_id == 1, League.id != league.id
+                )
+            )
+            if taken.scalar_one_or_none() is None:
+                league.api_football_id = 1
         await session.flush()
-        print(f"  liga: id={league.id} '{league.name}' (type={league.type})")
+        print(f"  liga: id={league.id} '{league.name}' (type={league.type}, api_football_id={league.api_football_id})")
 
         # 2) Season
         season = await upsert_wc_season(session, league)

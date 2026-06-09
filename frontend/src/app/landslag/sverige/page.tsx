@@ -3,9 +3,14 @@ import type { TournamentStructure, Fixture, TournamentGroup } from "@/lib/types"
 import type { Metadata } from "next";
 import Link from "next/link";
 
-const WC_LEAGUE_ID = 12;
-const SWEDEN_TEAM_ID = 1021;
-const SWEDEN_GROUP = "F";
+// Miljö-oberoende: slug resolvas i backend, Sverige matchas på lag-NAMN —
+// aldrig lokala auto-increment-id:n (skiljer mellan dev och prod).
+const WC_SLUG = "world-cup";
+const SWEDEN_NAME = "Sweden";
+
+function isSwedenTeam(t: { name: string }): boolean {
+    return t.name === SWEDEN_NAME;
+}
 
 export const metadata: Metadata = {
     title: "Sverige · VM 2026 — Forza Sverige | ScoreLock",
@@ -19,18 +24,18 @@ export default async function SwedenPage() {
     let structure: TournamentStructure | null = null;
     try {
         structure = await fetchApi<TournamentStructure>(
-            `/api/v1/tournaments/${WC_LEAGUE_ID}/structure`,
+            `/api/v1/tournaments/${WC_SLUG}/structure`,
         );
     } catch {}
 
     const swedenGroup =
-        structure?.groups.find((g) => g.letter === SWEDEN_GROUP) ?? null;
+        structure?.groups.find((g) =>
+            g.standings.some((s) => isSwedenTeam(s.team)),
+        ) ?? null;
     const swedenFixtures: Fixture[] =
         swedenGroup?.fixtures
             .filter(
-                (f) =>
-                    f.home_team.id === SWEDEN_TEAM_ID ||
-                    f.away_team.id === SWEDEN_TEAM_ID,
+                (f) => isSwedenTeam(f.home_team) || isSwedenTeam(f.away_team),
             )
             .sort(
                 (a, b) =>
@@ -189,7 +194,7 @@ function SwedenMatchHeroCard({
     matchNumber: number;
     isNext: boolean;
 }) {
-    const isSwedenHome = fixture.home_team.id === SWEDEN_TEAM_ID;
+    const isSwedenHome = isSwedenTeam(fixture.home_team);
     const opponent = isSwedenHome ? fixture.away_team : fixture.home_team;
     const kickoff = new Date(fixture.kickoff);
 
@@ -269,7 +274,7 @@ function GroupFTable({ group }: { group: TournamentGroup }) {
                 </thead>
                 <tbody>
                     {group.standings.map((s, idx) => {
-                        const isSweden = s.team.id === SWEDEN_TEAM_ID;
+                        const isSweden = isSwedenTeam(s.team);
                         return (
                             <tr
                                 key={s.team.id}

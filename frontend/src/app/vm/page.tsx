@@ -1,11 +1,17 @@
 import { fetchApi } from "@/lib/api";
-import type { TournamentStructure, Fixture, TournamentGroup } from "@/lib/types";
+import type { TournamentStructure, Fixture, Team, TournamentGroup } from "@/lib/types";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-const WC_LEAGUE_ID = 12;
-const SWEDEN_TEAM_ID = 1021;
-const SWEDEN_GROUP = "F";
+// Miljö-oberoende referenser: slug resolvas i backend via SportMonks-ext-id,
+// Sverige identifieras via lag-NAMN (stabilt från providern) — aldrig via
+// lokala auto-increment-id:n som skiljer mellan dev och prod.
+const WC_SLUG = "world-cup";
+const SWEDEN_NAME = "Sweden";
+
+function isSwedenTeam(t: Team): boolean {
+    return t.name === SWEDEN_NAME;
+}
 
 export const metadata: Metadata = {
     title: "VM 2026 — Forza Sverige | ScoreLock",
@@ -19,7 +25,7 @@ export default async function VMPage() {
     let structure: TournamentStructure | null = null;
     try {
         structure = await fetchApi<TournamentStructure>(
-            `/api/v1/tournaments/${WC_LEAGUE_ID}/structure`,
+            `/api/v1/tournaments/${WC_SLUG}/structure`,
         );
     } catch {
         // Visa tom-state nedan
@@ -36,12 +42,16 @@ export default async function VMPage() {
         );
     }
 
-    const swedenGroup = structure.groups.find((g) => g.letter === SWEDEN_GROUP);
-    const otherGroups = structure.groups.filter((g) => g.letter !== SWEDEN_GROUP);
+    // Hitta Sveriges grupp via lag-namn (inte hårdkodad bokstav/id)
+    const swedenGroup =
+        structure.groups.find((g) =>
+            g.standings.some((s) => isSwedenTeam(s.team)),
+        ) ?? null;
+    const otherGroups = structure.groups.filter((g) => g !== swedenGroup);
 
     const swedenFixtures: Fixture[] = swedenGroup
         ? swedenGroup.fixtures.filter(
-              (f) => f.home_team.id === SWEDEN_TEAM_ID || f.away_team.id === SWEDEN_TEAM_ID,
+              (f) => isSwedenTeam(f.home_team) || isSwedenTeam(f.away_team),
           )
         : [];
 
@@ -63,7 +73,7 @@ export default async function VMPage() {
                 <div className="container-main py-20 md:py-28 relative">
                     <div className="inline-flex items-center gap-2 mb-5 text-xs font-bold text-yellow-300 tracking-[0.3em] uppercase">
                         <span className="w-2 h-2 rounded-full bg-yellow-300 animate-pulse" />
-                        VM 2026 · GRUPP {SWEDEN_GROUP}
+                        VM 2026{swedenGroup ? ` · GRUPP ${swedenGroup.letter}` : ""}
                     </div>
                     <h1 className="font-serif text-6xl md:text-8xl tracking-tight leading-[0.9] mb-5">
                         <span className="block text-yellow-300">FORZA</span>
@@ -113,11 +123,11 @@ export default async function VMPage() {
                     </section>
                 )}
 
-                {/* ── Grupp F detaljerat ─────────────────────────── */}
+                {/* ── Sveriges grupp detaljerat ───────────────────── */}
                 {swedenGroup && (
                     <section>
                         <SectionHeading
-                            title={`Grupp ${SWEDEN_GROUP} — Sveriges grupp`}
+                            title={`Grupp ${swedenGroup.letter} — Sveriges grupp`}
                             subtitle="Två bästa lagen går direkt till sextondelar · de åtta bästa treorna också"
                         />
                         <SwedenGroupTableLarge group={swedenGroup} />
@@ -168,7 +178,7 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle?: string 
 }
 
 function CountdownCallout({ fixture }: { fixture: Fixture }) {
-    const isSwedenHome = fixture.home_team.id === SWEDEN_TEAM_ID;
+    const isSwedenHome = isSwedenTeam(fixture.home_team);
     const opponent = isSwedenHome ? fixture.away_team : fixture.home_team;
     const where = isSwedenHome ? "Hemma" : "Borta";
     return (
@@ -207,7 +217,7 @@ function SwedenMatchCard({
     fixture: Fixture;
     matchNumber: number;
 }) {
-    const isSwedenHome = fixture.home_team.id === SWEDEN_TEAM_ID;
+    const isSwedenHome = isSwedenTeam(fixture.home_team);
     const opponent = isSwedenHome ? fixture.away_team : fixture.home_team;
     return (
         <Link
@@ -216,7 +226,7 @@ function SwedenMatchCard({
         >
             <div className="flex items-baseline justify-between mb-4">
                 <div className="text-[10px] uppercase tracking-[0.25em] text-yellow-200/70 font-bold">
-                    Match {matchNumber} · Grupp F
+                    Match {matchNumber}{fixture.group_letter ? ` · Grupp ${fixture.group_letter}` : ""}
                 </div>
                 <div className="text-xs text-blue-200/60">
                     {isSwedenHome ? "Hemma" : "Borta"}
@@ -272,7 +282,7 @@ function SwedenGroupTableLarge({ group }: { group: TournamentGroup }) {
                     </thead>
                     <tbody>
                         {group.standings.map((s, idx) => {
-                            const isSweden = s.team.id === SWEDEN_TEAM_ID;
+                            const isSweden = isSwedenTeam(s.team);
                             return (
                                 <tr
                                     key={s.team.id}
@@ -426,8 +436,7 @@ function KnockoutSection({
 
 function KnockoutFixtureCard({ fixture }: { fixture: Fixture }) {
     const isSwedenInvolved =
-        fixture.home_team.id === SWEDEN_TEAM_ID ||
-        fixture.away_team.id === SWEDEN_TEAM_ID;
+        isSwedenTeam(fixture.home_team) || isSwedenTeam(fixture.away_team);
     return (
         <Link
             href={`/matches/${fixture.id}`}
@@ -442,8 +451,8 @@ function KnockoutFixtureCard({ fixture }: { fixture: Fixture }) {
                 {translateStage(fixture.stage_name || "")}
             </div>
             <div className="space-y-2 mb-3">
-                <TeamRow team={fixture.home_team.name} flag={fixture.home_team.logo_url} swedenHighlight={fixture.home_team.id === SWEDEN_TEAM_ID} />
-                <TeamRow team={fixture.away_team.name} flag={fixture.away_team.logo_url} swedenHighlight={fixture.away_team.id === SWEDEN_TEAM_ID} />
+                <TeamRow team={fixture.home_team.name} flag={fixture.home_team.logo_url} swedenHighlight={isSwedenTeam(fixture.home_team)} />
+                <TeamRow team={fixture.away_team.name} flag={fixture.away_team.logo_url} swedenHighlight={isSwedenTeam(fixture.away_team)} />
             </div>
             <div className="text-xs text-gray-400">{formatKickoffLong(fixture.kickoff)}</div>
         </Link>

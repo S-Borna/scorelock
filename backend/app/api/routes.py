@@ -1423,25 +1423,52 @@ async def get_standings(
 # ── Tournament structure (cup-format som VM) ───────────────
 
 
+# Slug → SportMonks external-id. Frontend refererar turneringar via stabil slug
+# i stället för lokala auto-increment-id:n (som skiljer mellan dev och prod).
+_TOURNAMENT_SLUGS: dict[str, str] = {
+    "world-cup": "732",
+}
+
+
 @router.get(
-    "/tournaments/{league_id}/structure",
+    "/tournaments/{league_ref}/structure",
     response_model=TournamentStructureResponse,
 )
 async def get_tournament_structure(
-    league_id: int,
+    league_ref: str,
     db: AsyncSession = Depends(get_db),
 ):
     """Hela turneringen i ETT svar: grupper med beräknade ställningar + alla knockout-stages.
 
-    Designat för cup-typ-ligor (VM, EM, CL). Returnerar 404 om ligan inte finns.
+    `league_ref` = numeriskt liga-id ELLER stabil slug ('world-cup'). Slugen
+    resolvar via leagues.external_ids->>'sportmonks' så frontend aldrig behöver
+    känna till miljöns auto-increment-id. Designat för cup-typ-ligor (VM, EM, CL).
     Group-standings beräknas on-the-fly från färdigspelade group-stage-fixtures.
     """
     from app.models.models import Fixture, League, MatchStatus, Season, Team
 
-    league_row = await db.execute(select(League).where(League.id == league_id))
-    league = league_row.scalar_one_or_none()
+    league: League | None = None
+    if league_ref in _TOURNAMENT_SLUGS:
+        ext_id = _TOURNAMENT_SLUGS[league_ref]
+        league_row = await db.execute(
+            select(League).where(
+                League.external_ids["sportmonks"].astext == ext_id
+            )
+        )
+        league = league_row.scalar_one_or_none()
+    else:
+        try:
+            league_id_int = int(league_ref)
+        except ValueError:
+            raise HTTPException(status_code=404, detail="League not found")
+        league_row = await db.execute(
+            select(League).where(League.id == league_id_int)
+        )
+        league = league_row.scalar_one_or_none()
+
     if league is None:
         raise HTTPException(status_code=404, detail="League not found")
+    league_id = league.id
 
     season_row = await db.execute(
         select(Season)
