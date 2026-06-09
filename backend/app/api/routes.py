@@ -1420,6 +1420,50 @@ async def get_standings(
     return result
 
 
+# ── Client error intake (frontend-observability) ───────────
+
+
+@router.post("/client-errors", status_code=202)
+async def report_client_error(request: Request):
+    """Ta emot frontend-fel och vidarebefordra till Sentry via backend.
+
+    Frontend kör utan eget Sentry-SDK (Next 16-kompatibilitet oprövad så nära
+    launch) — i stället postar en lättviktig reporter hit. Backend-Sentry är
+    redan i drift → frontend-fel landar i samma projekt. Payload cappas och
+    saneras; svarar alltid 202 så klienten aldrig får fel på fel-rapportering.
+    """
+    import sentry_sdk
+    import structlog
+
+    from app.core.config import get_settings
+
+    logger = structlog.get_logger()
+
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001 — trasig payload ska inte ge 500
+        return {"status": "ignored"}
+
+    message = str(body.get("message", ""))[:500]
+    stack = str(body.get("stack", ""))[:2000]
+    url = str(body.get("url", ""))[:300]
+    if not message:
+        return {"status": "ignored"}
+
+    logger.error(
+        "client_error",
+        message=message,
+        url=url,
+        user_agent=str(request.headers.get("user-agent", ""))[:200],
+    )
+    if get_settings().sentry_dsn:
+        with sentry_sdk.push_scope() as scope:
+            scope.set_tag("source", "frontend")
+            scope.set_context("client", {"url": url, "stack": stack})
+            sentry_sdk.capture_message(f"[frontend] {message}", level="error")
+    return {"status": "ok"}
+
+
 # ── Tournament structure (cup-format som VM) ───────────────
 
 
