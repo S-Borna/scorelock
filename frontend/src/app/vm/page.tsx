@@ -14,9 +14,9 @@ function isSwedenTeam(t: Team): boolean {
 }
 
 export const metadata: Metadata = {
-    title: "VM 2026 — Forza Sverige | ScoreLock",
+    title: "VM 2026 — Kom igen Sverige | ScoreLock",
     description:
-        "Sverige är i Grupp F med Tunisia, Nederländerna och Japan. ScoreLocks AI-driven VM-täckning — varje minut, varje match. Forza Sverige.",
+        "Sverige är i Grupp F med Tunisia, Nederländerna och Japan. ScoreLocks AI-driven VM-täckning — varje minut, varje match. Kom igen Sverige.",
 };
 
 export const revalidate = 300;
@@ -61,7 +61,7 @@ export default async function VMPage() {
 
     return (
         <div>
-            {/* ── HERO: FORZA SVERIGE ───────────────────────────── */}
+            {/* ── HERO: KOM IGEN SVERIGE ────────────────────────── */}
             <section className="relative overflow-hidden border-b border-white/[0.06]">
                 {/* Svenska flaggans toning — blå-bas, gul accent */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-950 to-surface-950 pointer-events-none" />
@@ -76,7 +76,7 @@ export default async function VMPage() {
                         VM 2026{swedenGroup ? ` · GRUPP ${swedenGroup.letter}` : ""}
                     </div>
                     <h1 className="font-serif text-6xl md:text-8xl tracking-tight leading-[0.9] mb-5">
-                        <span className="block text-yellow-300">FORZA</span>
+                        <span className="block text-yellow-300">KOM IGEN</span>
                         <span className="block text-white">SVERIGE</span>
                     </h1>
                     <p className="text-lg md:text-2xl text-blue-100 max-w-3xl mb-8 leading-snug">

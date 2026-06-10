@@ -137,8 +137,18 @@ export function Footer() {
                     ]} />
                 </div>
 
-                {/* Bottom section */}
+                {/* Signatur — created & designed by */}
                 <div className="divider mb-6" />
+                <div className="text-center mb-6">
+                    <p className="text-[10px] uppercase tracking-[0.35em] text-gray-600 mb-1.5">
+                        Created &amp; designed by
+                    </p>
+                    <p className="font-serif italic text-xl text-gray-200 tracking-tight">
+                        Said Borna
+                    </p>
+                </div>
+
+                {/* Bottom section */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
                     <div className="flex items-center gap-3">
                         <p>{t("footer.copyright")}</p>

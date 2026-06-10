@@ -120,7 +120,7 @@ export function HomeContent({
                     </div>
                     <div className="flex items-center justify-center gap-3">
                         <Link href="/vm" className="btn-primary text-sm">
-                            VM 2026 → Forza Sverige
+                            VM 2026 → Kom igen Sverige
                         </Link>
                         <Link href="/matches" className="btn-secondary text-sm">
                             {t("hero.cta.primary")}

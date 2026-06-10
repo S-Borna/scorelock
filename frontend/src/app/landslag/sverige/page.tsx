@@ -13,9 +13,9 @@ function isSwedenTeam(t: { name: string }): boolean {
 }
 
 export const metadata: Metadata = {
-    title: "Sverige · VM 2026 — Forza Sverige | ScoreLock",
+    title: "Sverige · VM 2026 — Kom igen Sverige | ScoreLock",
     description:
-        "Allt om Sveriges VM 2026: 3 matcher i Grupp F mot Tunisia, Nederländerna och Japan. AI-analys, odds, ställning. Forza Sverige.",
+        "Allt om Sveriges VM 2026: 3 matcher i Grupp F mot Tunisia, Nederländerna och Japan. AI-analys, odds, ställning. Kom igen Sverige.",
 };
 
 export const revalidate = 300;
