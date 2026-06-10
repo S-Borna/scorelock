@@ -445,3 +445,65 @@
 @media (prefers-reduced-motion: reduce) {
     .animate-in, .stagger > * { animation: none; }
 }
+
+/* ── Nordic Night Broadcast — landing-experience (VM 2026) ── */
+
+/* Scroll-reveal: par med components/reveal.tsx (IntersectionObserver-ö).
+   FAILSAFE: animation-fallbacken gör elementet synligt efter 1.6s ÄVEN om
+   JS/observern aldrig kör (långsam hydration, blockad JS, bots/screenshots).
+   Innehåll får aldrig vara gisslan hos en observer. */
+@keyframes reveal-failsafe {
+    to { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+        opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: reveal-failsafe 0.6s ease-out 1.6s forwards;
+    will-change: opacity, transform;
+}
+.reveal.in-view {
+    opacity: 1;
+    transform: translateY(0);
+    animation: none;
+}
+
+/* Stadionhorisont: ljuset som stiger bakom en arena på natten. Två lager som
+   andas långsamt ur fas — närvaro utan att pocka på uppmärksamhet. */
+@keyframes horizon-breathe {
+    0%, 100% { opacity: 0.55; transform: translateY(0) scaleX(1); }
+    50% { opacity: 0.85; transform: translateY(-8px) scaleX(1.04); }
+}
+@keyframes horizon-drift {
+    0%, 100% { opacity: 0.35; transform: translateX(-2%); }
+    50% { opacity: 0.6; transform: translateX(2%); }
+}
+.horizon-glow {
+    animation: horizon-breathe 9s ease-in-out infinite;
+}
+.horizon-band {
+    animation: horizon-drift 14s ease-in-out infinite;
+}
+
+/* Filmkornighet över hero — bryter platta gradient-ytor. Ren CSS, ingen asset. */
+.grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Ticker-band: långsam loop för "Idag på VM"-raden vid overflow. */
+@keyframes marquee-slow {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .horizon-glow, .horizon-band { animation: none; }
+}
