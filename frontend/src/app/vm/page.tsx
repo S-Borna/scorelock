@@ -382,9 +382,13 @@ function KnockoutSection({
                     {stage.fixtures.length} matcher
                 </span>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Mobil: horisontellt snap-band (32 staplade kort = scroll-öken);
+                sm+: grid som tidigare. */}
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0">
                 {stage.fixtures.map((f) => (
-                    <KnockoutFixtureCard key={f.id} fixture={f} />
+                    <div key={f.id} className="snap-start flex-shrink-0 w-[240px] sm:w-auto">
+                        <KnockoutFixtureCard fixture={f} />
+                    </div>
                 ))}
             </div>
         </div>

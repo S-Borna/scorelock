@@ -172,13 +172,13 @@ export function MatchesClient({ initialFixtures, predictions, valueBets }: Match
                     {/* Datum-strip */}
                     <div className="flex items-center gap-2 mb-5" suppressHydrationWarning>
                         <button onClick={() => setSelectedDate(addDays(selectedDate, -1))} className="btn-ghost px-2 py-2" aria-label="Föregående dag">‹</button>
-                        <div className="flex gap-1 flex-1 overflow-x-auto">
+                        <div className="flex gap-1 flex-1 overflow-x-auto snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,black_85%,transparent)]">
                             {[-1, 0, 1, 2, 3, 4, 5, 6, 7].map((offset) => {
                                 const d = addDays(today, offset);
                                 const active = sameDay(d, selectedDate);
                                 return (
                                     <button key={offset} onClick={() => setSelectedDate(d)}
-                                        className={`flex-shrink-0 min-w-[5rem] px-3 py-2 rounded-lg text-sm font-medium transition-all ${active ? "bg-white/[0.08] text-white shadow-sm" : "text-gray-400 hover:text-gray-300 hover:bg-white/[0.03]"}`}>
+                                        className={`snap-start flex-shrink-0 min-w-[4.5rem] px-2.5 py-2 rounded-lg text-sm font-medium transition-all ${active ? "bg-white/[0.08] text-white shadow-sm" : "text-gray-400 hover:text-gray-300 hover:bg-white/[0.03]"}`}>
                                         {dayLabel(d, today)}
                                     </button>
                                 );
