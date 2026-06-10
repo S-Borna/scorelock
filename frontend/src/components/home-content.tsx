@@ -1,5 +1,6 @@
 "use client";
 
+import { LiveBoard } from "@/components/live-board";
 import { Reveal } from "@/components/reveal";
 import { VMCountdown } from "@/components/vm-countdown";
 import type {
@@ -145,6 +146,9 @@ export function HomeContent({
                     </div>
                 </div>
             </section>
+
+            {/* ════════ AKT 1.5 · LIVESCORE-BOARDEN (kärnan) ════════ */}
+            <LiveBoard initialFixtures={allFixtures} />
 
             {/* ════════ AKT 2 · HÄRNÄST PÅ VM ════════ */}
             {nextBand.length > 0 && (

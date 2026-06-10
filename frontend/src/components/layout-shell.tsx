@@ -1,6 +1,7 @@
 "use client";
 
 import { LanguageToggle } from "@/components/language-toggle";
+import { LiveTicker } from "@/components/live-ticker";
 import { useLocale } from "@/components/locale-provider";
 import Link from "next/link";
 
@@ -75,6 +76,8 @@ export function Header() {
                     </details>
                 </div>
             </nav>
+            {/* Livescore-tickern — kärnan, synlig på varje sida när matcher rullar */}
+            <LiveTicker />
         </header>
     );
 }
