@@ -73,12 +73,25 @@ export function IntelligenceCard({
 
     if (variant === "hero") {
         return (
-            <section className="relative overflow-hidden rounded-2xl border border-scorelock-500/15 bg-gradient-to-br from-scorelock-500/[0.06] via-surface-900/40 to-transparent p-6 md:p-8">
-                <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full bg-scorelock-500/[0.08] blur-3xl pointer-events-none" />
-                <div className="relative">
+            // Tunn gradient-border via p-px-wrapper — premium-kant i scorelock-blå, inte neon.
+            <section className="relative rounded-2xl p-px bg-gradient-to-br from-scorelock-400/30 via-white/[0.07] to-scorelock-600/20">
+                <div className="relative overflow-hidden rounded-[15px] bg-surface-950 p-6 md:p-8">
+                    <div className="absolute inset-0 bg-gradient-to-br from-scorelock-500/[0.06] via-surface-900/40 to-transparent pointer-events-none" />
+                    <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full bg-scorelock-500/[0.08] blur-3xl pointer-events-none" />
+                    <div className="relative">
                     <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
                         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-scorelock-300">
-                            <span className="w-1.5 h-1.5 rounded-full bg-scorelock-400 animate-pulse" />
+                            <span className="relative flex h-4 w-4 items-center justify-center">
+                                <span className="absolute inset-0 rounded-full bg-scorelock-400/25 animate-ping [animation-duration:2.5s]" />
+                                <svg
+                                    viewBox="0 0 16 16"
+                                    className="relative h-3 w-3 text-scorelock-400"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M8 0l1.7 6.3L16 8l-6.3 1.7L8 16l-1.7-6.3L0 8l6.3-1.7L8 0z" />
+                                </svg>
+                            </span>
                             ScoreLock AI-analys
                         </div>
                         <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
@@ -111,11 +124,11 @@ export function IntelligenceCard({
                         })}
                     </div>
 
-                    <p className="font-serif text-2xl md:text-3xl tracking-tight leading-tight text-white mb-5">
+                    <p className="font-display text-2xl md:text-3xl tracking-tight leading-tight text-white mb-5">
                         {current.summary}
                     </p>
 
-                    <div className="text-[15px] leading-relaxed text-gray-200 space-y-3">
+                    <div className="max-w-prose text-[15px] leading-relaxed text-gray-200 space-y-3">
                         {current.body
                             .split(/\n\s*\n/)
                             .map((p) => p.trim())
@@ -125,10 +138,11 @@ export function IntelligenceCard({
                             ))}
                     </div>
 
-                    <p className="text-[10px] text-gray-600 mt-6 font-mono uppercase tracking-widest">
+                    <p className="text-[9px] text-gray-700 mt-7 pt-4 border-t border-white/[0.04] font-mono uppercase tracking-widest">
                         Genererad {formatGeneratedAt(current.generated_at)}
                         {minuteLabel}
                     </p>
+                    </div>
                 </div>
             </section>
         );

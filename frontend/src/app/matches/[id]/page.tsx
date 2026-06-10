@@ -122,9 +122,9 @@ export default async function MatchDetailPage({ params }: PageProps) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Breadcrumbs */}
             <nav className="text-sm text-gray-500 mb-8">
-                <Link href="/matches" className="hover:text-gray-300">Matcher</Link>
-                <span className="mx-2">›</span>
-                <span>{fixture.home_team.name} vs {fixture.away_team.name}</span>
+                <Link href="/matches" className="hover:text-gray-300 transition-colors">Matcher</Link>
+                <span className="mx-2 text-gray-700">›</span>
+                <span className="text-gray-400">{fixture.home_team.name} vs {fixture.away_team.name}</span>
             </nav>
 
             {/* Match header card — live updating */}
@@ -135,7 +135,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
             {/* AI som matchsidans MITTPUNKT — alltid synlig oavsett flik */}
             {(intelligence.pre_match || intelligence.in_match || intelligence.post_match) && (
-                <div className="mb-8">
+                <div className="mt-2 mb-10">
                     <IntelligenceCard bundle={intelligence} variant="hero" />
                 </div>
             )}

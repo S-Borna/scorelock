@@ -2,6 +2,7 @@ import { fetchApi } from "@/lib/api";
 import type { TournamentStructure, Fixture, TournamentGroup } from "@/lib/types";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CountdownCallout } from "@/components/vm-countdown";
 
 // Miljö-oberoende: slug resolvas i backend, Sverige matchas på lag-NAMN —
 // aldrig lokala auto-increment-id:n (skiljer mellan dev och prod).
@@ -54,14 +55,14 @@ export default async function SwedenPage() {
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(252,211,77,0.22),transparent_55%)]" />
                 <div className="absolute top-0 bottom-0 left-1/4 w-px bg-gradient-to-b from-yellow-300/30 to-transparent" />
 
-                <div className="container-main py-16 md:py-24 relative">
+                <div className="container-main py-16 md:py-24 relative stagger">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="text-7xl md:text-8xl">🇸🇪</div>
                         <div>
                             <div className="text-xs font-bold uppercase tracking-[0.3em] text-yellow-300 mb-1">
                                 LANDSLAGET · VM 2026
                             </div>
-                            <h1 className="font-serif text-5xl md:text-7xl tracking-tight leading-none text-white">
+                            <h1 className="font-serif text-5xl md:text-7xl tracking-tight leading-none text-white [text-shadow:0_0_28px_rgba(253,224,71,0.15)]">
                                 Sverige
                             </h1>
                         </div>
@@ -71,12 +72,17 @@ export default async function SwedenPage() {
                         avgörande mot Nederländerna, en avslutning mot Japan.
                         ScoreLocks AI följer varje minut.
                     </p>
+                    {nextMatch && (
+                        <div className="mt-8">
+                            <CountdownCallout fixture={nextMatch} />
+                        </div>
+                    )}
                 </div>
             </section>
 
             <div className="container-main py-10 space-y-12">
                 {/* ── Stat-line ───────────────────────────────── */}
-                <div className="grid sm:grid-cols-3 gap-4">
+                <div className="grid sm:grid-cols-3 gap-4 stagger">
                     <StatBox
                         label="Gruppspels-matcher"
                         value={String(swedenFixtures.length)}
@@ -101,7 +107,7 @@ export default async function SwedenPage() {
                             title="Resan genom Grupp F"
                             subtitle="Klick in på matchsidan för AI-analys, odds och live-data när kickoff närmar sig"
                         />
-                        <div className="grid md:grid-cols-3 gap-4">
+                        <div className="grid md:grid-cols-3 gap-4 stagger">
                             {swedenFixtures.map((f, i) => (
                                 <SwedenMatchHeroCard
                                     key={f.id}
@@ -202,10 +208,10 @@ function SwedenMatchHeroCard({
         <Link
             href={`/matches/${fixture.id}`}
             className={
-                "block rounded-2xl border p-5 transition-all group " +
+                "block rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_44px_-16px_rgba(253,224,71,0.25)] group " +
                 (isNext
-                    ? "border-yellow-400/40 bg-gradient-to-br from-yellow-500/[0.08] to-blue-900/30 ring-1 ring-yellow-400/20"
-                    : "border-yellow-500/15 bg-gradient-to-br from-yellow-500/[0.03] to-blue-950/20 hover:border-yellow-400/30")
+                    ? "border-yellow-400/40 bg-gradient-to-br from-yellow-500/[0.08] to-blue-900/30 ring-1 ring-yellow-400/20 hover:border-yellow-300/60"
+                    : "border-yellow-500/15 bg-gradient-to-br from-yellow-500/[0.03] to-blue-950/20 hover:border-yellow-400/40")
             }
         >
             <div className="flex items-baseline justify-between mb-4">
@@ -238,14 +244,14 @@ function SwedenMatchHeroCard({
                 )}
                 <div className="font-serif text-xl text-white">{opponent.name}</div>
             </div>
-            <div className="text-sm text-blue-100/80 mb-1">
+            <div className="font-mono text-xs tabular-nums text-blue-100/80 mb-1.5">
                 {kickoff.toLocaleDateString("sv-SE", {
                     weekday: "long",
                     day: "numeric",
                     month: "long",
                 })}
             </div>
-            <div className="text-sm text-blue-100/60 mb-3">
+            <div className="font-mono text-xs tabular-nums text-blue-100/60 mb-3">
                 kl. {kickoff.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })} · {isSwedenHome ? "Hemma" : "Borta"}
             </div>
             <div className="text-xs text-yellow-200/70 group-hover:text-yellow-200 transition pt-3 border-t border-yellow-500/10">

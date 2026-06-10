@@ -63,10 +63,14 @@ export function MatchTabs(props: MatchTabsProps) {
                     <button
                         key={t.key}
                         onClick={() => setTab(t.key)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.key ? "bg-white/[0.08] text-white shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.03]"}`}
+                        className={`relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.key ? "bg-white/[0.08] text-white shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.03]"}`}
                     >
                         <span>{t.icon}</span>
                         <span className="hidden sm:inline">{t.label}</span>
+                        {/* Underline-indikator — glider in via scale/opacity på aktiv flik */}
+                        <span
+                            className={`pointer-events-none absolute inset-x-4 bottom-1 h-0.5 rounded-full bg-scorelock-400 transition-all duration-300 ease-out ${tab === t.key ? "opacity-100 scale-x-100" : "opacity-0 scale-x-50"}`}
+                        />
                     </button>
                 ))}
             </div>

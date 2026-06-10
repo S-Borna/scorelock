@@ -26,6 +26,19 @@ export function LiveMatchHeader({ fixture }: LiveMatchHeaderProps) {
 
     const isLive = status === "live" || status === "halftime";
 
+    // VM-chip: "Grupp F · Omgång 1" när stage-data finns (omgång plockas ur round-etiketten).
+    const omgang = fixture.round?.match(/Omgång\s*\d+/)?.[0] ?? null;
+    const stageLabel = fixture.stage_name
+        ? [
+              fixture.group_letter
+                  ? `Grupp ${fixture.group_letter}`
+                  : fixture.stage_name,
+              omgang,
+          ]
+              .filter(Boolean)
+              .join(" · ")
+        : null;
+
     return (
         <div
             className={`relative mb-8 overflow-hidden rounded-2xl border border-white/[0.07] bg-surface-900/80 backdrop-blur-sm shadow-elevated transition-all duration-500 ${goalJustScored ? "animate-goal-flash" : ""}`}
@@ -44,9 +57,14 @@ export function LiveMatchHeader({ fixture }: LiveMatchHeaderProps) {
                             <img src={fixture.league.logo_url} alt="" className="w-4 h-4 sm:w-5 sm:h-5 object-contain flex-shrink-0" />
                         )}
                         <span className="font-medium text-gray-300 truncate">{fixture.league.name}</span>
-                        {fixture.round && <span className="text-gray-600 truncate">· {fixture.round}</span>}
+                        {fixture.round && !stageLabel && <span className="text-gray-600 truncate">· {fixture.round}</span>}
                     </a>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                        {stageLabel && (
+                            <span className="inline-flex items-center rounded-full border border-yellow-400/25 bg-gradient-to-r from-blue-900/70 to-blue-950/70 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-yellow-300 whitespace-nowrap">
+                                {stageLabel}
+                            </span>
+                        )}
                         {isLive && minute !== null && (
                             <span className="font-mono text-xs sm:text-sm font-bold text-red-400 animate-minute-tick">{minute}&apos;</span>
                         )}
@@ -118,7 +136,7 @@ function TeamDisplay({
                     <span className="text-2xl sm:text-3xl">⚽</span>
                 )}
             </div>
-            <span className={`text-xs sm:text-sm md:text-base font-semibold text-center leading-tight transition-colors duration-300 break-words ${goalScored ? "text-green-400" : "text-gray-200"}`}>
+            <span className={`text-xs sm:text-sm md:text-lg font-semibold md:font-display md:tracking-tight text-center leading-tight transition-colors duration-300 break-words ${goalScored ? "text-green-400" : "text-gray-200"}`}>
                 {name}
             </span>
         </div>

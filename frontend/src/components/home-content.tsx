@@ -98,12 +98,15 @@ export function HomeContent({
                         <span className="w-1.5 h-1.5 rounded-full bg-scorelock-500 animate-pulse" />
                         {t("hero.badge")}
                     </div>
-                    <h1 className="text-3xl sm:text-4xl font-bold mb-3">
+                    <h1 className="font-display text-4xl sm:text-5xl tracking-tight mb-4">
                         {t("hero.title.prefix")}{" "}
                         <span className="text-gradient">{t("hero.title.highlight")}</span>
                     </h1>
-                    <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto mb-4">
-                        {t("hero.subtitle")}
+                    <p className="text-sm sm:text-base max-w-lg mx-auto mb-4 leading-relaxed">
+                        <span className="text-gray-200">Livescore-sajterna visar siffrorna.</span>{" "}
+                        <span className="text-gray-400">
+                            ScoreLock förklarar dem — AI-analys, prediktioner och value bets, på svenska.
+                        </span>
                     </p>
                     {/* Levande puls — dagens slate + moaten (AI-tips) */}
                     <div className="flex items-center justify-center gap-4 text-xs font-mono text-gray-500 mb-6">
@@ -129,7 +132,7 @@ export function HomeContent({
                 </div>
             </section>
 
-            <div className="max-w-3xl mx-auto px-4 py-8">
+            <div className="max-w-3xl mx-auto px-4 py-10">
                 {/* Match section — grouped by league */}
                 <section className="mb-10">
                     <div className="flex items-center justify-between mb-4">
@@ -137,7 +140,7 @@ export function HomeContent({
                             {liveFixtures.length > 0 && (
                                 <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                             )}
-                            <h2 className="text-lg font-bold">{sectionTitle}</h2>
+                            <h2 className="font-display text-xl tracking-tight">{sectionTitle}</h2>
                             {liveFixtures.length > 0 && (
                                 <span className="text-xs bg-red-500/20 text-red-400 rounded-md px-1.5 py-0.5">
                                     {liveFixtures.length}
@@ -152,7 +155,7 @@ export function HomeContent({
                     {leagueGroups.length > 0 ? (
                         <div className="space-y-3">
                             {leagueGroups.map(({ league, fixtures: groupFixtures }) => (
-                                <div key={league.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                                <div key={league.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden transition-all duration-200 hover:border-white/[0.1] hover:-translate-y-[1px]">
                                     {/* League header */}
                                     <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.01]">
                                         {league.logo_url ? (
@@ -237,7 +240,7 @@ export function HomeContent({
                 {/* Standings preview — quick links */}
                 <section className="mb-10">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold">Tabeller</h2>
+                        <h2 className="font-display text-xl tracking-tight">Tabeller</h2>
                         <Link href="/standings" className="text-sm text-scorelock-400 hover:text-scorelock-300 transition-colors">
                             Alla tabeller →
                         </Link>
@@ -247,7 +250,7 @@ export function HomeContent({
                             <Link
                                 key={name}
                                 href="/standings"
-                                className="flex items-center gap-2 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1] transition-all"
+                                className="flex items-center gap-2 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1] hover:-translate-y-[1px] transition-all duration-200"
                             >
                                 <span className="text-sm font-medium text-gray-300">{name}</span>
                             </Link>
@@ -278,16 +281,16 @@ function VMHeroBanner({ match }: { match: Fixture }) {
     return (
         <Link
             href={`/matches/${match.id}`}
-            className="block relative overflow-hidden border-b border-yellow-500/15 group"
+            className="block relative overflow-hidden border-b border-yellow-500/15 group transition-transform duration-300 hover:-translate-y-0.5"
         >
             {/* Sverige-flagg-bakgrund: blå-bas + gult kors */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-950 to-blue-900" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(252,211,77,0.18),transparent_55%)]" />
             <div className="absolute top-0 bottom-0 left-1/3 w-px bg-yellow-300/30" />
 
-            <div className="relative max-w-5xl mx-auto px-4 py-8 sm:py-10">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-4">
+            <div className="relative max-w-5xl mx-auto px-4 py-10 sm:py-12">
+                <div className="flex items-center justify-between gap-6 flex-wrap">
+                    <div className="flex items-center gap-5">
                         <div className="text-5xl sm:text-6xl">🇸🇪</div>
                         <div>
                             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] text-yellow-300 mb-1">

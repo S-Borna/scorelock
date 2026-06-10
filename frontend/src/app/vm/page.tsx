@@ -2,6 +2,7 @@ import { fetchApi } from "@/lib/api";
 import type { TournamentStructure, Fixture, Team, TournamentGroup } from "@/lib/types";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CountdownCallout } from "@/components/vm-countdown";
 
 // Miljö-oberoende referenser: slug resolvas i backend via SportMonks-ext-id,
 // Sverige identifieras via lag-NAMN (stabilt från providern) — aldrig via
@@ -70,13 +71,13 @@ export default async function VMPage() {
                 {/* Gult kors-band — abstrakt referens till flaggan */}
                 <div className="absolute top-0 bottom-0 left-1/3 w-1 bg-gradient-to-b from-yellow-400/40 via-yellow-300/20 to-transparent pointer-events-none" />
 
-                <div className="container-main py-20 md:py-28 relative">
+                <div className="container-main py-20 md:py-28 relative stagger">
                     <div className="inline-flex items-center gap-2 mb-5 text-xs font-bold text-yellow-300 tracking-[0.3em] uppercase">
                         <span className="w-2 h-2 rounded-full bg-yellow-300 animate-pulse" />
                         VM 2026{swedenGroup ? ` · GRUPP ${swedenGroup.letter}` : ""}
                     </div>
                     <h1 className="font-serif text-6xl md:text-8xl tracking-tight leading-[0.9] mb-5">
-                        <span className="block text-yellow-300">KOM IGEN</span>
+                        <span className="block text-yellow-300 [text-shadow:0_0_28px_rgba(253,224,71,0.35),0_0_72px_rgba(253,224,71,0.15)]">KOM IGEN</span>
                         <span className="block text-white">SVERIGE</span>
                     </h1>
                     <p className="text-lg md:text-2xl text-blue-100 max-w-3xl mb-8 leading-snug">
@@ -140,7 +141,7 @@ export default async function VMPage() {
                         title="Övriga grupper"
                         subtitle="11 grupper, 44 lag, vägen mot finalen 19 juli"
                     />
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
                         {otherGroups.map((g) => (
                             <GroupCard key={g.letter} group={g} />
                         ))}
@@ -177,39 +178,6 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle?: string 
     );
 }
 
-function CountdownCallout({ fixture }: { fixture: Fixture }) {
-    const isSwedenHome = isSwedenTeam(fixture.home_team);
-    const opponent = isSwedenHome ? fixture.away_team : fixture.home_team;
-    const where = isSwedenHome ? "Hemma" : "Borta";
-    return (
-        <div className="inline-flex flex-col gap-3 bg-yellow-300/10 border border-yellow-300/20 rounded-2xl px-5 py-4 backdrop-blur-sm">
-            <div className="text-[11px] uppercase tracking-[0.3em] text-yellow-200/80 font-semibold">
-                Nästa match
-            </div>
-            <div className="flex items-baseline gap-3 flex-wrap">
-                <span className="font-serif text-3xl md:text-4xl text-white">
-                    Sverige
-                </span>
-                <span className="text-yellow-300/70 text-xl">vs</span>
-                <span className="font-serif text-3xl md:text-4xl text-white">
-                    {opponent.name}
-                </span>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-blue-100">
-                <span>{formatKickoffLong(fixture.kickoff)}</span>
-                <span className="text-blue-300/50">·</span>
-                <span>{where}</span>
-            </div>
-            <Link
-                href={`/matches/${fixture.id}`}
-                className="mt-2 inline-flex items-center gap-2 text-sm text-yellow-300 hover:text-yellow-200 transition font-semibold"
-            >
-                Till matchsidan + AI-analys →
-            </Link>
-        </div>
-    );
-}
-
 function SwedenMatchCard({
     fixture,
     matchNumber,
@@ -222,7 +190,7 @@ function SwedenMatchCard({
     return (
         <Link
             href={`/matches/${fixture.id}`}
-            className="block rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/[0.06] to-blue-900/20 p-5 hover:border-yellow-400/40 transition group"
+            className="block rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/[0.06] to-blue-900/20 p-5 hover:border-yellow-400/50 hover:-translate-y-1 hover:shadow-[0_16px_44px_-16px_rgba(253,224,71,0.25)] transition-all duration-300 group"
         >
             <div className="flex items-baseline justify-between mb-4">
                 <div className="text-[10px] uppercase tracking-[0.25em] text-yellow-200/70 font-bold">
@@ -252,7 +220,7 @@ function SwedenMatchCard({
                 )}
                 <div className="font-serif text-xl text-white">{opponent.name}</div>
             </div>
-            <div className="text-sm text-blue-100 mb-1">
+            <div className="font-mono text-xs tabular-nums text-blue-100 mb-1.5">
                 {formatKickoffLong(fixture.kickoff)}
             </div>
             <div className="text-xs text-yellow-200/70 group-hover:text-yellow-200 transition">

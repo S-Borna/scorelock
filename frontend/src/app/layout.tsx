@@ -27,6 +27,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+    metadataBase: new URL("https://scorelock.saidborna.com"),
     title: {
         default: "ScoreLock — AI-driven fotbollsanalys",
         template: "%s | ScoreLock",
@@ -41,7 +42,13 @@ export const metadata: Metadata = {
         type: "website",
         locale: "sv_SE",
         alternateLocale: "en_GB",
+        url: "/",
         siteName: "ScoreLock",
+        title: "ScoreLock — AI-driven fotbollsanalys",
+        description: "AI-genererade förhandsanalyser, matchreferat, value bets och prediktioner.",
+    },
+    twitter: {
+        card: "summary_large_image",
         title: "ScoreLock — AI-driven fotbollsanalys",
         description: "AI-genererade förhandsanalyser, matchreferat, value bets och prediktioner.",
     },
