@@ -2,6 +2,7 @@
 
 import { LanguageToggle } from "@/components/language-toggle";
 import { LiveTicker } from "@/components/live-ticker";
+import { MobileMenu } from "@/components/mobile-menu";
 import { useLocale } from "@/components/locale-provider";
 import Link from "next/link";
 
@@ -59,37 +60,13 @@ export function Header() {
                         {t("nav.signup")}
                     </Link>
 
-                    {/* Mobile menu */}
-                    <details className="md:hidden relative group">
-                        <summary className="list-none cursor-pointer p-2 rounded-lg hover:bg-white/[0.05] transition-colors">
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                            </svg>
-                        </summary>
-                        <div className="absolute right-0 top-full mt-2 w-56 glass-strong rounded-xl shadow-elevated p-2 z-50 animate-fade-up">
-                            {NAV_ITEMS.map((item) => (
-                                <MobileLink key={item.href} href={item.href} label={t(item.labelKey)} />
-                            ))}
-                            <div className="divider my-2" />
-                            <MobileLink href="/login" label={t("nav.login")} />
-                        </div>
-                    </details>
+                    {/* Mobilmeny — riktig drawer (se mobile-menu.tsx) */}
+                    <MobileMenu />
                 </div>
             </nav>
             {/* Livescore-tickern — kärnan, synlig på varje sida när matcher rullar */}
             <LiveTicker />
         </header>
-    );
-}
-
-function MobileLink({ href, label }: { href: string; label: string }) {
-    return (
-        <Link
-            href={href}
-            className="block px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/[0.05] transition-all duration-150"
-        >
-            {label}
-        </Link>
     );
 }
 
