@@ -14,8 +14,14 @@ COPY frontend/ .
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ARG NEXT_PUBLIC_SENTRY_DSN=
+# Build-prerender (ISR första version) fetchar riktig data — utan denna ARG
+# faller fetchApi tillbaka på http://backend:8000 som inte finns i build-
+# containern → prerender-throw → build-fail. Railway injicerar service-
+# variabeln automatiskt när ARG:en är deklarerad.
+ARG INTERNAL_API_URL=
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+ENV INTERNAL_API_URL=${INTERNAL_API_URL}
 RUN mkdir -p /app/public && npm run build
 
 # ---------- dev (hot reload via next dev + source mount) ----------
