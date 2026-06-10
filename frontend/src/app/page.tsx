@@ -56,9 +56,17 @@ export default async function HomePage() {
     let swedenIntelligence: MatchIntelligenceBundle | null = null;
     if (nextSweden) {
         try {
-            swedenIntelligence = await fetchApi<MatchIntelligenceBundle>(
+            const raw = await fetchApi<MatchIntelligenceBundle>(
                 `/api/v1/fixtures/${nextSweden.id}/intelligence`,
             );
+            // Branda intern metadata före serialisering till klienten
+            const brand = (x: MatchIntelligenceBundle["pre_match"]) =>
+                x ? { ...x, model_version: "ScoreLock AI", provider: "scorelock" } : null;
+            swedenIntelligence = {
+                pre_match: brand(raw.pre_match),
+                in_match: brand(raw.in_match),
+                post_match: brand(raw.post_match),
+            };
         } catch {
             // showcase degraderar tyst
         }

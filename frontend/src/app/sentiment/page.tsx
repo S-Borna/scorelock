@@ -1,3 +1,4 @@
+import { parseUTC } from "@/lib/time";
 import { fetchApi } from "@/lib/api";
 import type { League, Sentiment, Team } from "@/lib/types";
 import type { Metadata } from "next";
@@ -161,7 +162,7 @@ function SentimentCard({ team, sentiment }: { team: Team; sentiment: Sentiment |
                     )}
 
                     <div className="text-[10px] text-gray-600">
-                        Uppdaterad: {new Date(sentiment.analyzed_at).toLocaleDateString("sv-SE")}
+                        Uppdaterad: {parseUTC(sentiment.analyzed_at).toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" })}
                     </div>
                 </div>
             ) : (

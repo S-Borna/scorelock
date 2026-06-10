@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Fixture } from "@/lib/types";
+import { fmtKickoffLong, parseUTC } from "@/lib/time";
 
 const SWEDEN_NAME = "Sweden";
 
@@ -26,7 +27,7 @@ export function VMCountdown({ kickoff }: { kickoff: string }) {
     const [parts, setParts] = useState<Parts | null | undefined>(undefined);
 
     useEffect(() => {
-        const target = new Date(kickoff).getTime();
+        const target = parseUTC(kickoff).getTime();
         const tick = () => setParts(partsUntil(target));
         const raf = requestAnimationFrame(tick);
         const id = setInterval(tick, 1000);
@@ -106,7 +107,7 @@ export function CountdownCallout({ fixture }: { fixture: Fixture }) {
             <VMCountdown kickoff={fixture.kickoff} />
             <div className="flex items-center gap-4 text-sm text-blue-100">
                 <span className="font-mono text-xs tabular-nums" suppressHydrationWarning>
-                    {formatKickoffLong(fixture.kickoff)}
+                    {fmtKickoffLong(fixture.kickoff)}
                 </span>
                 <span className="text-blue-300/50">·</span>
                 <span>{where}</span>
@@ -121,17 +122,3 @@ export function CountdownCallout({ fixture }: { fixture: Fixture }) {
     );
 }
 
-function formatKickoffLong(iso: string): string {
-    try {
-        const d = new Date(iso);
-        return d.toLocaleString("sv-SE", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    } catch {
-        return iso;
-    }
-}

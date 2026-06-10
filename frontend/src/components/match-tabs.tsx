@@ -87,7 +87,7 @@ export function MatchTabs(props: MatchTabsProps) {
                             <div className="card-glow">
                                 <h2 className="text-base font-semibold mb-4 text-white">🤖 ScoreLock AI — prediktion</h2>
                                 <PredictionBar prediction={fixture.prediction} />
-                                <p className="text-xs text-gray-600 mt-3">Modell: {fixture.prediction.model_version}</p>
+                                <p className="text-xs text-gray-600 mt-3">ScoreLock-modellen · uppdateras inför avspark</p>
                             </div>
                         ) : fixture.odds.length > 0 ? (
                             /* Ärlighets-grind: modellens platta landslagsbaseline döljs —

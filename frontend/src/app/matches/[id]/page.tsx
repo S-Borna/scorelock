@@ -124,12 +124,16 @@ export default async function MatchDetailPage({ params }: PageProps) {
         user_voted_player_id: bundle.motm?.user_voted_player_id ?? null,
         tally: Array.isArray(bundle.motm?.tally) ? bundle.motm.tally : [],
     };
+    // Branda intern metadata innan den serialiseras till klienten — modell-/
+    // leverantörsnamn är rördragning, inte produktyta (syns annars i view-source).
+    const brand = (x: MatchIntelligenceBundle["pre_match"]) =>
+        x ? { ...x, model_version: "ScoreLock AI", provider: "scorelock" } : null;
     const intelligence: MatchIntelligenceBundle =
         bundle.intelligence && typeof bundle.intelligence === "object"
             ? {
-                  pre_match: bundle.intelligence.pre_match ?? null,
-                  in_match: bundle.intelligence.in_match ?? null,
-                  post_match: bundle.intelligence.post_match ?? null,
+                  pre_match: brand(bundle.intelligence.pre_match ?? null),
+                  in_match: brand(bundle.intelligence.in_match ?? null),
+                  post_match: brand(bundle.intelligence.post_match ?? null),
               }
             : { pre_match: null, in_match: null, post_match: null };
 

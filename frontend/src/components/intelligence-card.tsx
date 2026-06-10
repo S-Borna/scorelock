@@ -95,7 +95,7 @@ export function IntelligenceCard({
                             ScoreLock AI-analys
                         </div>
                         <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
-                            {current.model_version} · {current.provider}
+                            ScoreLock AI
                         </span>
                     </div>
 
@@ -155,7 +155,7 @@ export function IntelligenceCard({
                     🤖 {t("intelligence.title")}
                 </h2>
                 <span className="text-xs text-gray-500 font-mono">
-                    {current.model_version}
+                    ScoreLock AI
                 </span>
             </div>
 

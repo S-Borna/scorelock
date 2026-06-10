@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+import { parseUTC } from "./time";
+
 /**
  * Merge Tailwind CSS classes with conflict resolution.
  */
@@ -19,7 +21,9 @@ export function formatProb(prob: number): string {
  * Format a date string for display (Swedish locale).
  */
 export function formatKickoff(dateStr: string): string {
-    const date = new Date(dateStr);
+    // parseUTC: backend-tider är naiva UTC — utan detta tolkar klienten dem
+    // som svensk tid → 2h fel + hydration-mismatch.
+    const date = parseUTC(dateStr);
     return date.toLocaleDateString("sv-SE", {
         weekday: "short",
         month: "short",
@@ -37,7 +41,7 @@ export function formatKickoff(dateStr: string): string {
  */
 export function timeAgo(dateStr: string): string {
     const now = Date.now();
-    const then = new Date(dateStr).getTime();
+    const then = parseUTC(dateStr).getTime();
     const diff = now - then;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
@@ -47,7 +51,7 @@ export function timeAgo(dateStr: string): string {
     if (minutes < 60) return `${minutes} min sedan`;
     if (hours < 24) return `${hours} tim sedan`;
     if (days < 7) return `${days} dagar sedan`;
-    return new Date(dateStr).toLocaleDateString("sv-SE", { day: "numeric", month: "short", timeZone: "Europe/Stockholm" });
+    return parseUTC(dateStr).toLocaleDateString("sv-SE", { day: "numeric", month: "short", timeZone: "Europe/Stockholm" });
 }
 
 /**

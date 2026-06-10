@@ -1,5 +1,6 @@
 "use client";
 
+import { parseUTC } from "@/lib/time";
 import { TipForm } from "@/components/tip-form";
 import { getAccessToken } from "@/lib/auth-token";
 import type { Fixture } from "@/lib/types";
@@ -12,7 +13,7 @@ interface MatchTipSectionProps {
 export function MatchTipSection({ fixture }: MatchTipSectionProps) {
     const [error, setError] = useState<string | null>(null);
 
-    const canTip = fixture.status === "scheduled" && new Date(fixture.kickoff) > new Date();
+    const canTip = fixture.status === "scheduled" && parseUTC(fixture.kickoff) > new Date();
 
     if (!canTip) return null;
 

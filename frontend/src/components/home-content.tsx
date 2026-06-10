@@ -14,6 +14,8 @@ import type {
 } from "@/lib/types";
 import Link from "next/link";
 
+import { fmtDayCompact, fmtDateShort, fmtTime, parseUTC } from "@/lib/time";
+
 interface HomeContentProps {
     articles: Article[];
     fixtures: Fixture[];
@@ -217,7 +219,7 @@ export function HomeContent({
                                         Läs hela analysen →
                                     </Link>
                                     <span className="text-[10px] font-mono uppercase tracking-widest text-gray-600">
-                                        {aiText.model_version} · grundad i odds + form
+                                        ScoreLock AI · grundad i odds + form
                                     </span>
                                 </div>
                             </blockquote>
@@ -385,7 +387,6 @@ export function HomeContent({
 
 function HeroSwedenModule({ match }: { match: Fixture }) {
     const opponent = opponentOf(match);
-    const kickoff = new Date(match.kickoff);
     return (
         <div className="inline-block rounded-2xl border border-yellow-300/20 bg-blue-950/40 backdrop-blur-sm px-5 sm:px-7 py-5">
             <div className="flex items-center gap-3 mb-4">
@@ -397,8 +398,7 @@ function HeroSwedenModule({ match }: { match: Fixture }) {
                     <p className="text-sm text-blue-100/80">
                         vs {opponent.name === "Tunisia" ? "Tunisien" : opponent.name} ·{" "}
                         <span className="font-mono tabular-nums" suppressHydrationWarning>
-                            {kickoff.toLocaleDateString("sv-SE", { day: "numeric", month: "long" })}{" "}
-                            {kickoff.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}
+                            {fmtDateShort(match.kickoff)} {fmtTime(match.kickoff)}
                         </span>
                     </p>
                 </div>
@@ -416,7 +416,6 @@ function HeroSwedenModule({ match }: { match: Fixture }) {
 /* ── Härnäst-bandet ────────────────────────────────────── */
 
 function BandCard({ fixture, prediction }: { fixture: Fixture; prediction?: Prediction }) {
-    const kickoff = new Date(fixture.kickoff);
     const pick = pickOf(prediction);
     const sweden = isSwedenTeam(fixture.home_team) || isSwedenTeam(fixture.away_team);
     return (
@@ -430,8 +429,7 @@ function BandCard({ fixture, prediction }: { fixture: Fixture; prediction?: Pred
             }
         >
             <p className="text-[10px] font-mono uppercase tracking-wider text-gray-500 mb-3 tabular-nums" suppressHydrationWarning>
-                {kickoff.toLocaleDateString("sv-SE", { weekday: "short", day: "numeric", month: "short" })}{" "}
-                {kickoff.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}
+                {fmtDayCompact(fixture.kickoff)} {fmtTime(fixture.kickoff)}
                 {fixture.group_letter ? ` · Grupp ${fixture.group_letter}` : ""}
             </p>
             <BandTeam team={fixture.home_team} />
@@ -475,7 +473,6 @@ function BandTeam({ team }: { team: { name: string; logo_url: string | null } })
 
 function TimelineMatch({ fixture, index }: { fixture: Fixture; index: number }) {
     const opponent = opponentOf(fixture);
-    const kickoff = new Date(fixture.kickoff);
     const home = isSwedenTeam(fixture.home_team);
     return (
         <Link href={`/matches/${fixture.id}`} className="block group">
@@ -483,7 +480,7 @@ function TimelineMatch({ fixture, index }: { fixture: Fixture; index: number }) 
             <div className="hidden md:flex items-center gap-3 mb-5">
                 <span className="w-[17px] h-[17px] rounded-full border-2 border-yellow-300/70 bg-surface-950 group-hover:bg-yellow-300/20 transition-colors" />
                 <span className="font-mono text-xs text-yellow-300/70 tabular-nums uppercase tracking-wider" suppressHydrationWarning>
-                    {kickoff.toLocaleDateString("sv-SE", { day: "numeric", month: "long" })}
+                    {fmtDateShort(fixture.kickoff)}
                 </span>
             </div>
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 transition-all duration-300 group-hover:border-yellow-400/40 group-hover:-translate-y-1">
@@ -502,7 +499,7 @@ function TimelineMatch({ fixture, index }: { fixture: Fixture; index: number }) 
                             {opponent.name === "Tunisia" ? "Tunisien" : opponent.name}
                         </p>
                         <p className="text-xs text-gray-500 font-mono tabular-nums md:hidden" suppressHydrationWarning>
-                            {kickoff.toLocaleDateString("sv-SE", { day: "numeric", month: "long" })}
+                            {fmtDateShort(fixture.kickoff)}
                         </p>
                     </div>
                 </div>
@@ -556,8 +553,7 @@ function CompactMatchRow({ fixture, prediction }: { fixture: Fixture; prediction
     const isFinished = fixture.status === "finished";
     const homeWin = isFinished && (fixture.home_goals ?? 0) > (fixture.away_goals ?? 0);
     const awayWin = isFinished && (fixture.away_goals ?? 0) > (fixture.home_goals ?? 0);
-    const kickoff = new Date(fixture.kickoff);
-    const timeStr = kickoff.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+    const timeStr = fmtTime(fixture.kickoff);
     const pick = pickOf(prediction);
 
     return (

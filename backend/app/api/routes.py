@@ -480,7 +480,7 @@ async def get_value_bet_ledger(
                 status=entry_status,
                 actual_result=row.actual_result,
                 was_correct=row.was_correct,
-                model_version=row.model_version,
+                model_version="ScoreLock-modellen",
                 created_at=row.created_at,
             )
         )
@@ -739,8 +739,10 @@ async def get_fixture_intelligence(
             language=row.language,
             summary=row.summary,
             body=row.body,
-            model_version=row.model_version,
-            provider=row.provider,
+            # Publikt API exponerar ALDRIG intern modell-/leverantörsmetadata —
+            # rådata finns kvar i DB:n för spårbarhet, ytan är ScoreLock-brandad.
+            model_version="ScoreLock AI",
+            provider="scorelock",
             as_of_minute=row.as_of_minute,
             generated_at=row.generated_at,
         )

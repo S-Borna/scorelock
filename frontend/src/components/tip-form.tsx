@@ -1,5 +1,6 @@
 "use client";
 
+import { parseUTC } from "@/lib/time";
 import { useState } from "react";
 import type { Fixture } from "@/lib/types";
 
@@ -24,7 +25,7 @@ export function TipForm({ fixture, existingTip, onSubmit }: TipFormProps) {
     const [submitted, setSubmitted] = useState(false);
 
     const isScheduled = fixture.status === "scheduled";
-    const kickoff = new Date(fixture.kickoff);
+    const kickoff = parseUTC(fixture.kickoff);
     const canTip = isScheduled && kickoff > new Date();
 
     async function handleSubmit() {

@@ -4,6 +4,8 @@ import type { Fixture, League, Prediction, ValueBet } from "@/lib/types";
 import { useLiveScores, type LiveFixtureState } from "@/lib/use-live-scores";
 import { useEffect, useState } from "react";
 
+import { fmtTime, parseUTC, sameStockholmDay } from "@/lib/time";
+
 interface MatchesClientProps {
     initialFixtures: Fixture[];
     predictions: Prediction[];
@@ -64,11 +66,11 @@ export function MatchesClient({ initialFixtures, predictions, valueBets }: Match
     const [selectedDate, setSelectedDate] = useState<Date>(() => {
         const startToday = startOfDay(new Date());
         const future = initialFixtures
-            .map((f) => startOfDay(new Date(f.kickoff)).getTime())
+            .map((f) => startOfDay(parseUTC(f.kickoff)).getTime())
             .filter((t) => t >= startToday.getTime())
             .sort((a, b) => a - b);
         const todayHas = initialFixtures.some((f) =>
-            sameDay(new Date(f.kickoff), startToday),
+            sameStockholmDay(f.kickoff, startToday),
         );
         return todayHas || future.length === 0
             ? startToday
@@ -114,7 +116,7 @@ export function MatchesClient({ initialFixtures, predictions, valueBets }: Match
 
     // ── DAG-vy ──
     const dayFixtures = fixtures
-        .filter((f) => !liveIds.has(f.id) && sameDay(new Date(f.kickoff), selectedDate))
+        .filter((f) => !liveIds.has(f.id) && sameStockholmDay(f.kickoff, selectedDate))
         .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
     const dayGroups = groupBy(dayFixtures, (f) => f.league.id, (f) => f.league.name, LEAGUE_ORDER);
 
@@ -295,7 +297,7 @@ function MatchRow({
     const isFinished = status === "finished";
     const homeWin = isFinished && (homeGoals ?? 0) > (awayGoals ?? 0);
     const awayWin = isFinished && (awayGoals ?? 0) > (homeGoals ?? 0);
-    const timeStr = new Date(fixture.kickoff).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+    const timeStr = fmtTime(fixture.kickoff);
 
     // Ärlighets-grind: dölj modellens platta landslagsbaseline (conf < 0.2)
     const pick = prediction && prediction.confidence >= 0.2
@@ -370,7 +372,7 @@ function groupRounds(fixtures: Fixture[]): Group[] {
     const map = new Map<string, Group & { latest: number }>();
     for (const f of fixtures) {
         const round = f.round?.trim() || "Övrigt";
-        const ko = new Date(f.kickoff).getTime();
+        const ko = parseUTC(f.kickoff).getTime();
         const existing = map.get(round);
         if (existing) {
             existing.fixtures.push(f);

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLiveScores } from "@/lib/use-live-scores";
 import type { Fixture } from "@/lib/types";
+import { fmtTime, sameStockholmDay } from "@/lib/time";
 
 /**
  * Live-boarden — livescore-upplevelsen som ÄR ScoreLocks kärna.
@@ -61,7 +62,7 @@ export function LiveBoard({ initialFixtures }: { initialFixtures: Fixture[] }) {
             (f) =>
                 f.status === "scheduled" &&
                 !liveStates.has(f.id) &&
-                sameDay(new Date(f.kickoff), today),
+                sameStockholmDay(f.kickoff, today),
         )
         .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
 
@@ -201,14 +202,13 @@ function TeamScoreRow({
 /* ── Dagens kommande ──────────────────────────────────────── */
 
 function UpcomingTodayCard({ fixture }: { fixture: Fixture }) {
-    const kickoff = new Date(fixture.kickoff);
     return (
         <Link
             href={`/matches/${fixture.id}`}
             className="block rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/[0.14] hover:-translate-y-0.5"
         >
             <p className="font-mono text-lg text-scorelock-400 tabular-nums mb-3" suppressHydrationWarning>
-                {kickoff.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}
+                {fmtTime(fixture.kickoff)}
             </p>
             <MiniTeam team={fixture.home_team} />
             <MiniTeam team={fixture.away_team} />
@@ -235,10 +235,3 @@ function MiniTeam({ team }: { team: { name: string; logo_url: string | null } })
     );
 }
 
-function sameDay(a: Date, b: Date): boolean {
-    return (
-        a.getFullYear() === b.getFullYear() &&
-        a.getMonth() === b.getMonth() &&
-        a.getDate() === b.getDate()
-    );
-}

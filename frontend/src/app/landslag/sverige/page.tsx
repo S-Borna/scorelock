@@ -3,6 +3,7 @@ import type { TournamentStructure, Fixture, TournamentGroup } from "@/lib/types"
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CountdownCallout } from "@/components/vm-countdown";
+import { fmtDateShort, fmtTime, parseUTC } from "@/lib/time";
 
 // Miljö-oberoende: slug resolvas i backend, Sverige matchas på lag-NAMN —
 // aldrig lokala auto-increment-id:n (skiljer mellan dev och prod).
@@ -200,7 +201,6 @@ function SwedenMatchHeroCard({
 }) {
     const isSwedenHome = isSwedenTeam(fixture.home_team);
     const opponent = isSwedenHome ? fixture.away_team : fixture.home_team;
-    const kickoff = new Date(fixture.kickoff);
 
     return (
         <Link
@@ -243,14 +243,10 @@ function SwedenMatchHeroCard({
                 <div className="font-serif text-xl text-white">{opponent.name}</div>
             </div>
             <div className="font-mono text-xs tabular-nums text-blue-100/80 mb-1.5">
-                {kickoff.toLocaleDateString("sv-SE", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                })}
+                {parseUTC(fixture.kickoff).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Stockholm" })}
             </div>
             <div className="font-mono text-xs tabular-nums text-blue-100/60 mb-3">
-                kl. {kickoff.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })} · {isSwedenHome ? "Hemma" : "Borta"}
+                kl. {fmtTime(fixture.kickoff)} · {isSwedenHome ? "Hemma" : "Borta"}
             </div>
             <div className="text-xs text-yellow-200/70 group-hover:text-yellow-200 transition pt-3 border-t border-yellow-500/10">
                 AI-analys + odds + broadcasts →
@@ -343,6 +339,5 @@ function GroupFTable({ group }: { group: TournamentGroup }) {
 }
 
 function matchTimeDay(f: Fixture): string {
-    const d = new Date(f.kickoff);
-    return d.toLocaleDateString("sv-SE", { day: "numeric", month: "long" });
+    return fmtDateShort(f.kickoff);
 }

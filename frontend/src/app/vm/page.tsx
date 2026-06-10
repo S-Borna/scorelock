@@ -3,6 +3,7 @@ import type { TournamentStructure, Fixture, Team, TournamentGroup } from "@/lib/
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CountdownCallout } from "@/components/vm-countdown";
+import { fmtKickoff, parseUTC } from "@/lib/time";
 
 // Miljö-oberoende referenser: slug resolvas i backend via SportMonks-ext-id,
 // Sverige identifieras via lag-NAMN (stabilt från providern) — aldrig via
@@ -209,7 +210,7 @@ function SwedenMatchCard({
                 <div className="font-serif text-xl text-white">{opponent.name}</div>
             </div>
             <div className="font-mono text-xs tabular-nums text-blue-100 mb-1.5">
-                {formatKickoffLong(fixture.kickoff)}
+                {fmtKickoff(fixture.kickoff)}
             </div>
             <div className="text-xs text-yellow-200/70 group-hover:text-yellow-200 transition">
                 Till AI-analys →
@@ -410,7 +411,7 @@ function KnockoutFixtureCard({ fixture }: { fixture: Fixture }) {
                 <TeamRow team={fixture.home_team.name} flag={fixture.home_team.logo_url} swedenHighlight={isSwedenTeam(fixture.home_team)} />
                 <TeamRow team={fixture.away_team.name} flag={fixture.away_team.logo_url} swedenHighlight={isSwedenTeam(fixture.away_team)} />
             </div>
-            <div className="text-xs text-gray-400">{formatKickoffLong(fixture.kickoff)}</div>
+            <div className="text-xs text-gray-400">{fmtKickoff(fixture.kickoff)}</div>
         </Link>
     );
 }
@@ -465,17 +466,3 @@ function translateStage(s: string): string {
     return map[s] || s;
 }
 
-function formatKickoffLong(iso: string): string {
-    try {
-        const d = new Date(iso);
-        return d.toLocaleString("sv-SE", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    } catch {
-        return iso;
-    }
-}
