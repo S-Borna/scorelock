@@ -36,13 +36,41 @@ interface FixtureDetailBundle {
     affiliate_links: AffiliateLink[];
 }
 
+// Svenska landsnamn för titlar/delningar — VM-deltagarna som skiljer sig från
+// providerns engelska. Klubbnamn passerar orörda.
+const TEAM_NAME_SV: Record<string, string> = {
+    Sweden: "Sverige", Tunisia: "Tunisien", Netherlands: "Nederländerna",
+    Japan: "Japan", Norway: "Norge", Denmark: "Danmark", Germany: "Tyskland",
+    France: "Frankrike", Spain: "Spanien", Italy: "Italien", Brazil: "Brasilien",
+    Austria: "Österrike", Switzerland: "Schweiz", Croatia: "Kroatien",
+    "South Africa": "Sydafrika", "Korea Republic": "Sydkorea",
+    "United States": "USA", Mexico: "Mexiko", Morocco: "Marocko",
+    Egypt: "Egypten", Türkiye: "Turkiet", Poland: "Polen", Belgium: "Belgien",
+    Portugal: "Portugal", England: "England", Scotland: "Skottland",
+    Argentina: "Argentina", Uruguay: "Uruguay", Colombia: "Colombia",
+    "Saudi Arabia": "Saudiarabien", Qatar: "Qatar", Australia: "Australien",
+    Canada: "Kanada", Ecuador: "Ecuador", Ghana: "Ghana", Senegal: "Senegal",
+    "Ivory Coast": "Elfenbenskusten", Algeria: "Algeriet", Greece: "Grekland",
+    "Czech Republic": "Tjeckien", "Bosnia and Herzegovina": "Bosnien",
+    Panama: "Panama", Paraguay: "Paraguay", Haiti: "Haiti", Jordan: "Jordanien",
+    Uzbekistan: "Uzbekistan", "New Zealand": "Nya Zeeland", Iraq: "Irak",
+    "Congo DR": "DR Kongo", "Cape Verde": "Kap Verde", Curacao: "Curaçao",
+};
+
+function teamSv(name: string): string {
+    return TEAM_NAME_SV[name] ?? name;
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { id } = await params;
     try {
         const f = await fetchApi<FixtureDetail>(`/api/v1/fixtures/${id}`);
+        const home = teamSv(f.home_team.name);
+        const away = teamSv(f.away_team.name);
+        const league = f.league.name.toLowerCase().includes("world") ? "VM 2026" : f.league.name;
         return {
-            title: `${f.home_team.name} vs ${f.away_team.name}`,
-            description: `${f.league.name} — ML-prediktion, odds och analys för ${f.home_team.name} vs ${f.away_team.name}.`,
+            title: `${home} – ${away}`,
+            description: `${league} — AI-analys, odds och prediktion för ${home} mot ${away}.`,
         };
     } catch {
         return { title: "Match" };

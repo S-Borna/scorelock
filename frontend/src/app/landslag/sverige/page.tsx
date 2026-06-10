@@ -14,7 +14,7 @@ function isSwedenTeam(t: { name: string }): boolean {
 }
 
 export const metadata: Metadata = {
-    title: "Sverige · VM 2026 — Kom igen Sverige | ScoreLock",
+    title: "Sverige · VM 2026 — Kom igen Sverige",
     description:
         "Allt om Sveriges VM 2026: 3 matcher i Grupp F mot Tunisia, Nederländerna och Japan. AI-analys, odds, ställning. Kom igen Sverige.",
 };
@@ -22,15 +22,13 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function SwedenPage() {
-    let structure: TournamentStructure | null = null;
-    try {
-        structure = await fetchApi<TournamentStructure>(
-            `/api/v1/tournaments/${WC_SLUG}/structure`,
-        );
-    } catch {}
+    // Kasta vid fel — aldrig tom-state in i ISR-cachen (se app/error.tsx).
+    const structure = await fetchApi<TournamentStructure>(
+        `/api/v1/tournaments/${WC_SLUG}/structure`,
+    );
 
     const swedenGroup =
-        structure?.groups.find((g) =>
+        structure.groups.find((g) =>
             g.standings.some((s) => isSwedenTeam(s.team)),
         ) ?? null;
     const swedenFixtures: Fixture[] =

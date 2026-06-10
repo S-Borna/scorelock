@@ -1439,14 +1439,20 @@ def prewarm_tournament_intelligence(league_id: int, limit: int = 200):
             )
             existing_ids = {row[0] for row in existing.all()}
 
-            # Filtrera bort placeholder-fixtures (Winner of X) — modellen
-            # ska INTE analysera när vi inte vet vilka lag det blir.
+            # Filtrera bort placeholder-fixtures — modellen ska INTE analysera
+            # när vi inte vet vilka lag det blir. SportMonks-platshållare har
+            # flera namnmönster: "Winner Match 73", "Loser Semi-final 1",
+            # "1st Group A", "2nd Group B", "3rd Group D/E/I" osv.
             placeholder_team_ids = set()
             from app.models.models import Team
 
             team_result = await session.execute(
                 select(Team.id, Team.name).where(
-                    Team.name.ilike("Winner %") | Team.name.ilike("Loser %")
+                    Team.name.ilike("Winner %")
+                    | Team.name.ilike("Loser %")
+                    | Team.name.ilike("1st Group%")
+                    | Team.name.ilike("2nd Group%")
+                    | Team.name.ilike("3rd Group%")
                 )
             )
             for tid, _ in team_result.all():

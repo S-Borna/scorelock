@@ -38,6 +38,11 @@ export default async function HomePage() {
     if (valueBetsRes.status === "fulfilled") valueBets = valueBetsRes.value;
     if (weeklyTopRes.status === "fulfilled") weeklyTop = weeklyTopRes.value;
 
+    // Kritisk data: utan fixtures är hela landingen tom — KASTA så att den
+    // tomma rendern aldrig ISR-cachas (Next behåller förra lyckade versionen
+    // vid revalideringsfel; app/error.tsx fångar kallstart).
+    if (allFixturesRes.status === "rejected") throw allFixturesRes.reason;
+
     // AI-showcase: hämta riktig analys för Sveriges nästa match (id via namn —
     // miljöoberoende). Misslyckas tyst → sektionen renderas inte.
     const nextSweden = allFixtures

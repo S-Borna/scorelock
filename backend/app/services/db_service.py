@@ -996,16 +996,21 @@ async def get_leaderboard(
             ),
         )
         .join(UserModel, UserPrediction.user_id == UserModel.id)
-        .where(UserPrediction.points_earned.isnot(None))
+        # OBS: inget points_earned-filter — oscorade tips (matcher som inte
+        # spelats än) ska synas med tips-count så leaderboarden lever före
+        # turneringsstart. Poäng summeras med NULL→0 via coalesce i sorten.
     )
 
     if days:
         cutoff = datetime.utcnow() - timedelta(days=days)
-        q = q.where(UserPrediction.scored_at >= cutoff)
+        q = q.where(UserPrediction.created_at >= cutoff)
 
     q = (
         q.group_by(UserPrediction.user_id, UserModel.name)
-        .order_by(func.sum(UserPrediction.points_earned).desc())
+        .order_by(
+            func.coalesce(func.sum(UserPrediction.points_earned), 0).desc(),
+            func.count(UserPrediction.id).desc(),
+        )
         .limit(limit)
     )
 

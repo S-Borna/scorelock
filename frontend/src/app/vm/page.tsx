@@ -15,7 +15,7 @@ function isSwedenTeam(t: Team): boolean {
 }
 
 export const metadata: Metadata = {
-    title: "VM 2026 — Kom igen Sverige | ScoreLock",
+    title: "VM 2026 — Kom igen Sverige",
     description:
         "Sverige är i Grupp F med Tunisia, Nederländerna och Japan. ScoreLocks AI-driven VM-täckning — varje minut, varje match. Kom igen Sverige.",
 };
@@ -23,25 +23,13 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function VMPage() {
-    let structure: TournamentStructure | null = null;
-    try {
-        structure = await fetchApi<TournamentStructure>(
-            `/api/v1/tournaments/${WC_SLUG}/structure`,
-        );
-    } catch {
-        // Visa tom-state nedan
-    }
-
-    if (!structure) {
-        return (
-            <div className="container-main py-16 text-center">
-                <h1 className="text-display-md mb-3">VM 2026</h1>
-                <p className="text-gray-400">
-                    Turneringsdata laddas — kom tillbaka om en stund.
-                </p>
-            </div>
-        );
-    }
+    // KASTA vid fetch-fel — får ALDRIG svälja till tom-state. En tom render
+    // ISR-cachas annars i upp till 5 min för alla besökare ("Turneringsdata
+    // laddas"-buggen). Vid runtime-revalidering som kastar behåller Next den
+    // senaste lyckade versionen; vid kallstart fångar app/error.tsx med retry.
+    const structure = await fetchApi<TournamentStructure>(
+        `/api/v1/tournaments/${WC_SLUG}/structure`,
+    );
 
     // Hitta Sveriges grupp via lag-namn (inte hårdkodad bokstav/id)
     const swedenGroup =
