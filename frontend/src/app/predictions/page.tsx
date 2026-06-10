@@ -21,6 +21,11 @@ export default async function PredictionsPage() {
         // Handled in UI
     }
 
+    // Ärlighets-grind: modellens platta landslagsbaseline (conf < 0.2) visas
+    // inte som "prognoser" — det vore pseudo-precision. Matchsidorna visar
+    // marknadens bild + AI-analys för de matcherna i stället.
+    predictions = predictions.filter((p) => p.confidence >= 0.2);
+
     return (
         <div className="container-main py-10">
             <h1 className="text-display-md mb-2">Prediktioner</h1>
@@ -29,12 +34,14 @@ export default async function PredictionsPage() {
                 konfidens, value-edge när odds finns.
             </p>
 
-            {/* VM-disclaimer */}
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] px-4 py-3 mb-8">
-                <p className="text-sm text-amber-300/90 leading-snug">
-                    <span className="font-semibold">⚠ VM-disclaimer:</span> Modellen är klubblag-tränad
-                    och har inte sett landslagsformat. VM-rader visar samma 43/34/22-baseline — låg-
-                    konfidens-flaggor finns inline. AI-analysen på varje matchsida är mer trovärdig.
+            {/* Transparens: varför VM-matcher saknas här */}
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 mb-8">
+                <p className="text-sm text-gray-400 leading-snug">
+                    <span className="font-semibold text-gray-200">Transparens:</span>{" "}
+                    ScoreLocks ML-modell är tränad på klubbfotboll. VM-matcher visas
+                    därför inte här som prognoser — på varje VM-matchsida hittar du i
+                    stället marknadens implicita sannolikheter (riktiga odds från 40+
+                    spelbolag) och AI-analysen. Hellre färre siffror som är sanna.
                 </p>
             </div>
 
@@ -42,7 +49,8 @@ export default async function PredictionsPage() {
                 <div className="card text-center py-16">
                     <div className="w-16 h-16 rounded-2xl bg-white/[0.03] flex items-center justify-center text-3xl mx-auto mb-4">🤖</div>
                     <p className="text-gray-400 max-w-sm mx-auto">
-                        Inga prediktioner just nu. Pipelinen kör automatiskt — kom tillbaka snart.
+                        Modellen har inga klubbmatcher med täckning i fönstret just nu.
+                        Under VM: se matchsidornas AI-analys + marknadsbild.
                     </p>
                 </div>
             ) : (

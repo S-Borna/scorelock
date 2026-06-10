@@ -626,7 +626,9 @@ function firstParagraph(body: string): string {
 }
 
 function pickOf(p?: Prediction): { label: string; prob: number } | null {
-    if (!p) return null;
+    // Ärlighets-grind: visa aldrig modellens platta landslagsbaseline som om
+    // den vore en per-match-pick. Konf >= 0.2 = modellen har riktig täckning.
+    if (!p || p.confidence < 0.2) return null;
     if (p.home_win_prob >= p.draw_prob && p.home_win_prob >= p.away_win_prob)
         return { label: "1", prob: p.home_win_prob };
     if (p.away_win_prob >= p.draw_prob) return { label: "2", prob: p.away_win_prob };

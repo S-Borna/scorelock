@@ -10,6 +10,7 @@ import { EventTimeline } from "@/components/event-timeline";
 import { StatsPanel } from "@/components/stats-panel";
 import { LineupsPitch } from "@/components/lineups-pitch";
 import { IntelligenceCard } from "@/components/intelligence-card";
+import { MarketView } from "@/components/market-view";
 import { OddsSparkline } from "@/components/odds-sparkline";
 import { CommentaryFeedCard } from "@/components/commentary-feed";
 import { MomentumGraph } from "@/components/momentum-graph";
@@ -82,13 +83,20 @@ export function MatchTabs(props: MatchTabsProps) {
                         <LiveMatchStats fixtureId={fixture.id} />
                         {/* IntelligenceCard renderas nu som hero ovanför flikarna — */}
                         {/* visa inte här igen för att undvika dubblering. */}
-                        {fixture.prediction && (
+                        {fixture.prediction && fixture.prediction.confidence >= 0.2 ? (
                             <div className="card-glow">
                                 <h2 className="text-base font-semibold mb-4 text-white">🤖 ScoreLock AI — prediktion</h2>
                                 <PredictionBar prediction={fixture.prediction} />
                                 <p className="text-xs text-gray-600 mt-3">Modell: {fixture.prediction.model_version}</p>
                             </div>
-                        )}
+                        ) : fixture.odds.length > 0 ? (
+                            /* Ärlighets-grind: modellens platta landslagsbaseline döljs —
+                               marknadens implicita sannolikheter (riktiga odds) visas i stället. */
+                            <div className="card">
+                                <h2 className="text-base font-semibold mb-4 text-white">📊 Marknadens bild</h2>
+                                <MarketView odds={fixture.odds} />
+                            </div>
+                        ) : null}
                         <EventTimeline events={props.events} homeTeamId={fixture.home_team.id} />
                         <MomentumGraph series={props.momentum} />
                         <CommentaryFeedCard feed={props.commentary} locale="sv" />

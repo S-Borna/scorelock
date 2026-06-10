@@ -297,7 +297,8 @@ function MatchRow({
     const awayWin = isFinished && (awayGoals ?? 0) > (homeGoals ?? 0);
     const timeStr = new Date(fixture.kickoff).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
 
-    const pick = prediction
+    // Ärlighets-grind: dölj modellens platta landslagsbaseline (conf < 0.2)
+    const pick = prediction && prediction.confidence >= 0.2
         ? prediction.home_win_prob >= prediction.draw_prob && prediction.home_win_prob >= prediction.away_win_prob
             ? { label: "1", prob: prediction.home_win_prob }
             : prediction.away_win_prob >= prediction.draw_prob

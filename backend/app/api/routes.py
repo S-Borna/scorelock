@@ -1163,6 +1163,11 @@ async def get_value_bets(
                 Prediction.is_value_away.is_(True),
             ),
             Prediction.value_edge >= min_edge,
+            # Ärlighets-grind: låg-konfidens-prognoser (klubbmodellens platta
+            # baseline på landslagsmatcher) producerar pseudo-edges — modellens
+            # okunskap minus marknadens kunskap är inte value. Släpps igenom
+            # automatiskt när modellen får riktig täckning (conf >= 0.2).
+            Prediction.confidence >= 0.2,
             Fixture.status == MatchStatus.SCHEDULED,
         )
     )

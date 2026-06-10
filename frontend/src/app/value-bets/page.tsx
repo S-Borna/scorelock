@@ -53,15 +53,15 @@ export default async function ValueBetsPage() {
                 </p>
             </div>
 
-            {/* VM-disclaimer: ML-modellen är klubblag-tränad och ger samma
-                  baseline-prediction för alla landslagsmatcher. Höga "edges" på
-                  landslagsmatcher är därför ofta modell-noise, inte verkligt värde. */}
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] px-4 py-3 mb-8">
-                <p className="text-sm text-amber-300/90 leading-snug">
-                    <span className="font-semibold">⚠ VM-disclaimer:</span> ScoreLocks ML-modell är tränad
-                    på klubbmatcher och har inte sett landslagsformat. Höga edges på VM-rader är
-                    sannolikt modell-noise — låg-konfidens-flaggor finns inline. AI-analysen på varje
-                    matchsida är grundad i odds + form och betydligt mer trovärdig.
+            {/* Transparens: VM-matcher filtreras bort server-side (konfidens-grind)
+                  — klubbmodellens platta baseline producerar pseudo-edges som inte
+                  är riktiga value-lägen. Hellre färre rader som betyder något. */}
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 mb-8">
+                <p className="text-sm text-gray-400 leading-snug">
+                    <span className="font-semibold text-gray-200">Transparens:</span>{" "}
+                    VM-matcher visas inte här — vår ML-modell är tränad på klubbfotboll
+                    och dess landslagssiffror håller inte vår ribba för ett value-läge.
+                    Raderna nedan är klubbmatcher där modellen har riktig täckning.
                 </p>
             </div>
 
