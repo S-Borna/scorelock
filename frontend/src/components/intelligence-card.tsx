@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useLocale } from "@/components/locale-provider";
+import { parseUTC } from "@/lib/time";
 import type {
     IntelligenceKind,
     MatchIntelligence,
@@ -27,13 +28,18 @@ function pickFirstAvailable(
 
 function formatGeneratedAt(iso: string): string {
     try {
-        const d = new Date(iso);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        const hh = String(d.getHours()).padStart(2, "0");
-        const mi = String(d.getMinutes()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+        // Backend-tider är naiv UTC → parseUTC + formatera i svensk tid, annars
+        // tolkas strängen som webbläsarens lokala tid och blir 2h fel.
+        return parseUTC(iso)
+            .toLocaleString("sv-SE", {
+                timeZone: "Europe/Stockholm",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+            })
+            .replace(",", "");
     } catch {
         return iso;
     }

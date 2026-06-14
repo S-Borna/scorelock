@@ -84,7 +84,7 @@ export function useLiveScores(initialFixtures?: Fixture[]) {
             wsRef.current = ws;
 
             ws.onopen = () => {
-                console.log("[ScoreLock] Live WebSocket connected");
+                /* ansluten — tyst i prod-konsolen */
             };
 
             ws.onmessage = (event) => {
@@ -137,7 +137,6 @@ export function useLiveScores(initialFixtures?: Fixture[]) {
             };
 
             ws.onclose = () => {
-                console.log("[ScoreLock] WebSocket closed, reconnecting in 5s");
                 reconnectTimer.current = setTimeout(() => connectRef.current?.(), 5000);
             };
 
