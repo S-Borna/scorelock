@@ -156,8 +156,7 @@ export function AICoachCard({
                 <p className="text-[10px] text-gray-600 mt-2 font-mono uppercase tracking-wider">
                     {bundle.cached
                         ? t("fantasy.coach.cached_label")
-                        : t("fantasy.coach.live_label")}{" "}
-                    · {recs[0].model_version}
+                        : t("fantasy.coach.live_label")}
                 </p>
             )}
         </div>

@@ -549,7 +549,10 @@ async def list_ai_recommendations(
     return FantasyAIRecommendationsBundle(
         team_id=team_id,
         recommendations=[
-            FantasyAIRecommendationResponse.model_validate(r) for r in rows
+            FantasyAIRecommendationResponse.model_validate(r).model_copy(
+                update={"model_version": "ScoreLock AI"}
+            )
+            for r in rows
         ],
         cached=True,
     )
@@ -587,7 +590,10 @@ async def generate_ai_recommendations(
     return FantasyAIRecommendationsBundle(
         team_id=team_id,
         recommendations=[
-            FantasyAIRecommendationResponse.model_validate(r) for r in rows
+            FantasyAIRecommendationResponse.model_validate(r).model_copy(
+                update={"model_version": "ScoreLock AI"}
+            )
+            for r in rows
         ],
         cached=not force,
     )

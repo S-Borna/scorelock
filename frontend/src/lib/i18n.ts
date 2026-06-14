@@ -263,7 +263,7 @@ const translations: Record<Locale, Record<string, string>> = {
         "fantasy.team.vice_label": "Vice-kapten",
         "fantasy.team.market_link": "Spelarmarknaden →",
         "fantasy.coach.title": "AI-coach",
-        "fantasy.coach.subtitle": "Driven av Sonnet 4.6 — säg vad data visar",
+        "fantasy.coach.subtitle": "Driven av ScoreLock AI — säger vad datan visar",
         "fantasy.coach.refresh": "Hämta nya rekommendationer",
         "fantasy.coach.refreshing": "Genererar...",
         "fantasy.coach.empty": "Inga rekommendationer än — klicka för att hämta",
@@ -274,7 +274,7 @@ const translations: Record<Locale, Record<string, string>> = {
         "fantasy.coach.kind.captain": "Kapten",
         "fantasy.coach.kind.formation": "Formation",
         "fantasy.coach.cached_label": "Cachat",
-        "fantasy.coach.live_label": "Live från Claude",
+        "fantasy.coach.live_label": "Live från ScoreLock AI",
     },
     en: {
         // ── Nav ──
@@ -529,7 +529,7 @@ const translations: Record<Locale, Record<string, string>> = {
         "fantasy.team.vice_label": "Vice-captain",
         "fantasy.team.market_link": "Player market →",
         "fantasy.coach.title": "AI Coach",
-        "fantasy.coach.subtitle": "Powered by Sonnet 4.6 — says what the data shows",
+        "fantasy.coach.subtitle": "Powered by ScoreLock AI — says what the data shows",
         "fantasy.coach.refresh": "Get new recommendations",
         "fantasy.coach.refreshing": "Generating...",
         "fantasy.coach.empty": "No recommendations yet — click to fetch",
@@ -540,7 +540,7 @@ const translations: Record<Locale, Record<string, string>> = {
         "fantasy.coach.kind.captain": "Captain",
         "fantasy.coach.kind.formation": "Formation",
         "fantasy.coach.cached_label": "Cached",
-        "fantasy.coach.live_label": "Live from Claude",
+        "fantasy.coach.live_label": "Live from ScoreLock AI",
     },
 };
 
