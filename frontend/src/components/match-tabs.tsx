@@ -15,6 +15,7 @@ import { OddsSparkline } from "@/components/odds-sparkline";
 import { CommentaryFeedCard } from "@/components/commentary-feed";
 import { MomentumGraph } from "@/components/momentum-graph";
 import { MOTMPoll } from "@/components/motm-poll";
+import { useLiveEvents } from "@/lib/use-live-events";
 import type {
     Article, Broadcast, CommentaryFeed, FixtureDetail, FixtureEvent,
     FixtureLineupsBundle, FixtureStatisticsBundle, MOTMTally,
@@ -55,6 +56,8 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
 export function MatchTabs(props: MatchTabsProps) {
     const { fixture } = props;
     const [tab, setTab] = useState<TabKey>("oversikt");
+    // Live-uppdaterad timeline: mål/kort dyker upp utan sidladdning under matchen.
+    const liveEvents = useLiveEvents(fixture.id, props.events, fixture.status);
 
     return (
         <div>
@@ -97,7 +100,7 @@ export function MatchTabs(props: MatchTabsProps) {
                                 <MarketView odds={fixture.odds} />
                             </div>
                         ) : null}
-                        <EventTimeline events={props.events} homeTeamId={fixture.home_team.id} />
+                        <EventTimeline events={liveEvents} homeTeamId={fixture.home_team.id} />
                         <MomentumGraph series={props.momentum} />
                         <CommentaryFeedCard feed={props.commentary} locale="sv" />
                     </>
