@@ -79,10 +79,12 @@ celery_app.conf.beat_schedule = {
         "task": "app.services.tasks.generate_content_previews",
         "schedule": crontab(hour=10, minute=0),
     },
-    # Match reports — every hour 14:00–23:00 UTC (after matches finish)
+    # Match reports — every hour, dygnet runt (VM-matcher avslutas alla UTC-timmar:
+    # nattmatcherna i Nordamerika landar FT ~00–07 UTC). Tasken genererar bara för
+    # matcher som avslutats senaste 3h, så volymen styrs av spelschemat, inte fönstret.
     "content-reports": {
         "task": "app.services.tasks.generate_content_reports",
-        "schedule": crontab(minute=30, hour="14-23"),
+        "schedule": crontab(minute=30),
     },
     # Round summaries — daily at 04:00 UTC
     "content-round-summaries": {
@@ -100,10 +102,12 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute=15, hour="*/4"),
     },
     # ── Tipping League (M6) ─────────────────────────────────
-    # Score user predictions every 15 min during match hours
+    # Score user predictions every 15 min, dygnet runt — VM-matcher avslutas alla
+    # UTC-timmar (nattmatcher FT ~00–07 UTC) och leaderboarden ska inte frysa till
+    # 14:00 UTC. Tasken scorar bara FINISHED-matcher med oscorade tips → no-op annars.
     "score-user-predictions": {
         "task": "app.services.tasks.score_user_predictions",
-        "schedule": crontab(minute="*/15", hour="14-23"),
+        "schedule": crontab(minute="*/15"),
     },
     # ── Match-intelligens ───────────────────────────────────
     # AKTIV under VM-fönstret (juni-juli 2026). Genereringen försöker CLI först
@@ -160,6 +164,13 @@ if not settings.sportmonks_use_static_fixtures:
             "sportmonks-sync-inplay": {
                 "task": "app.services.tasks.sportmonks_sync_live_fixtures",
                 "schedule": 30.0,
+            },
+            # Skyddsnät: var 10:e min reconcilas matcher som sparkat av senaste 8h
+            # men inte nått terminal status (fastnad LIVE efter FT, eller frusen
+            # SCHEDULED om inplay-syncen missade avsparken) → full sync → rätt slutstate.
+            "sportmonks-reconcile-recent": {
+                "task": "app.services.tasks.sportmonks_reconcile_recent",
+                "schedule": crontab(minute="*/10"),
             },
         }
     )

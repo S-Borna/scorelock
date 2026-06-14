@@ -248,7 +248,7 @@ async def _save_article(
         tags=tags or [],
         meta_data=meta_data or {},
         auto_generated=True,
-        published_at=datetime.now(timezone.utc),
+        published_at=datetime.utcnow(),
     )
     session.add(article)
     await session.commit()
@@ -616,8 +616,8 @@ async def generate_value_bet_article(session: AsyncSession) -> Article | None:
     fixtures_q = await session.execute(
         select(Fixture)
         .where(
-            Fixture.kickoff >= datetime.now(timezone.utc),
-            Fixture.kickoff <= datetime.now(timezone.utc) + timedelta(days=2),
+            Fixture.kickoff >= datetime.utcnow(),
+            Fixture.kickoff <= datetime.utcnow() + timedelta(days=2),
             Fixture.status == MatchStatus.SCHEDULED,
         )
         .order_by(Fixture.kickoff)

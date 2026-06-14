@@ -17,7 +17,7 @@ Daily football-data.org budget (~12 of 14,400 calls):
 """
 
 import asyncio
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 
 import structlog
 from app.core.celery_app import celery_app
@@ -751,7 +751,7 @@ def generate_content_reports():
         from sqlalchemy import select
 
         created = 0
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=3)
+        cutoff = datetime.utcnow() - timedelta(hours=3)
         async with async_session() as session:
             q = (
                 select(Fixture)
@@ -947,7 +947,7 @@ def distribute_match_previews():
         from sqlalchemy import select
 
         posted = {"twitter": 0, "discord": 0, "telegram": 0, "push": 0}
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
+        cutoff = datetime.utcnow() - timedelta(hours=4)
 
         async with async_session() as session:
             result = await session.execute(
@@ -1132,7 +1132,7 @@ def distribute_match_results():
         from sqlalchemy import select
 
         sent = 0
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
+        cutoff = datetime.utcnow() - timedelta(hours=2)
 
         async with async_session() as session:
             result = await session.execute(
@@ -1359,6 +1359,82 @@ def sportmonks_sync_live_fixtures(self):
         return {"status": "ok", "live": len(live), "published": published}
 
     return run_async(_sync())
+
+
+@celery_app.task(
+    name="app.services.tasks.sportmonks_reconcile_recent",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=120,
+    max_retries=2,
+)
+def sportmonks_reconcile_recent(self):
+    """Skyddsnät mot fastnade matcher (zombie-live + frusna scheduled).
+
+    Live-syncen uppdaterar bara matcher som finns i /livescores/inplay. En match
+    som lämnar inplay exakt vid FT utan en sista score-cykel kan bli kvar som LIVE;
+    en match som sparkade av medan syncen var nere förblir SCHEDULED. Denna task
+    plockar fixtures vars avspark ligger 0–8h bakåt men status ännu inte är terminal
+    och kör full sync_fixture_detail → korrekt slutstatus + slutresultat. Idempotent.
+    """
+
+    async def _reconcile():
+        from app.core.config import get_settings
+        from app.models.models import Fixture, MatchStatus
+        from app.providers.sportmonks import SportMonksProvider
+        from app.services.sportmonks_normalizer import sync_fixture_detail
+        from sqlalchemy import select
+
+        terminal = (
+            MatchStatus.FINISHED,
+            MatchStatus.CANCELLED,
+            MatchStatus.POSTPONED,
+            MatchStatus.AWARDED,
+        )
+        now = datetime.utcnow()
+        window_start = now - timedelta(hours=8)
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Fixture).where(
+                    Fixture.kickoff >= window_start,
+                    Fixture.kickoff <= now,
+                    Fixture.status.notin_(terminal),
+                )
+            )
+            stuck = [
+                fx
+                for fx in result.scalars().all()
+                if (fx.external_ids or {}).get("sportmonks")
+            ]
+
+        if not stuck:
+            return {"status": "ok", "stuck": 0, "reconciled": 0}
+
+        reconciled = 0
+        provider = SportMonksProvider(get_settings())
+        try:
+            for fx in stuck:
+                ext = str((fx.external_ids or {}).get("sportmonks"))
+                async with async_session() as session:
+                    try:
+                        await sync_fixture_detail(session, provider, ext)
+                        await session.commit()
+                        reconciled += 1
+                    except Exception as exc:  # noqa: BLE001 — logga + fortsätt nästa
+                        logger.warning(
+                            "reconcile_item_failed", fixture=fx.id, error=str(exc)
+                        )
+        finally:
+            await provider.aclose()
+
+        logger.info(
+            "sportmonks_reconcile_done", stuck=len(stuck), reconciled=reconciled
+        )
+        return {"status": "ok", "stuck": len(stuck), "reconciled": reconciled}
+
+    return run_async(_reconcile())
 
 
 @celery_app.task(name="app.services.tasks.generate_match_intelligence_batch")
