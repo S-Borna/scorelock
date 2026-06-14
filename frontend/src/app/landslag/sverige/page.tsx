@@ -3,6 +3,7 @@ import type { TournamentStructure, Fixture, TournamentGroup } from "@/lib/types"
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CountdownCallout } from "@/components/vm-countdown";
+import { AddToCalendarButton, type CalMatch } from "@/components/add-to-calendar";
 import { fmtDateShort, fmtTime, parseUTC } from "@/lib/time";
 
 // Miljö-oberoende: slug resolvas i backend, Sverige matchas på lag-NAMN —
@@ -46,6 +47,14 @@ export default async function SwedenPage() {
         (f) => f.status === "scheduled" || f.status === "live",
     );
 
+    const teamLabel = (t: { name: string }) =>
+        isSwedenTeam(t) ? "Sverige" : t.name;
+    const calMatches: CalMatch[] = swedenFixtures.map((f) => ({
+        id: f.id,
+        kickoff: f.kickoff,
+        title: `${teamLabel(f.home_team)} – ${teamLabel(f.away_team)} · VM 2026`,
+    }));
+
     return (
         <div>
             {/* ── HERO ─────────────────────────────────────────── */}
@@ -74,6 +83,16 @@ export default async function SwedenPage() {
                     {nextMatch && (
                         <div className="mt-8">
                             <CountdownCallout fixture={nextMatch} />
+                        </div>
+                    )}
+                    {calMatches.length > 0 && (
+                        <div className="mt-6">
+                            <AddToCalendarButton
+                                matches={calMatches}
+                                calName="Sverige · VM 2026"
+                                filename="sverige-vm-2026.ics"
+                                label="Lägg till Sveriges matcher i kalender"
+                            />
                         </div>
                     )}
                 </div>
