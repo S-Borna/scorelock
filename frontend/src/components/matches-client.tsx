@@ -2,6 +2,8 @@
 
 import type { Fixture, League, Prediction, ValueBet } from "@/lib/types";
 import { useLiveScores, type LiveFixtureState } from "@/lib/use-live-scores";
+import { useFavorites } from "@/lib/favorites";
+import { FavoriteStar } from "@/components/favorite-star";
 import { useEffect, useState } from "react";
 
 import { fmtTime, parseUTC, sameStockholmDay } from "@/lib/time";
@@ -59,6 +61,7 @@ type ViewMode = "day" | "league";
 export function MatchesClient({ initialFixtures, predictions, valueBets }: MatchesClientProps) {
     const [fixtures, setFixtures] = useState(initialFixtures);
     const { getLiveState } = useLiveScores(initialFixtures);
+    const favs = useFavorites();
     const [today] = useState(() => startOfDay(new Date()));
     // Default: hoppa till första dagen med fixtures om "idag" är tomt. Pre-VM
     // hade default "idag" 7 jun (0 fixtures) → tom EmptyState dolde alla
@@ -114,6 +117,11 @@ export function MatchesClient({ initialFixtures, predictions, valueBets }: Match
         <MatchRow key={f.id} fixture={f} prediction={predMap.get(f.id)} valueBet={vbMap.get(f.id)} liveState={getLiveState(f)} />
     );
 
+    // ── Mina matcher (favoriter) ── globalt, oberoende av vald dag/liga
+    const favFixtures = fixtures
+        .filter((f) => favs.has(f.id))
+        .sort((a, b) => parseUTC(a.kickoff).getTime() - parseUTC(b.kickoff).getTime());
+
     // ── DAG-vy ──
     const dayFixtures = fixtures
         .filter((f) => !liveIds.has(f.id) && sameStockholmDay(f.kickoff, selectedDate))
@@ -166,6 +174,17 @@ export function MatchesClient({ initialFixtures, predictions, valueBets }: Match
                     ))}
                 </div>
             </div>
+
+            {favFixtures.length > 0 && (
+                <div className="mb-4 rounded-xl border border-yellow-500/20 bg-yellow-500/[0.03] overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 border-b border-yellow-500/10">
+                        <span className="text-yellow-400">★</span>
+                        <span className="font-semibold text-sm text-yellow-200">Mina matcher</span>
+                        <span className="ml-auto text-xs text-yellow-400/60">{favFixtures.length}</span>
+                    </div>
+                    <div>{favFixtures.map(renderRow)}</div>
+                </div>
+            )}
 
             {mode === "day" ? (
                 <>
@@ -341,6 +360,7 @@ function MatchRow({
                 {pick && <span className="badge bg-scorelock-500/10 text-scorelock-400 border border-scorelock-500/20 font-mono tabular-nums">{pick.label} {Math.round(pick.prob * 100)}%</span>}
                 {valueBet && valueBet.edge_percent > 0 && <span className="badge bg-accent-amber/10 text-amber-400 border border-amber-500/20 font-mono tabular-nums" title="Value-edge">+{valueBet.edge_percent.toFixed(0)}%</span>}
             </div>
+            <FavoriteStar fixtureId={fixture.id} className="ml-3" />
             <svg className="w-4 h-4 text-gray-700 group-hover:text-gray-400 transition-colors ml-2 flex-shrink-0 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
