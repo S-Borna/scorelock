@@ -106,7 +106,7 @@ export function MomentumGraph({ series }: { series: MomentumSeries }) {
                             fontFamily="monospace"
                             textAnchor="middle"
                         >
-                            {m}'
+                            {m}&apos;
                         </text>
                     );
                 })}

@@ -1439,12 +1439,13 @@ def sportmonks_reconcile_recent(self):
 
 @celery_app.task(name="app.services.tasks.generate_match_intelligence_batch")
 def generate_match_intelligence_batch(limit: int = 25):
-    """API-fallback-generering av match-analys (prod-skyddsnät).
+    """Genererar match-analys (pre/in/post) för matcher som saknar färsk sådan.
 
-    OBS: Max-primär-genereringen sker på alltid-på-boxen via claude -p (platt kostnad).
-    Den HÄR tasken kör i Docker/prod UTAN claude → orkestratorn faller på Anthropic-API
-    (metered). Den är ett skyddsnät för matcher boxen missade och är SHELVED i beat-
-    schemat tills boxen är i drift — annars skulle allt genereras via betal-API:t.
+    AKTIV i beat-schemat var 30:e min under VM-fönstret. I Docker/prod finns ingen
+    claude-binär → orkestratorn kör Anthropic-API (metered, ~$8-12/turnering med
+    prompt-caching). Om alltid-på-boxen körs med claude -p (platt kostnad via Max)
+    blir den primär och denna API-väg används bara som skyddsnät. Sätt
+    INTELLIGENCE_USE_CLI=false i prod för att hoppa över det döda subprocess-försöket.
     """
 
     async def _gen():

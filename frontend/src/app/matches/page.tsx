@@ -21,7 +21,11 @@ export default async function MatchesPage() {
         fetchApi<ValueBet[]>("/api/v1/value-bets?min_edge=3"),
     ]);
 
-    if (fixturesRes.status === "fulfilled") fixtures = fixturesRes.value;
+    // Fixtures är kärndatan: kasta vid fel så Next behåller senaste lyckade ISR-
+    // version i stället för att cacha en tom matchlista 60s för alla besökare.
+    // Predictions/value-bets är overlays — degradera tyst om de fallerar.
+    if (fixturesRes.status === "rejected") throw fixturesRes.reason;
+    fixtures = fixturesRes.value;
     if (predictionsRes.status === "fulfilled") predictions = predictionsRes.value;
     if (valueBetsRes.status === "fulfilled") valueBets = valueBetsRes.value;
 

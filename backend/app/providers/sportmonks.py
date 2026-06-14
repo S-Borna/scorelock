@@ -651,7 +651,28 @@ class SportMonksProvider:
             },
         )
         items = data.get("data") or []
-        return [self._parse_fixture(item) for item in items]
+        return self._parse_fixtures_safe(items)
+
+    def _parse_fixtures_safe(
+        self, items: list[Any]
+    ) -> list[NormalizedFixture]:
+        """Parsa en batch fixture-payloads och hoppa enskilda trasiga.
+
+        En korrupt live-payload (saknad participant, ogiltig state etc.) får
+        ALDRIG ta ner hela inplay-cykeln — annars stannar uppdateringen av
+        alla andra pågående matcher mitt i en omgång. Logga + skippa per item.
+        """
+        parsed: list[NormalizedFixture] = []
+        for item in items:
+            try:
+                parsed.append(self._parse_fixture(item))
+            except ProviderPayloadError as exc:
+                logger.warning(
+                    "sportmonks_fixture_payload_skipped: %s (id=%s)",
+                    exc,
+                    item.get("id") if isinstance(item, dict) else None,
+                )
+        return parsed
 
     async def fetch_live_fixtures(
         self,
@@ -667,7 +688,7 @@ class SportMonksProvider:
             params={"include": "participants;league;state;scores;periods"},
         )
         items = data.get("data") or []
-        return [self._parse_fixture(item) for item in items]
+        return self._parse_fixtures_safe(items)
 
     async def fetch_lineup(
         self, fixture_external_id: str

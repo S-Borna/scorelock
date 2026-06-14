@@ -21,6 +21,12 @@ from app.api.room import router as room_router
 settings = get_settings()
 logger = structlog.get_logger()
 
+# Fail-fast: vägra starta i produktion med default-secret (forge:bar admin-JWT).
+if settings.environment == "production" and settings.secret_key == "change-me":
+    raise RuntimeError(
+        "SECRET_KEY måste sättas i produktion — startar inte med default 'change-me'."
+    )
+
 # ── Sentry error monitoring ────────────────────────────────
 if settings.sentry_dsn:
     sentry_sdk.init(

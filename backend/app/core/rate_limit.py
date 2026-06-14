@@ -23,12 +23,18 @@ TIER_LIMITS: dict[str, int] = {
     "free": 240,
     "pro": 600,
     "elite": 1200,
-    "anonymous": 180,
+    # Höjt 180→480 för VM: CGNAT/mobiloperatör-användare delar egress-IP, så hela
+    # poolen räknas mot samma bucket. 180 räckte inte för ~13-anrops-fan-outen per
+    # matchsida × flera laddningar/min under en Sverige-match.
+    "anonymous": 480,
 }
 
-# Paths exempt from rate limiting
+# Paths exempt from rate limiting. /fixtures/live pollas av ticker+board var
+# 45–60s hos VARJE besökare → får aldrig 429:a (livescore = kärnan); endpointen
+# är en liten cache-vänlig läsning.
 EXEMPT_PATHS: set[str] = {
     "/api/v1/health",
+    "/api/v1/fixtures/live",
     "/docs",
     "/redoc",
     "/openapi.json",
