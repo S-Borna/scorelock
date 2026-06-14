@@ -124,6 +124,7 @@ export interface Standing {
     form: string | null;
     xg_for: number | null;
     xg_against: number | null;
+    group_letter?: string | null;
 }
 
 export interface Sentiment {

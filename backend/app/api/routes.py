@@ -1421,6 +1421,7 @@ async def get_standings(
                     form=None,
                     xg_for=None,
                     xg_against=None,
+                    group_letter=letter,
                 )
             )
 

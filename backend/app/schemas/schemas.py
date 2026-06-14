@@ -164,6 +164,8 @@ class StandingResponse(BaseModel):
     form: str | None
     xg_for: float | None
     xg_against: float | None
+    # Satt för cup-grupptabeller (on-the-fly fallback); None för seriebord.
+    group_letter: str | None = None
 
     model_config = {"from_attributes": True}
 

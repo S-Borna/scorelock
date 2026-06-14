@@ -77,6 +77,10 @@ export default async function StandingsPage() {
 
     const leagueTables = sortedLeagues.filter((l) => l.type !== "cup");
     const cups = sortedLeagues.filter((l) => l.type === "cup");
+    const worldCup = cups.find(
+        (c) => c.name === "World Cup" || c.name === "world_cup"
+    );
+    const otherCups = cups.filter((c) => c !== worldCup);
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -89,12 +93,104 @@ export default async function StandingsPage() {
                 </div>
             ) : (
                 <div className="space-y-6">
+                    {/* VM-grupptabeller leder under turneringen */}
+                    {worldCup && <WorldCupGroups league={worldCup} />}
                     {leagueTables.map((league) => (
                         <LeagueTable key={league.id} league={league} />
                     ))}
-                    {cups.length > 0 && <CupLinks cups={cups} />}
+                    {otherCups.length > 0 && <CupLinks cups={otherCups} />}
                 </div>
             )}
+        </div>
+    );
+}
+
+async function WorldCupGroups({ league }: { league: League }) {
+    let standings: Standing[] = [];
+    try {
+        standings = await fetchApi<Standing[]>(`/api/v1/standings/${league.id}`);
+    } catch {
+        return null;
+    }
+
+    const withGroup = standings.filter((s) => s.group_letter);
+    if (withGroup.length === 0) return null;
+
+    const groups = new Map<string, Standing[]>();
+    for (const s of withGroup) {
+        const g = s.group_letter as string;
+        if (!groups.has(g)) groups.set(g, []);
+        groups.get(g)!.push(s);
+    }
+    const letters = [...groups.keys()].sort();
+
+    return (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-3 bg-white/[0.01]">
+                {league.logo_url ? (
+                    <img src={league.logo_url} alt="" className="w-6 h-6 object-contain" />
+                ) : (
+                    <span className="text-base">🏆</span>
+                )}
+                <h2 className="font-semibold text-white">VM 2026 — Grupptabeller</h2>
+                <Link href="/vm" className="ml-auto text-xs text-scorelock-accent">
+                    Till VM →
+                </Link>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 p-3">
+                {letters.map((letter) => (
+                    <div
+                        key={letter}
+                        className="rounded-lg border border-white/[0.05] bg-white/[0.01] p-3"
+                    >
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-mono uppercase tracking-wider text-scorelock-accent">
+                                Grupp {letter}
+                            </span>
+                            <span className="text-[10px] text-gray-600 uppercase tracking-wider">
+                                S · MS · P
+                            </span>
+                        </div>
+                        <table className="w-full text-sm">
+                            <tbody>
+                                {groups.get(letter)!.map((s, i) => (
+                                    <tr
+                                        key={s.team.id}
+                                        className={`border-b border-white/[0.03] last:border-0 ${i < 2 ? "border-l-2 border-l-green-500/60" : "border-l-2 border-l-transparent"}`}
+                                    >
+                                        <td className="py-1.5 pl-1.5 pr-2 text-gray-500 text-xs w-5">
+                                            {s.position}
+                                        </td>
+                                        <td className="py-1.5 pr-2">
+                                            <div className="flex items-center gap-2">
+                                                {s.team.logo_url ? (
+                                                    <img src={s.team.logo_url} alt="" className="w-4 h-4 object-contain flex-shrink-0" />
+                                                ) : (
+                                                    <div className="w-4 h-4 rounded-full bg-white/[0.06] flex-shrink-0" />
+                                                )}
+                                                <span className="font-medium truncate max-w-[120px]">
+                                                    {s.team.name}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-1.5 px-1 text-center text-gray-400 text-xs w-6">
+                                            {s.played}
+                                        </td>
+                                        <td className="py-1.5 px-1 text-center text-xs w-7">
+                                            <span className={s.goal_diff > 0 ? "text-green-400" : s.goal_diff < 0 ? "text-red-400" : "text-gray-500"}>
+                                                {s.goal_diff > 0 ? "+" : ""}{s.goal_diff}
+                                            </span>
+                                        </td>
+                                        <td className="py-1.5 pl-1 pr-1.5 text-center font-bold text-sm w-7">
+                                            {s.points}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
