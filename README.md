@@ -1,5 +1,7 @@
 # ⚽ ScoreLock Football Analytics
 
+**Live:** [scorelock.saidborna.com](https://scorelock.saidborna.com)
+
 AI-driven football analytics SaaS platform delivering match predictions, sentiment analysis, and value bet identification.
 
 ## Vision
