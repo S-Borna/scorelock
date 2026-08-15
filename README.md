@@ -83,7 +83,7 @@ Plus affiliate revenue from betting site referrals (~$5–15/user/month).
 
 ```bash
 # Clone
-git clone https://github.com/yourusername/scorelock.git
+git clone https://github.com/S-Borna/scorelock.git
 cd scorelock
 
 # Start everything

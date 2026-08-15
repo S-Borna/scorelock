@@ -67,6 +67,11 @@ backups/
 # ── OS ─────────────────────────────────────────────────────
 Thumbs.db
 
+# ── Internal AI-agent tooling and scraped competitor reference, not portfolio-relevant ──
+CLAUDE.md
+Claude/
+competitor-ref/
+
 # ── Railway config-as-code ──
 # Keep railway*.json tracked — they define per-service build/deploy settings
 
