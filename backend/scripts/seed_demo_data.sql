@@ -421,6 +421,23 @@ END$$;
 -- Default 15-player team for admin user (REDACTED-EMAIL). 4-3-3 formation,
 -- captain Haaland, vice Stones, total cost €100M (exact budget).
 -- Creates the admin user if it doesn't already exist (for fresh local DBs).
+--
+-- Password handling: no plaintext password or password hash is committed to
+-- this file or to git history. If the SEED_ADMIN_PASSWORD environment
+-- variable is set when this script is run via psql, that password is used
+-- (hashed with pgcrypto's bcrypt at insert time). If it is unset, a random
+-- password is generated per run and hashed — it is never printed, logged, or
+-- persisted anywhere outside the hashed_password column. Use the app's normal
+-- password-reset flow to gain access to the seeded admin account locally.
+
+\set seed_admin_password `echo "${SEED_ADMIN_PASSWORD:-}"`
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- psql does not interpolate :'variables' inside dollar-quoted (DO $$ ... $$)
+-- bodies, so the env-derived password is handed to the DO block via a
+-- session-local GUC instead of direct substitution.
+SELECT set_config('scorelock.seed_admin_password', :'seed_admin_password', false);
 
 DO $$
 DECLARE
@@ -429,21 +446,30 @@ DECLARE
     v_team_id INT;
     v_captain_id INT;
     v_vice_id INT;
+    v_password TEXT := NULLIF(current_setting('scorelock.seed_admin_password', true), '');
 BEGIN
     SELECT id INTO v_admin_id FROM users WHERE email = 'REDACTED-EMAIL';
 
     IF v_admin_id IS NULL THEN
+        IF v_password IS NULL THEN
+            -- No SEED_ADMIN_PASSWORD provided: generate a random one-off
+            -- password. It is intentionally never revealed (not printed via
+            -- RAISE NOTICE, not stored anywhere but as its bcrypt hash) —
+            -- use the password-reset flow to log in as this seeded user.
+            v_password := encode(gen_random_bytes(18), 'base64');
+        END IF;
+
         INSERT INTO users (email, hashed_password, name, tier, is_active, created_at)
         VALUES (
             'REDACTED-EMAIL',
-            'REDACTED-BCRYPT-HASH',
+            crypt(v_password, gen_salt('bf', 12)),
             'Said',
             'ELITE',
             true,
             now()
         )
         RETURNING id INTO v_admin_id;
-        RAISE NOTICE 'Created admin user REDACTED-EMAIL (password: REDACTED)';
+        RAISE NOTICE 'Created admin user REDACTED-EMAIL (password not shown; set SEED_ADMIN_PASSWORD before seeding to choose it, or use the password-reset flow)';
     END IF;
 
     SELECT id INTO v_season_id
