@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # ── Auth ───────────────────────────────────────────────
     secret_key: str = "change-me"
     access_token_expire_minutes: int = 30
+    admin_emails: str = ""
 
     # ── External APIs ──────────────────────────────────────
     api_football_key: str = ""
@@ -77,6 +78,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    @property
+    def admin_email_set(self) -> set[str]:
+        return {e.strip() for e in self.admin_emails.split(",") if e.strip()}
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

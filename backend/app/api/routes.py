@@ -10,6 +10,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import get_current_user, get_optional_user
 from app.schemas.schemas import (
@@ -771,7 +772,7 @@ async def trigger_intelligence_generation(
     `kind` must be one of: pre_match, in_match, post_match.
     `force=true` regenerates even if a row already exists.
     """
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
     try:
         kind_enum = IntelligenceKind(kind)
@@ -820,7 +821,7 @@ async def trigger_tournament_prewarm(
     omedelbart med task-ID. Använd FÖRE turneringen startar för att fylla
     cachen med analyser så ingen besökare träffar cold-start.
     """
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.services.tasks import prewarm_tournament_intelligence
@@ -1707,11 +1708,8 @@ async def get_match_sentiment(fixture_id: int, db: AsyncSession = Depends(get_db
 
 # ── Admin — manual task triggers ───────────────────────────
 
-ADMIN_EMAILS: set[str] = {
-    "REDACTED-EMAIL",
-    "REDACTED-EMAIL",
-    "admin@scorelock.saidborna.com",
-}
+def _admin_emails() -> set[str]:
+    return get_settings().admin_email_set
 
 
 @router.post("/admin/trigger/{task_name}")
@@ -1723,7 +1721,7 @@ async def trigger_task(
 
     Available tasks: standings, fixtures, predictions, sentiment, odds, train
     """
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
     from app.core.celery_app import celery_app
 
@@ -1763,7 +1761,7 @@ async def trigger_sportmonks_sync(
 
     Idempotent — re-trigger uppdaterar mutable fält utan dupliacering.
     """
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
     from app.core.celery_app import celery_app
 
@@ -1782,7 +1780,7 @@ async def trigger_sportmonks_sync(
 @router.get("/admin/quota")
 async def get_quota_status(user: User = Depends(get_current_user)):
     """Get API quota usage across all data sources (admin only)."""
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.core.quota_manager import get_quota_manager
@@ -1799,7 +1797,7 @@ async def debug_api_test(
     user: User = Depends(get_current_user),
 ):
     """Test API-Football endpoint directly — returns raw JSON (admin only, 1 API call)."""
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.services.api_football import api_football
@@ -1852,7 +1850,7 @@ async def fix_league_metadata(
     db: AsyncSession = Depends(get_db),
 ):
     """One-shot: update league display names, logos, and countries."""
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.models.models import League as LeagueModel
@@ -1994,7 +1992,7 @@ async def debug_db_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Get database fixture/standings counts by season (admin only)."""
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from sqlalchemy import func, select as sa_select
@@ -2053,7 +2051,7 @@ async def trigger_score_update(
     for real live fixtures. Connected WebSocket clients receive a `score_update`
     payload identical to what `update_live_scores` produces in prod.
     """
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
     from app.api.websocket import publish_score_update
 
@@ -2082,7 +2080,7 @@ async def admin_sync_now(
     """Fetch fixtures + standings synchronously via football-data.org (admin only).
     Uses ~11 football-data.org calls (6 fixtures + 5 standings). Current season!
     """
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from app.services.football_data import (
@@ -2284,7 +2282,7 @@ async def get_affiliate_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Get affiliate click statistics (admin only)."""
-    if user.email not in ADMIN_EMAILS:
+    if user.email not in _admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
     stats = await db_service.get_affiliate_stats(db)
     return stats

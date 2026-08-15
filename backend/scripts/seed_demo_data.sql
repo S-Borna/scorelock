@@ -418,7 +418,7 @@ BEGIN
 END$$;
 
 -- ── Fantasy team default seed (T2) ─────────────────────────────────────
--- Default 15-player team for admin user (REDACTED-EMAIL). 4-3-3 formation,
+-- Default 15-player team for admin user (admin@scorelock.saidborna.com). 4-3-3 formation,
 -- captain Haaland, vice Stones, total cost €100M (exact budget).
 -- Creates the admin user if it doesn't already exist (for fresh local DBs).
 --
@@ -448,7 +448,7 @@ DECLARE
     v_vice_id INT;
     v_password TEXT := NULLIF(current_setting('scorelock.seed_admin_password', true), '');
 BEGIN
-    SELECT id INTO v_admin_id FROM users WHERE email = 'REDACTED-EMAIL';
+    SELECT id INTO v_admin_id FROM users WHERE email = 'admin@scorelock.saidborna.com';
 
     IF v_admin_id IS NULL THEN
         IF v_password IS NULL THEN
@@ -461,7 +461,7 @@ BEGIN
 
         INSERT INTO users (email, hashed_password, name, tier, is_active, created_at)
         VALUES (
-            'REDACTED-EMAIL',
+            'admin@scorelock.saidborna.com',
             crypt(v_password, gen_salt('bf', 12)),
             'Said',
             'ELITE',
@@ -469,7 +469,7 @@ BEGIN
             now()
         )
         RETURNING id INTO v_admin_id;
-        RAISE NOTICE 'Created admin user REDACTED-EMAIL (password not shown; set SEED_ADMIN_PASSWORD before seeding to choose it, or use the password-reset flow)';
+        RAISE NOTICE 'Created admin user admin@scorelock.saidborna.com (password not shown; set SEED_ADMIN_PASSWORD before seeding to choose it, or use the password-reset flow)';
     END IF;
 
     SELECT id INTO v_season_id
